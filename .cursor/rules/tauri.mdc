@@ -1,0 +1,42 @@
+---
+description: Tauri v2 IPC and backend conventions
+globs: "src-tauri/**/*.rs"
+---
+
+# Tauri v2 Conventions
+
+## Commands
+- Define in `src-tauri/src/commands/` module
+- Use `#[tauri::command]` macro
+- Return `Result<T, String>` for IPC error serialization
+- Group by domain: project_commands.rs, agent_commands.rs, loop_commands.rs
+
+## Events
+- Emit from backend: `app_handle.emit("event-name", payload)`
+- Listen in frontend: `listen("event-name", callback)`
+- Event names: kebab-case (plan-activity, agent-output-stream, iteration-started)
+
+## State Management
+- Use `tauri::State<Mutex<T>>` or `tauri::State<Arc<RwLock<T>>>`
+- Database handle shared via Tauri managed state
+- Agent registry shared via managed state
+
+## Child Processes
+- Spawn via `tokio::process::Command`
+- Pipe stdout, stderr, stdin
+- Forward output lines via Tauri events for live streaming
+- Track PIDs for graceful termination (SIGTERM, then SIGKILL after timeout)
+
+## SQLite
+- Use `tauri-plugin-sql` with migrations defined in Rust
+- Migrations registered via `tauri_plugin_sql::Builder::default().add_migrations()`
+- Database at `sqlite:loopforge.db` (resolves to AppConfig directory)
+- Frontend queries via `@tauri-apps/plugin-sql` (`Database.load()`, `db.select()`, `db.execute()`)
+- Permissions in `capabilities/default.json`: `sql:default`, `sql:allow-execute`, `sql:allow-select`
+
+## Shell (Agent CLI)
+- Use `tauri-plugin-shell` for spawning agent CLIs
+- `ShellExt` trait: `app.shell().command("claude").args([...]).spawn()`
+- Returns `(Receiver<CommandEvent>, Child)` for async streaming
+- `child.write(bytes)` for stdin piping
+- Permissions in `capabilities/default.json`: `shell:default`

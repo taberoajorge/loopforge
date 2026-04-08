@@ -1,0 +1,31 @@
+---
+description: Rust coding conventions for ralph-core and src-tauri
+globs: "**/*.rs"
+---
+
+# Rust Conventions
+
+## Error Handling
+- `thiserror` for defining error enums in library code
+- `anyhow::Result` acceptable at application boundary (src-tauri commands)
+- Never `unwrap()` in `crates/ralph-core/`; acceptable in tests
+- Use `?` propagation, not `match` chains for simple forwarding
+
+## Async
+- Runtime: tokio (multi-thread)
+- Child processes: `tokio::process::Command` with piped stdout/stderr
+- Graceful shutdown via `AtomicBool` or `tokio::sync::watch`
+
+## Serde
+- All public structs derive `Serialize, Deserialize`
+- New optional fields use `#[serde(default)]`
+- JSON output: `serde_json` with `to_string_pretty` for artifact files
+
+## Testing
+- Unit tests in same file (`#[cfg(test)]` module)
+- Integration tests in `tests/` directory
+- `#[tokio::test]` for async tests
+
+## Dependencies (ralph-core)
+- serde, serde_json, tokio, anyhow, thiserror, regex, chrono
+- No Tauri dependencies in ralph-core

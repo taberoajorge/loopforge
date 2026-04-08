@@ -1,0 +1,60 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "LoopForge",
+  "version": "0.1.0",
+  "identifier": "com.loopforge.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "bun run dev:tauri",
+    "beforeBuildCommand": "bun run build"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "LoopForge",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["windowBackground"],
+          "radius": 16
+        },
+        "theme": "Dark"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "signingIdentity": "-"
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJBODY5MDg5RTc3ODY0QkEKUldTNlpIam5pWkNHdXBqTENrckpPOXpybUxFY3Z5MExNWmFFYmtxalBlSm85MThCQlBtSXdmZW0K",
+      "endpoints": [
+        "https://github.com/taberoajorge/loopforge/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

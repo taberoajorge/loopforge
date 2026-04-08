@@ -1,0 +1,34 @@
+---
+description: React and TypeScript conventions for the frontend
+globs: "src/**/*.{ts,tsx}"
+---
+
+# React / TypeScript Conventions
+
+## Components
+- Functional components with named exports
+- PascalCase for component names and files
+- Props as inline type parameters, not separate interface files
+
+## State
+- Zustand stores in `src/stores/`
+- One store per domain: projectStore, agentStore, loopStore, wizardStore
+- Use selectors to minimize re-renders
+
+## Styling
+- Tailwind CSS 4 utility classes exclusively
+- Design tokens from `src/tokens.css` via `@theme`
+- Token classes: bg-void, bg-surface, bg-elevated, text-primary, text-muted, text-dim, border-border
+- Accent classes: text-primary (green), text-cyan, text-amber, text-red, text-purple
+- Glow effects: shadow-glow-primary, shadow-glow-cyan, shadow-glow-red
+- NEVER raw hex, rgb, or oklch in component code
+- Font: font-mono (default), font-sans (for body text where appropriate)
+
+## Routing
+- React Router v7
+- Routes: / (Home), /new/* (Wizard steps), /monitor/:projectId (Monitor)
+
+## Tauri IPC
+- Bindings in `src/lib/tauri.ts`
+- Use `@tauri-apps/api/core` for invoke
+- Use `@tauri-apps/api/event` for listen
