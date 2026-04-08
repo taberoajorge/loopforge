@@ -1,0 +1,8 @@
+Loop session for **{{ project_name }}** completed with status **{{ completion_status }}**. {{ passed }}/{{ total_stories }} stories passed
+{%- if blocked > 0 %}, {{ blocked }} blocked{% endif %}
+{%- if skipped > 0 %}, {{ skipped }} skipped{% endif %}.
+Total execution time: {{ total_execution_secs }}s across {{ total_files_changed }} changed files (+{{ total_insertions }}/−{{ total_deletions }}).
+Complexity: **{{ complexity }}**.
+{%- if agents %}
+Agents: {% for agent in agents %}{{ agent.agent }} ({{ agent.stories_handled }} stories){% if not loop.last %}, {% endif %}{% endfor %}.
+{%- endif %}

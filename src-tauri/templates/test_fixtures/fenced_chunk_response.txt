@@ -1,0 +1,6 @@
+```json
+[
+  {"title": "Database schema", "content": "Create the projects table with id, name, status columns"},
+  {"title": "API endpoints", "content": "Implement CRUD endpoints for project management"}
+]
+```

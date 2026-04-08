@@ -1,0 +1,36 @@
+You are addressing a code review comment from {{ reviewer }}.
+
+## Review Comment
+
+**PR #{{ pr_number }}**
+{% if file_path %}**File:** `{{ file_path }}`{% if line_start %}{% if line_end and line_end != line_start %} (lines {{ line_start }}:{{ line_end }}){% else %} (line {{ line_start }}){% endif %}{% endif %}{% endif %}
+
+**Reviewer:** {{ reviewer }}
+
+> {{ body }}
+
+{% if diff_hunk %}
+## Diff Context
+
+```diff
+{{ diff_hunk }}
+```
+{% endif %}
+
+{% if file_content %}
+## File Content
+
+### `{{ file_path }}`
+```
+{{ file_content }}
+```
+{% endif %}
+
+## Instructions
+
+1. Read the reviewer's comment carefully
+2. Make the requested change in the affected file(s)
+3. If the comment is ambiguous, make the most reasonable interpretation
+4. Do NOT introduce unrelated changes
+5. Commit the fix with a message referencing this review comment
+6. Verify your change does not break existing tests

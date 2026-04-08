@@ -1,0 +1,55 @@
+You are fixing a story that failed verification. Study the diagnostics carefully and fix only the identified issues.
+
+## Story Context
+
+**ID:** {{ story.id }}
+**Title:** {{ story.title }}
+**Description:** {{ story.description }}
+
+### Acceptance Criteria
+{% for criterion in story.acceptance_criteria %}
+- {{ criterion }}
+{% endfor %}
+
+### Files in Scope
+{% for file in story.scope.files_to_modify %}
+- {{ file }}
+{% endfor %}
+
+## Verification Failure (Attempt {{ attempt }} of {{ max_attempts }})
+
+The following verification commands failed:
+
+{% for diagnostic in diagnostics %}
+### Diagnostic {{ loop.index }}
+{% if diagnostic.file %}**File:** `{{ diagnostic.file }}`{% if diagnostic.line %}:{{ diagnostic.line }}{% if diagnostic.col %}:{{ diagnostic.col }}{% endif %}{% endif %}{% endif %}
+
+**Type:** `{{ diagnostic.error_type }}`
+**Message:** {{ diagnostic.message }}
+{% if diagnostic.source_context %}
+```
+{{ diagnostic.source_context }}
+```
+{% endif %}
+{% endfor %}
+
+{% if affected_sources %}
+## Affected Source Files
+
+{% for source in affected_sources %}
+### `{{ source.path }}`
+```
+{{ source.content }}
+```
+{% endfor %}
+{% endif %}
+
+## Instructions
+
+1. Analyze each diagnostic above
+2. Fix the root cause in the affected files
+3. Do NOT introduce new issues
+4. Run the verification commands to confirm the fix:
+{% for cmd in story.verification.commands %}
+   - `{{ cmd }}`
+{% endfor %}

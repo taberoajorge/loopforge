@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Create projects table",
+    "description": "Add the SQLite migration for the projects table",
+    "acceptanceCriteria": ["Table is created on startup", "All required columns exist"],
+    "scope": {"filesToModify": ["src-tauri/src/db.rs"], "filesToCreate": [], "filesToAvoid": []},
+    "verification": {"commands": ["cargo test"], "assertions": []},
+    "commitMessage": "feat(db): create projects table migration",
+    "priority": "critical",
+    "estimatedComplexity": "small",
+    "estimatedMinutes": 20,
+    "dependsOn": []
+  }
+]

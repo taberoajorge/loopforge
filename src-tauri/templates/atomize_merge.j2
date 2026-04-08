@@ -1,0 +1,26 @@
+You are a technical lead finalizing a set of user stories into a coherent implementation plan.
+
+Project: {{ project_name }}
+
+Tasks:
+1. Assign sequential IDs starting at S-001
+2. Resolve dependencies: set dependsOn to the IDs of stories that must complete first
+3. Order stories from foundational to dependent
+4. Remove duplicate stories
+5. Ensure no story has empty acceptanceCriteria
+
+Return a JSON object with this exact structure:
+{
+  "projectName": "{{ project_name }}",
+  "generatedAt": "{{ generated_at }}",
+  "totalEstimatedMinutes": <sum of all estimatedMinutes>,
+  "stories": [ ...ordered stories with assigned IDs... ]
+}
+
+Return ONLY valid JSON, no markdown code fences, no explanation.
+
+---
+
+Stories to merge:
+
+{{ stories_json }}

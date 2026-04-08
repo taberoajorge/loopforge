@@ -1,0 +1,53 @@
+use crate::commands::validation::{optional_trimmed, required_trimmed};
+use crate::plan_engine::{PlanEngineError, PlanSessionInfo, PlanSessionsState, StartPlanArgs};
+use tauri::{AppHandle, State};
+
+#[tauri::command]
+pub async fn start_plan(
+    app: AppHandle,
+    state: State<'_, PlanSessionsState>,
+    args: StartPlanArgs,
+) -> Result<(), PlanEngineError> {
+    let normalized_args = StartPlanArgs {
+        project_id: required_trimmed(args.project_id, "project_id")
+            .map_err(PlanEngineError::Path)?,
+        project_dir: args.project_dir,
+        agent: required_trimmed(args.agent, "agent").map_err(PlanEngineError::Path)?,
+        model: optional_trimmed(args.model),
+        effort: optional_trimmed(args.effort),
+        initial_prompt: required_trimmed(args.initial_prompt, "initial_prompt")
+            .map_err(PlanEngineError::Path)?,
+    };
+    crate::plan_engine::start_plan(app, state, normalized_args).await
+}
+
+#[tauri::command]
+pub async fn write_to_plan(
+    state: State<'_, PlanSessionsState>,
+    project_id: String,
+    input: String,
+) -> Result<(), PlanEngineError> {
+    let normalized_project_id =
+        required_trimmed(project_id, "project_id").map_err(PlanEngineError::Path)?;
+    crate::plan_engine::write_to_plan(state, normalized_project_id, input).await
+}
+
+#[tauri::command]
+pub async fn stop_plan(
+    state: State<'_, PlanSessionsState>,
+    project_id: String,
+) -> Result<(), PlanEngineError> {
+    let normalized_project_id =
+        required_trimmed(project_id, "project_id").map_err(PlanEngineError::Path)?;
+    crate::plan_engine::stop_plan(state, normalized_project_id).await
+}
+
+#[tauri::command]
+pub async fn query_plan_status(
+    state: State<'_, PlanSessionsState>,
+    project_id: String,
+) -> Result<Option<PlanSessionInfo>, PlanEngineError> {
+    let normalized_project_id =
+        required_trimmed(project_id, "project_id").map_err(PlanEngineError::Path)?;
+    crate::plan_engine::query_plan_status(state, normalized_project_id).await
+}
