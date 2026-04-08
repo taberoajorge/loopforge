@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
 use crate::db::DbState;
-use crate::loop_manager::{LoopManagerState, SessionStats};
+use crate::loop_manager::{LoopError, LoopManagerState, SessionStats};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -115,7 +115,7 @@ pub async fn ephemeral_query(
     app: AppHandle,
     project_id: String,
     question: String,
-) -> Result<EphemeralAnswer, String> {
+) -> Result<EphemeralAnswer, LoopError> {
     use tauri::Manager;
     let db_state = app.state::<DbState>();
     let loop_state = app.state::<LoopManagerState>();
@@ -125,8 +125,7 @@ pub async fn ephemeral_query(
         loop_state,
         project_id,
     )
-    .await
-    .map_err(|err| format!("Failed to get session context: {err}"))?;
+    .await?;
 
     if let Some(query_type) = classify_question(&question) {
         let answer = answer_instant(query_type, &stats);

@@ -7,7 +7,7 @@ import {
 import { useWizardStore, type PlanEvent } from "../stores/wizardStore";
 import {
   isNoisePlanLine, normalizePlanLine,
-} from "../features/wizard/components/PlanStreamPanel";
+} from "../lib/plan-stream-filters";
 
 function processBatch(
   payload: PlanActivityBatchPayload,

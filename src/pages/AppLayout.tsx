@@ -31,9 +31,7 @@ export function AppLayout() {
   const isMac =
     typeof navigator !== "undefined" &&
     /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-  const totalUnread = useNotificationStore(
-    (state) => state.notifications.filter((notif) => !notif.read).length,
-  );
+  const totalUnread = useNotificationStore((state) => state.totalUnreadCount());
 
   useProjectListSync();
   useNotificationIngestion();

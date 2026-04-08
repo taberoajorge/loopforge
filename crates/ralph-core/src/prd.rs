@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use crate::errors::PrdError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::Path;
@@ -93,19 +93,24 @@ pub struct Prd {
 }
 
 impl Prd {
-    pub fn load(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path)
-            .with_context(|| format!("Failed to read PRD: {}", path.display()))?;
-        let prd: Prd = serde_json::from_str(&content)
-            .with_context(|| format!("Failed to parse PRD JSON: {}", path.display()))?;
+    pub fn load(path: &Path) -> Result<Self, PrdError> {
+        let content = std::fs::read_to_string(path).map_err(|source| PrdError::ReadFailed {
+            path: path.to_path_buf(),
+            source,
+        })?;
+        let prd: Prd = serde_json::from_str(&content).map_err(|source| PrdError::ParseFailed {
+            path: path.to_path_buf(),
+            source,
+        })?;
         Ok(prd)
     }
 
-    pub fn save(&self, path: &Path) -> Result<()> {
-        let content = serde_json::to_string_pretty(self)
-            .context("Failed to serialize PRD to JSON")?;
-        std::fs::write(path, content)
-            .with_context(|| format!("Failed to write PRD: {}", path.display()))?;
+    pub fn save(&self, path: &Path) -> Result<(), PrdError> {
+        let content = serde_json::to_string_pretty(self)?;
+        std::fs::write(path, &content).map_err(|source| PrdError::WriteFailed {
+            path: path.to_path_buf(),
+            source,
+        })?;
         Ok(())
     }
 
@@ -143,33 +148,39 @@ impl Prd {
         self.stories.iter().map(|story| story.estimated_minutes).sum()
     }
 
-    pub fn validate_atomicity(&self) -> Result<()> {
+    pub fn validate_atomicity(&self) -> Result<(), PrdError> {
         let mut seen_ids: HashSet<&str> = HashSet::new();
         let all_ids: HashSet<&str> = self.stories.iter().map(|story| story.id.as_str()).collect();
 
         for story in &self.stories {
             if story.id.is_empty() {
-                bail!("Story has empty id");
+                return Err(PrdError::ValidationFailed {
+                    reason: "Story has empty id".into(),
+                });
             }
             if story.title.is_empty() {
-                bail!("Story '{}' has empty title", story.id);
+                return Err(PrdError::ValidationFailed {
+                    reason: format!("Story '{}' has empty title", story.id),
+                });
             }
             if story.acceptance_criteria.is_empty() {
-                bail!(
-                    "Story '{}' has no acceptance criteria",
-                    story.id
-                );
+                return Err(PrdError::ValidationFailed {
+                    reason: format!("Story '{}' has no acceptance criteria", story.id),
+                });
             }
             if !seen_ids.insert(story.id.as_str()) {
-                bail!("Duplicate story id: '{}'", story.id);
+                return Err(PrdError::ValidationFailed {
+                    reason: format!("Duplicate story id: '{}'", story.id),
+                });
             }
             for dep_id in &story.depends_on {
                 if !all_ids.contains(dep_id.as_str()) {
-                    bail!(
-                        "Story '{}' depends_on unknown id '{}'",
-                        story.id,
-                        dep_id
-                    );
+                    return Err(PrdError::ValidationFailed {
+                        reason: format!(
+                            "Story '{}' depends_on unknown id '{}'",
+                            story.id, dep_id
+                        ),
+                    });
                 }
             }
         }

@@ -30,6 +30,7 @@ pub(super) async fn finalize_loop_run(
         );
     }
 
+    #[cfg(feature = "frozen")]
     if let Ok(project_artifacts) = artifact_dir(app, project_id) {
         let prd_file = project_artifacts.join("prd.json");
         if prd_file.exists() {
@@ -58,6 +59,7 @@ pub(super) async fn finalize_loop_run(
         }
     }
 
+    #[cfg(feature = "frozen")]
     match outcome {
         "completed" => crate::notifications::notify_loop_completed(app, project_name),
         "failed" => crate::notifications::notify_loop_error(app, project_name),

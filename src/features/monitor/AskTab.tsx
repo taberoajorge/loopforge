@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { EmptyState } from "../../components/EmptyState";
 import { MARKDOWN_COMPONENTS } from "../../components/markdownComponents";
-import { Badge } from "../../components/ui";
+import { Badge } from "../../components/ui/badge";
 import {
   askHistory,
   askQuestion,
@@ -20,6 +20,7 @@ import {
 import { useAskStore } from "../../stores/askStore";
 import { AskInput } from "./components/AskInput";
 import { AskMessageBubble } from "./components/AskMessage";
+import { useShallow } from "zustand/react/shallow";
 
 type AskTabProps = {
   projectId: string;
@@ -27,20 +28,31 @@ type AskTabProps = {
 };
 
 export function AskTab({ projectId, disabled }: AskTabProps) {
-  const store = useAskStore();
+  const {
+    messages, streamingContent, isAsking, selectedAgent,
+    selectedModel, editPrefill,
+  } = useAskStore(useShallow((state) => ({
+    messages: state.messages,
+    streamingContent: state.streamingContent,
+    isAsking: state.isAsking,
+    selectedAgent: state.selectedAgent,
+    selectedModel: state.selectedModel,
+    editPrefill: state.editPrefill,
+  })));
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    store.switchProject(projectId);
+    useAskStore.getState().switchProject(projectId);
     askHistory(projectId)
-      .then((messages) => store.setMessages(messages))
+      .then((history) => useAskStore.getState().setMessages(history))
       .catch(() => {});
   }, [projectId]);
 
   useEffect(() => {
     const unsubStream = onAskStream((payload) => {
       if (payload.projectId !== projectId) return;
-      store.appendStreamChunk(payload.chunk);
+      useAskStore.getState().appendStreamChunk(payload.chunk);
     });
     const unsubComplete = onAskComplete((payload) => {
       if (payload.projectId !== projectId) return;
@@ -53,7 +65,7 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
         model: payload.model,
         createdAt: new Date().toISOString(),
       };
-      store.finalize(message);
+      useAskStore.getState().finalize(message);
     });
     const unsubError = onAskError((payload) => {
       if (payload.projectId !== projectId) return;
@@ -66,7 +78,7 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
         model: null,
         createdAt: new Date().toISOString(),
       };
-      store.finalize(message);
+      useAskStore.getState().finalize(message);
     });
 
     return () => {
@@ -78,7 +90,7 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [store.messages.length, store.streamingContent]);
+  }, [messages.length, streamingContent]);
 
   const handleSubmit = useCallback(
     async (question: string) => {
@@ -91,22 +103,24 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
         model: null,
         createdAt: new Date().toISOString(),
       };
+      const store = useAskStore.getState();
       store.addMessage(userMessage);
       store.setIsAsking(true);
       store.setStreamingContent("");
       store.setEditPrefill("");
       try {
-        const messageId = await askQuestion(projectId, question, store.selectedAgent, store.selectedModel);
-        store.setStreamingMessageId(messageId);
+        const messageId = await askQuestion(projectId, question, selectedAgent, selectedModel);
+        useAskStore.getState().setStreamingMessageId(messageId);
       } catch {
-        store.setIsAsking(false);
+        useAskStore.getState().setIsAsking(false);
       }
     },
-    [projectId, store.selectedAgent, store.selectedModel],
+    [projectId, selectedAgent, selectedModel],
   );
 
   const handleStop = useCallback(() => {
     void stopAsk(projectId);
+    const store = useAskStore.getState();
     store.setIsAsking(false);
     store.setStreamingContent("");
     store.setStreamingMessageId(null);
@@ -117,29 +131,32 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
   }, []);
 
   const handleEdit = useCallback((messageId: string, content: string) => {
-    void truncateAskFrom(projectId, messageId).then((messages) => {
-      store.setMessages(messages);
+    void truncateAskFrom(projectId, messageId).then((truncated) => {
+      const store = useAskStore.getState();
+      store.setMessages(truncated);
       store.setEditPrefill(content);
     });
   }, [projectId]);
 
   const handleRetry = useCallback((messageId: string) => {
+    const store = useAskStore.getState();
     store.setIsAsking(true);
     store.setStreamingContent("");
-    void retryAsk(projectId, messageId, store.selectedAgent, store.selectedModel).then((newId) => {
-      askHistory(projectId).then((messages) => store.setMessages(messages));
-      store.setStreamingMessageId(newId);
-    }).catch(() => store.setIsAsking(false));
-  }, [projectId, store.selectedAgent, store.selectedModel]);
+    void retryAsk(projectId, messageId, selectedAgent, selectedModel).then((newId) => {
+      askHistory(projectId).then((history) => useAskStore.getState().setMessages(history));
+      useAskStore.getState().setStreamingMessageId(newId);
+    }).catch(() => useAskStore.getState().setIsAsking(false));
+  }, [projectId, selectedAgent, selectedModel]);
 
   const handleRetryWith = useCallback((messageId: string, agent: string) => {
+    const store = useAskStore.getState();
     store.setSelectedAgent(agent);
     store.setIsAsking(true);
     store.setStreamingContent("");
     void retryAsk(projectId, messageId, agent, null).then((newId) => {
-      askHistory(projectId).then((messages) => store.setMessages(messages));
-      store.setStreamingMessageId(newId);
-    }).catch(() => store.setIsAsking(false));
+      askHistory(projectId).then((history) => useAskStore.getState().setMessages(history));
+      useAskStore.getState().setStreamingMessageId(newId);
+    }).catch(() => useAskStore.getState().setIsAsking(false));
   }, [projectId]);
 
   if (disabled) {
@@ -153,11 +170,11 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
   return (
     <div className="flex h-full flex-col">
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
-        {store.messages.length === 0 && !store.isAsking ? (
+        {messages.length === 0 && !isAsking ? (
           <EmptyState icon={<MessageSquare className="h-8 w-8" />} title="Ask questions about your project" />
         ) : (
           <>
-            {store.messages.map((msg) => (
+            {messages.map((msg) => (
               <AskMessageBubble
                 key={msg.id}
                 message={msg}
@@ -167,12 +184,12 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
                 onRetryWith={(agent) => handleRetryWith(msg.id, agent)}
               />
             ))}
-            {store.isAsking ? (
+            {isAsking ? (
               <div className="flex justify-start mb-3">
                 <div className="max-w-[85%] rounded-md px-4 py-3 text-sm bg-surface border border-border text-text">
-                  {store.streamingContent ? (
+                  {streamingContent ? (
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
-                      {store.streamingContent}
+                      {streamingContent}
                     </ReactMarkdown>
                   ) : (
                     <span className="text-text-dim">Thinking...</span>
@@ -188,12 +205,12 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
       </div>
       <AskInput
         disabled={disabled}
-        isAsking={store.isAsking}
-        selectedAgent={store.selectedAgent}
-        selectedModel={store.selectedModel}
-        initialValue={store.editPrefill}
-        onAgentChange={store.setSelectedAgent}
-        onModelChange={store.setSelectedModel}
+        isAsking={isAsking}
+        selectedAgent={selectedAgent}
+        selectedModel={selectedModel}
+        initialValue={editPrefill}
+        onAgentChange={(agent) => useAskStore.getState().setSelectedAgent(agent)}
+        onModelChange={(model) => useAskStore.getState().setSelectedModel(model)}
         onSubmit={(question) => { void handleSubmit(question); }}
         onStop={handleStop}
       />

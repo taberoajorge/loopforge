@@ -1,3 +1,4 @@
+use crate::errors::GuardrailError;
 use std::path::Path;
 
 const GUARDRAILS_TEMPLATE: &str = r#"# Guardrails (Signs)
@@ -20,21 +21,35 @@ When something fails repeatedly, add a sign:
 - **Added after**: Iteration N
 "#;
 
-pub fn ensure_exists(path: &Path) {
+pub fn ensure_exists(path: &Path) -> Result<(), GuardrailError> {
     if !path.exists() {
-        let _ = std::fs::write(path, GUARDRAILS_TEMPLATE);
+        std::fs::write(path, GUARDRAILS_TEMPLATE).map_err(|source| {
+            GuardrailError::CreateFailed {
+                path: path.to_path_buf(),
+                source,
+            }
+        })?;
     }
+    Ok(())
 }
 
-pub fn read_content(path: &Path) -> String {
-    std::fs::read_to_string(path).unwrap_or_default()
+pub fn read_content(path: &Path) -> Result<String, GuardrailError> {
+    std::fs::read_to_string(path).map_err(|source| GuardrailError::ReadFailed {
+        path: path.to_path_buf(),
+        source,
+    })
 }
 
-pub fn add_guardrail(path: &Path, story_id: &str, error_msg: &str, iteration: u32) {
+pub fn add_guardrail(
+    path: &Path,
+    story_id: &str,
+    error_msg: &str,
+    iteration: u32,
+) -> Result<(), GuardrailError> {
     if let Ok(content) = std::fs::read_to_string(path) {
         let marker = format!("Sign: Error in {story_id}");
         if content.contains(&marker) {
-            return;
+            return Ok(());
         }
     }
 
@@ -45,10 +60,23 @@ pub fn add_guardrail(path: &Path, story_id: &str, error_msg: &str, iteration: u3
          - **Added after**: Iteration {iteration}\n"
     );
 
-    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
-        use std::io::Write;
-        let _ = file.write_all(entry.as_bytes());
-    }
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|source| GuardrailError::AppendFailed {
+            path: path.to_path_buf(),
+            source,
+        })?;
+
+    use std::io::Write;
+    file.write_all(entry.as_bytes())
+        .map_err(|source| GuardrailError::AppendFailed {
+            path: path.to_path_buf(),
+            source,
+        })?;
+
+    Ok(())
 }
 
 pub fn has_guardrail_for(path: &Path, story_id: &str) -> bool {

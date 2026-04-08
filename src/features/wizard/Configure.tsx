@@ -4,6 +4,7 @@ import { detectAgents, getAgentCapabilities, saveConfig, saveDraft } from "../..
 import type { AgentCapabilities } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agentStore";
 import { useWizardStore } from "../../stores/wizardStore";
+import { buildDraftPayload } from "../../lib/draft-payload";
 import { ConfigureForm } from "./components/ConfigureForm";
 const KNOWN_AGENTS = ["claude", "codex", "gemini", "opencode", "cursor"];
 export function Configure() {
@@ -12,7 +13,9 @@ export function Configure() {
   const agents = useAgentStore((state) => state.agents);
   const setAgents = useAgentStore((state) => state.setAgents);
   const setDetecting = useAgentStore((state) => state.setDetecting);
-  const { config, setConfig, advanceStep } = useWizardStore();
+  const config = useWizardStore((state) => state.config);
+  const setConfig = useWizardStore((state) => state.setConfig);
+  const advanceStep = useWizardStore((state) => state.advanceStep);
   const [executeAgent, setExecuteAgent] = useState(config.executeAgent);
   const [executeModel, setExecuteModel] = useState<string | null>(config.executeModel ?? null);
   const [executeEffort, setExecuteEffort] = useState<string | null>(config.executeEffort ?? null);
@@ -131,24 +134,7 @@ export function Configure() {
       reviewPollingInterval,
       reviewTimeout,
     });
-    const store = useWizardStore.getState();
-    const draft = {
-      version: 1,
-      projectId: id,
-      currentStep: "launch",
-      describe: {
-        name: store.projectData.name,
-        description: store.projectData.description,
-        workingDirectory: store.projectData.workingDirectory,
-        planAgent: store.projectData.planAgent,
-        planModel: store.projectData.planModel,
-        planEffort: store.projectData.planEffort,
-      },
-      plan: { completed: store.planComplete },
-      atomize: { storiesCount: store.stories.length },
-      configure: { ...configPayload },
-    };
-    await saveDraft(id, JSON.stringify(draft, null, 2)).catch(() => {});
+    await saveDraft(id, buildDraftPayload(id, "launch")).catch(() => {});
     advanceStep(5);
     navigate(`/new/launch/${id}`);
   }

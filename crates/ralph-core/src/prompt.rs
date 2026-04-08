@@ -96,7 +96,8 @@ impl<'a> PromptBuilder<'a> {
         prompt.push_str(&base_prompt);
 
         prompt.push_str("\n\n## GUARDRAILS (READ FIRST!)\n\n");
-        let guardrails_content = guardrails::read_content(self.guardrails_file);
+        let guardrails_content = guardrails::read_content(self.guardrails_file)
+            .unwrap_or_default();
         let guardrails_section = truncate_section(&guardrails_content, MAX_GUARDRAILS_BYTES);
         if guardrails_section.len() < guardrails_content.len() {
             truncated = true;

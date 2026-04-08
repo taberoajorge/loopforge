@@ -11,33 +11,33 @@ pub(super) fn build_ralph_config(
     args: &StartLoopArgs,
 ) -> RalphConfig {
     let mut config = RalphConfig::from_defaults(artifact_dir);
-    config.work_dir = work_dir.to_path_buf();
-    config.prd_file = artifact_dir.join("prd.json");
-    config.prd_backup = artifact_dir.join("prd.backup.json");
-    config.prompt_file = artifact_dir.join("prompt.md");
-    config.guardrails_file = artifact_dir.join("guardrails.md");
-    config.progress_file = artifact_dir.join("progress.txt");
-    config.error_log = artifact_dir.join("error.log");
-    config.activity_log = artifact_dir.join("activity.log");
-    config.failure_memory_file = artifact_dir.join("failure_memory.json");
-    config.state_file = artifact_dir.join(".ralph_state");
-    config.pause_file = artifact_dir.join(".ralph-pause");
-    config.done_file = artifact_dir.join(".ralph-done");
-    config.codex_output_log = artifact_dir.join("agent_output.log");
+    config.paths.work_dir = work_dir.to_path_buf();
+    config.paths.prd_file = artifact_dir.join("prd.json");
+    config.paths.prd_backup = artifact_dir.join("prd.backup.json");
+    config.paths.prompt_file = artifact_dir.join("prompt.md");
+    config.paths.guardrails_file = artifact_dir.join("guardrails.md");
+    config.paths.progress_file = artifact_dir.join("progress.txt");
+    config.paths.error_log = artifact_dir.join("error.log");
+    config.paths.activity_log = artifact_dir.join("activity.log");
+    config.paths.failure_memory_file = artifact_dir.join("failure_memory.json");
+    config.paths.state_file = artifact_dir.join(".ralph_state");
+    config.paths.pause_file = artifact_dir.join(".ralph-pause");
+    config.paths.done_file = artifact_dir.join(".ralph-done");
+    config.paths.codex_output_log = artifact_dir.join("agent_output.log");
     if let Some(max) = args.max_iterations {
-        config.max_iterations = max;
+        config.tuning.max_iterations = max;
     }
     if let Some(gutter) = args.gutter_threshold {
-        config.gutter_threshold = gutter;
+        config.tuning.gutter_threshold = gutter;
     }
     if let Some(cooldown) = args.cooldown_seconds {
-        config.cooldown_secs = cooldown as u64;
+        config.tuning.cooldown_secs = cooldown as u64;
     }
     if let Some(ref test_cmd) = args.test_command {
-        config.test_command = Some(test_cmd.clone());
+        config.tuning.test_command = Some(test_cmd.clone());
     }
     if let Some(retries) = args.max_verification_retries {
-        config.max_verification_retries = retries;
+        config.tuning.max_verification_retries = retries;
     }
     config
 }

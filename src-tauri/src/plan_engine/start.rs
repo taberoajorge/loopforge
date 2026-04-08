@@ -1,105 +1,16 @@
-use crate::activity::{ActivityClassifier, PlanEventKind};
+use crate::activity::ActivityClassifier;
 use crate::plan_engine::args::{
     agent_env_vars, build_null_stdin_command, build_plan_args, needs_null_stdin,
 };
 use crate::plan_engine::helpers::{artifact_dir, build_plan_prompt, resolve_agent_binary};
+use crate::plan_engine::payloads::PlanActivityPayload;
 use crate::plan_engine::sessions::{PlanSessionEntry, PlanSessionStatus};
-use crate::plan_engine::{PlanEngineError, PlanSessionsState, StartPlanArgs};
-use serde::Serialize;
+use crate::plan_engine::{monitor, output, PlanEngineError, PlanSessionsState, StartPlanArgs};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter, State};
+use std::time::Instant;
+use tauri::{AppHandle, State};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
-
-const HEARTBEAT_INTERVAL_SECS: u64 = 15;
-const DEFAULT_STALL_THRESHOLD_SECS: u64 = 180;
-const CURSOR_INITIAL_GRACE_SECS: u64 = 20;
-const BATCH_FLUSH_INTERVAL_MS: u64 = 150;
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PlanActivityPayload {
-    pub project_id: String,
-    pub kind: PlanEventKind,
-    pub content: String,
-    pub timestamp: String,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PlanActivityBatchPayload {
-    pub project_id: String,
-    pub events: Vec<PlanActivityPayload>,
-    pub plan_content_delta: String,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PlanTerminalPayload {
-    pub project_id: String,
-    pub detail: String,
-}
-
-fn buffer_text_segments(
-    text: &str,
-    classifier: &Arc<Mutex<ActivityClassifier>>,
-    buffer: &Arc<Mutex<Vec<PlanActivityPayload>>>,
-    project_id: &str,
-    last_activity: &Arc<Mutex<Instant>>,
-) {
-    for segment in text.lines() {
-        let trimmed = segment.trim_end();
-        if trimmed.is_empty() {
-            continue;
-        }
-        if let Ok(mut activity) = last_activity.lock() {
-            *activity = Instant::now();
-        }
-        if let Ok(mut guard) = classifier.lock() {
-            let plan_event = guard.classify(trimmed);
-            if let Ok(mut buf) = buffer.lock() {
-                buf.push(PlanActivityPayload {
-                    project_id: project_id.to_string(),
-                    kind: plan_event.kind,
-                    content: plan_event.content,
-                    timestamp: plan_event.timestamp,
-                });
-            }
-        }
-    }
-}
-
-fn flush_event_buffer(
-    buffer: &Arc<Mutex<Vec<PlanActivityPayload>>>,
-    app: &AppHandle,
-    project_id: &str,
-) {
-    let events: Vec<PlanActivityPayload> = {
-        let mut buf = match buffer.lock() {
-            Ok(buf) => buf,
-            Err(_) => return,
-        };
-        buf.drain(..).collect()
-    };
-    if events.is_empty() {
-        return;
-    }
-    let plan_content_delta: String = events
-        .iter()
-        .filter(|evt| evt.kind == PlanEventKind::PlanContent)
-        .map(|evt| evt.content.as_str())
-        .collect::<Vec<_>>()
-        .join("\n");
-    let _ = app.emit(
-        crate::events::EVENT_PLAN_ACTIVITY_BATCH,
-        PlanActivityBatchPayload {
-            project_id: project_id.to_string(),
-            events,
-            plan_content_delta,
-        },
-    );
-}
 
 pub async fn start_plan(
     app: AppHandle,
@@ -190,105 +101,29 @@ pub async fn start_plan(
             Arc::new(Mutex::new(Vec::new()));
         let plan_path = artifact_path.join("plan.md");
 
-        let flush_classifier = Arc::clone(&classifier);
-        let flush_path = plan_path.clone();
-        let plan_flush_handle = tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(30));
-            interval.tick().await;
-            loop {
-                interval.tick().await;
-                if let Ok(guard) = flush_classifier.lock() {
-                    let content = guard.accumulated_plan();
-                    if !content.is_empty() {
-                        let _ = std::fs::write(&flush_path, &content);
-                    }
-                }
-            }
-        });
-
-        let batch_buffer = Arc::clone(&event_buffer);
-        let batch_app = app_clone.clone();
-        let batch_project = project_id.clone();
-        let batch_flush_handle = tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_millis(BATCH_FLUSH_INTERVAL_MS));
-            interval.tick().await;
-            loop {
-                interval.tick().await;
-                flush_event_buffer(&batch_buffer, &batch_app, &batch_project);
-            }
-        });
-
-        let hb_app = app_clone.clone();
-        let hb_activity = Arc::clone(&last_activity_clone);
-        let hb_sessions = Arc::clone(&sessions_arc);
-        let hb_project = project_id.clone();
-        let hb_agent = agent_name.clone();
-        let hb_start = now;
-        let heartbeat_handle = tokio::spawn(async move {
-            let stall_threshold = Duration::from_secs(DEFAULT_STALL_THRESHOLD_SECS);
-            let initial_grace = if hb_agent == "cursor" {
-                Duration::from_secs(CURSOR_INITIAL_GRACE_SECS)
-            } else {
-                Duration::ZERO
-            };
-
-            let mut interval =
-                tokio::time::interval(Duration::from_secs(HEARTBEAT_INTERVAL_SECS));
-            interval.tick().await;
-
-            loop {
-                interval.tick().await;
-                let _ = hb_app.emit(
-                    crate::events::EVENT_PLAN_HEARTBEAT,
-                    PlanTerminalPayload {
-                        project_id: hb_project.clone(),
-                        detail: String::new(),
-                    },
-                );
-
-                let since_last = hb_activity
-                    .lock()
-                    .map(|instant| instant.elapsed())
-                    .unwrap_or_default();
-
-                let effective_threshold = if hb_start.elapsed() < initial_grace {
-                    stall_threshold + initial_grace
-                } else {
-                    stall_threshold
-                };
-
-                if since_last > effective_threshold {
-                    let _ = hb_app.emit(
-                        crate::events::EVENT_PLAN_ERROR,
-                        PlanTerminalPayload {
-                            project_id: hb_project.clone(),
-                            detail: "stalled".to_string(),
-                        },
-                    );
-                    if let Ok(mut sessions) = hb_sessions.lock() {
-                        if let Some(entry) = sessions.sessions.get_mut(&hb_project) {
-                            entry.status = PlanSessionStatus::Stalled;
-                        }
-                    }
-                }
-            }
-        });
+        let plan_flush = monitor::spawn_plan_flush_task(
+            Arc::clone(&classifier),
+            plan_path.clone(),
+        );
+        let batch_flush = monitor::spawn_batch_flush_task(
+            Arc::clone(&event_buffer),
+            app_clone.clone(),
+            project_id.clone(),
+        );
+        let heartbeat = monitor::spawn_heartbeat_task(
+            app_clone.clone(),
+            Arc::clone(&last_activity_clone),
+            Arc::clone(&sessions_arc),
+            project_id.clone(),
+            agent_name.clone(),
+            now,
+        );
 
         while let Some(event) = event_rx.recv().await {
             match event {
-                CommandEvent::Stdout(bytes) => {
+                CommandEvent::Stdout(bytes) | CommandEvent::Stderr(bytes) => {
                     let text = String::from_utf8_lossy(&bytes);
-                    buffer_text_segments(
-                        &text,
-                        &classifier,
-                        &event_buffer,
-                        &project_id,
-                        &last_activity_clone,
-                    );
-                }
-                CommandEvent::Stderr(bytes) => {
-                    let text = String::from_utf8_lossy(&bytes);
-                    buffer_text_segments(
+                    output::buffer_text_segments(
                         &text,
                         &classifier,
                         &event_buffer,
@@ -297,56 +132,23 @@ pub async fn start_plan(
                     );
                 }
                 CommandEvent::Terminated(payload) => {
-                    let exit_code = payload.code.unwrap_or(1);
-
-                    flush_event_buffer(&event_buffer, &app_clone, &project_id);
-
-                    if let Ok(guard) = classifier.lock() {
-                        let plan_content = guard.accumulated_plan();
-                        if !plan_content.is_empty() {
-                            let _ = std::fs::write(&plan_path, &plan_content);
-                        }
-                    }
-
-                    let has_plan = classifier
-                        .lock()
-                        .map(|guard| !guard.accumulated_plan().is_empty())
-                        .unwrap_or(false);
-
-                    if exit_code != 0 {
-                        let _ = app_clone.emit(
-                            crate::events::EVENT_PLAN_ERROR,
-                            PlanTerminalPayload {
-                                project_id: project_id.clone(),
-                                detail: format!("exit_code={exit_code}"),
-                            },
-                        );
-                    } else if !has_plan {
-                        let _ = app_clone.emit(
-                            crate::events::EVENT_PLAN_ERROR,
-                            PlanTerminalPayload {
-                                project_id: project_id.clone(),
-                                detail: "empty_output".to_string(),
-                            },
-                        );
-                    } else {
-                        let _ = app_clone.emit(
-                            crate::events::EVENT_PLAN_COMPLETE,
-                            PlanTerminalPayload {
-                                project_id: project_id.clone(),
-                                detail: String::new(),
-                            },
-                        );
-                    }
+                    monitor::handle_termination(
+                        &event_buffer,
+                        &classifier,
+                        &plan_path,
+                        &app_clone,
+                        &project_id,
+                        payload.code.unwrap_or(1),
+                    );
                     break;
                 }
                 _ => {}
             }
         }
 
-        batch_flush_handle.abort();
-        plan_flush_handle.abort();
-        heartbeat_handle.abort();
+        batch_flush.abort();
+        plan_flush.abort();
+        heartbeat.abort();
 
         if let Ok(mut sessions) = sessions_arc.lock() {
             sessions.sessions.remove(&project_id);

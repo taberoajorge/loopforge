@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ArrowRightLeft, Check, Copy, Pencil, RefreshCw } from "lucide-react";
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../components/ui";
+import { Button } from "../../../components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../components/ui/tooltip";
 
 const AGENT_NAMES = ["cursor", "codex", "claude", "gemini", "opencode"];
 

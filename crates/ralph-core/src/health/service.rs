@@ -33,10 +33,13 @@ pub async fn wait_for_health(service_name: &str, url: &str, max_wait_secs: u64) 
         }
         tokio::time::sleep(interval).await;
         elapsed += 3;
-        eprint!(
-            "\r   Waiting for {service_name}... {elapsed}s/{max_wait_secs}s    "
+        tracing::debug!(
+            service = service_name,
+            elapsed,
+            max_wait = max_wait_secs,
+            "Waiting for service health"
         );
     }
-    eprintln!();
+    tracing::warn!(service = service_name, "Health check timed out");
     false
 }

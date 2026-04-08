@@ -73,9 +73,9 @@ pub struct IterationRow {
 pub async fn get_iteration_history(
     db: State<'_, DbState>,
     project_id: String,
-) -> Result<Vec<IterationRow>, String> {
-    let pid = required_trimmed(project_id, "project_id").map_err(|err| err.to_string())?;
-    let conn = db.0.lock().map_err(|err| err.to_string())?;
+) -> Result<Vec<IterationRow>, LoopError> {
+    let pid = required_trimmed(project_id, "project_id").map_err(LoopError::Path)?;
+    let conn = db.0.lock().map_err(|_| LoopError::Internal("database lock poisoned".into()))?;
     let mut stmt = conn
         .prepare(
             "SELECT i.story_id, i.started_at, i.duration_secs, i.result, i.agent_used \
@@ -85,7 +85,7 @@ pub async fn get_iteration_history(
              ORDER BY i.started_at DESC \
              LIMIT 200",
         )
-        .map_err(|err| err.to_string())?;
+        .map_err(|err| LoopError::Internal(err.to_string()))?;
     let rows = stmt
         .query_map(rusqlite::params![pid], |row| {
             Ok(IterationRow {
@@ -96,10 +96,10 @@ pub async fn get_iteration_history(
                 agent_used: row.get(4)?,
             })
         })
-        .map_err(|err| err.to_string())?;
+        .map_err(|err| LoopError::Internal(err.to_string()))?;
     let mut result = Vec::new();
     for row in rows {
-        result.push(row.map_err(|err| err.to_string())?);
+        result.push(row.map_err(|err| LoopError::Internal(err.to_string()))?);
     }
     Ok(result)
 }

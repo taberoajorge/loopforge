@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../../../components/ui";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../../../components/ui/resizable";
 
 type PlanWorkspaceProps = {
   streamPanel: ReactNode;

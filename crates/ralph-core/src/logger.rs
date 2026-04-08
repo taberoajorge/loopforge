@@ -7,7 +7,13 @@ pub fn log_error(message: &str, error_log: Option<&Path>) {
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
     if let Some(log_path) = error_log {
         let formatted = format!("[{timestamp}] ERROR: {message}\n");
-        append_to_file(log_path, &formatted);
+        if let Err(write_err) = append_to_file(log_path, &formatted) {
+            tracing::warn!(
+                path = %log_path.display(),
+                error = %write_err,
+                "failed to write error log"
+            );
+        }
     }
     tracing::error!("{message}");
 }
@@ -27,7 +33,13 @@ pub fn log_warning(message: &str) {
 pub fn log_activity(message: &str, activity_log: &Path) {
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
     let formatted = format!("[{timestamp}] {message}\n");
-    append_to_file(activity_log, &formatted);
+    if let Err(write_err) = append_to_file(activity_log, &formatted) {
+        tracing::warn!(
+            path = %activity_log.display(),
+            error = %write_err,
+            "failed to write activity log"
+        );
+    }
 }
 
 pub fn log_iteration_header(iteration: u32) {
@@ -62,10 +74,10 @@ pub fn format_duration(seconds: u64) -> String {
     }
 }
 
-fn append_to_file(path: &Path, content: &str) {
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-        let _ = file.write_all(content.as_bytes());
-    }
+fn append_to_file(path: &Path, content: &str) -> std::io::Result<()> {
+    let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+    file.write_all(content.as_bytes())?;
+    Ok(())
 }
 
 pub fn rotate_log_if_large(path: &Path, max_lines: usize) {
@@ -73,7 +85,14 @@ pub fn rotate_log_if_large(path: &Path, max_lines: usize) {
         let line_count = content.lines().count();
         if line_count > max_lines {
             let old_path = path.with_extension("log.old");
-            let _ = std::fs::rename(path, old_path);
+            if let Err(rename_err) = std::fs::rename(path, &old_path) {
+                tracing::warn!(
+                    path = %path.display(),
+                    error = %rename_err,
+                    "failed to rotate log"
+                );
+                return;
+            }
             log_info("Log rotated");
         }
     }

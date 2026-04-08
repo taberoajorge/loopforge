@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Send, Square } from "lucide-react";
-import { Button, Field, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui";
+import { Button } from "../../../components/ui/button";
+import { Field } from "../../../components/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
 import { getAgentCapabilities, type AgentCapabilities } from "../../../lib/tauri";
 
 const AGENT_NAMES = ["cursor", "codex", "claude", "gemini", "opencode"];

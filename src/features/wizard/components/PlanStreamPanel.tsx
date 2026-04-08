@@ -1,11 +1,13 @@
 import { memo, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
-import {
-  Badge, Button, Card, CardContent, CardFooter,
-  CardHeader, CardTitle, Input, ScrollArea,
-  ScrollContent, ScrollViewport, Separator,
-} from "../../../components/ui";
-import type { PlanEvent, PlanEventKind } from "../../../stores/wizardStore";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Input } from "../../../components/ui/input";
+import { ScrollArea, ScrollContent, ScrollViewport } from "../../../components/ui/scroll-area";
+import { Separator } from "../../../components/ui/separator";
+import type { PlanEvent, PlanEventKind } from "../../../types/wizard";
+export { shouldRenderPlanEvent } from "../../../lib/plan-stream-filters";
 
 const MAX_VISIBLE_EVENTS = 200;
 
@@ -58,37 +60,6 @@ const PlanEventRow = memo(function PlanEventRow({ event }: { event: PlanEvent })
     </div>
   );
 });
-
-const EXACT_NOISE = new Set([
-  "exec", "codex", "--------", "---", "WAIT", "reason", "effort", "found",
-]);
-const PREFIX_NOISE = [
-  "OpenAI Codex", "workdir:", "model:", "provider:", "approval:", "sandbox:",
-  "reasoning effort:", "reasoning summaries:", "session id:",
-  "user You are a senior software architect.",
-  "error: unexpected argument", "tip: to pass", "Usage: codex",
-  "For more information", "Usage:", "tip:",
-  "Reading additional input from stdin", "Warning: no stdin data received",
-  "If piping from a slow command",
-];
-
-export function isNoisePlanLine(content: string) {
-  const trimmed = content.trim();
-  if (!trimmed || EXACT_NOISE.has(trimmed)) return true;
-  if (PREFIX_NOISE.some((prefix) => trimmed.startsWith(prefix))) return true;
-  return false;
-}
-
-export function normalizePlanLine(content: string) {
-  const trimmed = content.trim();
-  if (trimmed.startsWith("codex ")) return trimmed.slice(6).trim();
-  if (trimmed.startsWith("user ")) return trimmed.slice(5).trim();
-  return trimmed;
-}
-
-export function shouldRenderPlanEvent(event: PlanEvent) {
-  return !isNoisePlanLine(event.content);
-}
 
 function useElapsedSeconds(active: boolean) {
   const [elapsed, setElapsed] = useState(0);

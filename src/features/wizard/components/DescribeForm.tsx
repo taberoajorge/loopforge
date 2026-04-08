@@ -1,4 +1,11 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Label, NativeSelect, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from "../../../components/ui";
+import { Button } from "../../../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Field } from "../../../components/ui/field";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { NativeSelect } from "../../../components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
+import { Textarea } from "../../../components/ui/textarea";
 import type { AgentCapabilities, Connection } from "../../../lib/tauri";
 type WorkspaceMode = "single" | "connection";
 type AgentOption = { name: string; version: string | null; installed: boolean };

@@ -5,5 +5,6 @@ pub mod planning;
 pub mod projects;
 pub mod projects_artifacts;
 pub mod projects_lifecycle;
+pub mod projects_listing;
 pub mod projects_wizard;
 mod validation;

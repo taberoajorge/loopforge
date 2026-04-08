@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { type StepState } from "../../components/StepIndicator";
 import {
@@ -10,7 +10,9 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Separator } from "../../components/ui/separator";
 import { useWizardStore } from "../../stores/wizardStore";
-import { stopPlan, resumeWizard, loadExistingPrd, saveDraft, loadDraft } from "../../lib/tauri";
+import { stopPlan, saveDraft } from "../../lib/tauri";
+import { buildDraftPayload } from "../../lib/draft-payload";
+import { useWizardHydration } from "../../hooks/useWizardHydration";
 import { WizardExitDialog } from "./components/WizardExitDialog";
 import { WizardStepRail } from "./components/WizardStepRail";
 
@@ -42,86 +44,17 @@ export function WizardLayout() {
   const currentStep = resolveStep(location.pathname);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showLeavePlanConfirm, setShowLeavePlanConfirm] = useState(false);
-  const [hydrating, setHydrating] = useState(false);
   const pendingNavRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    const urlProjectId = params.id;
-    if (!urlProjectId) return;
-    if (projectId === urlProjectId && projectName) return;
-
-    setHydrating(true);
-    resumeWizard(urlProjectId)
-      .then(async (resumeState) => {
-        const store = useWizardStore.getState();
-        store.setProjectId(resumeState.project.id);
-        store.setProjectData({
-          name: resumeState.project.name,
-          description: resumeState.project.description,
-          workingDirectory: resumeState.project.workingDirectory,
-          planModel: null,
-          planEffort: null,
-        });
-
-        const draftJson = await loadDraft(urlProjectId).catch(() => null);
-        if (draftJson) {
-          try {
-            const draft = JSON.parse(draftJson);
-            if (draft.describe) {
-              store.setProjectData({
-                name: draft.describe.name ?? resumeState.project.name,
-                description: draft.describe.description ?? resumeState.project.description,
-                workingDirectory: draft.describe.workingDirectory ?? resumeState.project.workingDirectory,
-                planAgent: draft.describe.planAgent ?? store.projectData.planAgent,
-                planModel: draft.describe.planModel ?? null,
-                planEffort: draft.describe.planEffort ?? null,
-              });
-            }
-            if (draft.plan?.completed) store.setPlanComplete(true);
-            if (draft.configure) store.setConfig(draft.configure);
-          } catch {
-          }
-        }
-
-        if (resumeState.hasPlan) store.setPlanComplete(true);
-        if (resumeState.hasPrd) {
-          const prd = await loadExistingPrd(resumeState.project.id);
-          if (prd && prd.stories.length > 0) store.setStories(prd.stories);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setHydrating(false));
-  }, [params.id, projectId, projectName]);
+  const { hydrating } = useWizardHydration(params.id, projectId, projectName);
 
   async function handleGoHome() {
     if (projectId) {
       if (currentStep === 2) {
         await stopPlan(projectId).catch(() => {});
       }
-
       const stepSlug = WIZARD_STEPS.find((step) => step.number === currentStep)?.slug ?? "describe";
-      const store = useWizardStore.getState();
-      const draft = {
-        version: 1,
-        projectId,
-        currentStep: stepSlug,
-        describe: {
-          name: store.projectData.name,
-          description: store.projectData.description,
-          workingDirectory: store.projectData.workingDirectory,
-          planAgent: store.projectData.planAgent,
-          planModel: store.projectData.planModel,
-          planEffort: store.projectData.planEffort,
-        },
-        plan: {
-          completed: store.planComplete,
-        },
-        atomize: {
-          storiesCount: store.stories.length,
-        },
-        configure: store.config,
-      };
-      await saveDraft(projectId, JSON.stringify(draft, null, 2)).catch(() => {});
+      await saveDraft(projectId, buildDraftPayload(projectId, stepSlug)).catch(() => {});
     }
     navigate("/");
   }

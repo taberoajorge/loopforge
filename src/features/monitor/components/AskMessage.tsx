@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MARKDOWN_COMPONENTS } from "../../../components/markdownComponents";
-import { Badge } from "../../../components/ui";
+import { Badge } from "../../../components/ui/badge";
 import type { AskMessage as AskMessageType } from "../../../lib/tauri";
 import { AskMessageActions } from "./AskMessageActions";
 

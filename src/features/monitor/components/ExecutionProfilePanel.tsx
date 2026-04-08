@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Field, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui";
+import { Button } from "../../../components/ui/button";
+import { Field } from "../../../components/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
 import { getAgentCapabilities, saveConfig, type AgentCapabilities, type ProjectConfig } from "../../../lib/tauri";
 
 const AGENT_NAMES = ["cursor", "codex", "claude", "gemini", "opencode"];

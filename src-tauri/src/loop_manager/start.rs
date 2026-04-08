@@ -83,7 +83,7 @@ async fn do_start_loop(
 
     let shutdown_flag = Arc::new(AtomicBool::new(false));
     let shutdown_clone = shutdown_flag.clone();
-    let pause_file = config.pause_file.clone();
+    let pause_file = config.paths.pause_file.clone();
 
     let all_agents: Vec<String> = std::iter::once(resolved.agent.clone())
         .chain(resolved.fallback_agents.clone().into_iter())

@@ -123,12 +123,31 @@ impl CliProvider {
         }
     }
 
+    pub fn openrouter(model: String) -> Self {
+        Self {
+            agent_name: "openrouter".into(),
+            binary: "opencode".into(),
+            model,
+            build_args: |provider, prompt, _| {
+                vec![
+                    "run".into(),
+                    "--model".into(),
+                    format!("openrouter:{}", provider.model),
+                    "--print-logs".into(),
+                    prompt.into(),
+                ]
+            },
+            use_current_dir: true,
+        }
+    }
+
     pub fn from_name(name: &str, model: String) -> Option<Self> {
         match name {
             "claude" => Some(Self::claude(model)),
             "codex" => Some(Self::codex(model)),
             "gemini" => Some(Self::gemini(model)),
             "opencode" => Some(Self::opencode(model)),
+            "openrouter" => Some(Self::openrouter(model)),
             "cursor" => Some(Self::cursor(model)),
             _ => None,
         }
@@ -207,6 +226,7 @@ impl Provider for CliProvider {
             }
 
             while let Some(line) = output_rx.recv().await {
+                tracing::trace!(target: "agent_output", "{line}");
                 if let Some(ref mut file) = log_file {
                     use std::io::Write;
                     let _ = writeln!(file, "{line}");

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { useWizardStore } from "../../stores/wizardStore";
 import { startLoop, finalizeDraft } from "../../lib/tauri";
 import { LaunchActions } from "./components/LaunchActions";

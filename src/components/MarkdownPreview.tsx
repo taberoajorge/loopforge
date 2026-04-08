@@ -1,7 +1,10 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
-import { Badge, Card, CardContent, CardHeader, CardTitle, ScrollArea, ScrollViewport, Separator } from "./ui";
+import { Badge } from "./ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { ScrollArea, ScrollViewport } from "./ui/scroll-area";
+import { Separator } from "./ui/separator";
 import { cn } from "../lib/utils";
 
 const MARKDOWN_COMPONENTS: Components = {

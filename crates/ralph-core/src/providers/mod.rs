@@ -1,18 +1,5 @@
 pub mod cli;
 
-#[allow(dead_code)]
-pub mod claude;
-#[allow(dead_code)]
-pub mod codex;
-#[allow(dead_code)]
-pub mod cursor;
-#[allow(dead_code)]
-pub mod gemini;
-#[allow(dead_code)]
-pub mod opencode;
-#[allow(dead_code)]
-pub mod openrouter;
-
 use anyhow::Result;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;

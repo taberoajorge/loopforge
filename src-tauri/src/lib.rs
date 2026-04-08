@@ -16,17 +16,24 @@ mod storage;
 mod tray;
 
 mod connections;
+mod ephemeral_query;
+
+#[cfg(feature = "frozen")]
 #[allow(dead_code)]
 mod diagnostic_parser;
-mod ephemeral_query;
+#[cfg(feature = "frozen")]
 #[allow(dead_code)]
 mod notifications;
+#[cfg(feature = "frozen")]
 #[allow(dead_code)]
 mod plugin_registry;
+#[cfg(feature = "frozen")]
 #[allow(dead_code)]
 mod scm_watcher;
+#[cfg(feature = "frozen")]
 #[allow(dead_code)]
 mod summary_generator;
+#[cfg(feature = "frozen")]
 #[allow(dead_code)]
 mod worktree_manager;
 
@@ -80,6 +87,7 @@ pub fn run() {
             commands::projects_lifecycle::get_guardrails,
             commands::projects_lifecycle::get_project_config,
             commands::projects::get_project_snapshot,
+            commands::projects_listing::list_projects_enriched,
             commands::projects_lifecycle::get_notification_prefs,
             commands::projects_lifecycle::save_notification_prefs,
             commands::execution::start_loop,

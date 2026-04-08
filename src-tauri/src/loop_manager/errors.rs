@@ -13,6 +13,8 @@ pub enum LoopError {
     Path(String),
     #[error("Lock poisoned")]
     LockPoisoned,
+    #[error("Internal error: {0}")]
+    Internal(String),
 }
 
 impl Serialize for LoopError {

@@ -1,5 +1,5 @@
-import type { StatusBadgeStatus } from "@/components/StatusBadge";
-import type { Project } from "@/stores/projectStore";
+import type { StatusBadgeStatus } from "../components/StatusBadge";
+import type { Project } from "../types/project";
 
 export const ACTIVE_PROJECT_STATUSES: ReadonlyArray<Project["status"]> = [
   "active",

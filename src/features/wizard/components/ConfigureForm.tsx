@@ -1,5 +1,10 @@
 import type { DragEvent } from "react";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, NativeSelect, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui";
+import { Button } from "../../../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Field } from "../../../components/ui/field";
+import { Input } from "../../../components/ui/input";
+import { NativeSelect } from "../../../components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
 import type { AgentCapabilities } from "../../../lib/tauri";
 
 type ScmProvider = "auto" | "github" | "gitlab" | "none";

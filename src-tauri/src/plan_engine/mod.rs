@@ -1,6 +1,9 @@
 mod args;
 mod errors;
 mod helpers;
+mod monitor;
+mod output;
+mod payloads;
 pub mod sessions;
 mod start;
 mod status;

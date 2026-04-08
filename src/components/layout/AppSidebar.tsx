@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router";
 import { Bell, ChevronDown, House, Plus } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
 import { Button } from "../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuLabel, SidebarTrigger, useSidebar } from "../ui/sidebar";
-import { useProjectStore, type Project } from "../../stores/projectStore";
+import { useProjectStore } from "../../stores/projectStore";
+import type { Project } from "../../types/project";
 import { useThemeStore } from "../../stores/themeStore";
 import { useWizardStore } from "../../stores/wizardStore";
 import { ACTIVE_PROJECT_STATUSES, FINISHED_PROJECT_STATUSES } from "../../lib/project-status";
@@ -43,10 +44,12 @@ export function AppSidebar({ onToggleNotifications, totalUnread }: AppSidebarPro
   const setTheme = useThemeStore((state) => state.setTheme);
   const { collapsed } = useSidebar();
   const [sectionOpen, setSectionOpen] = useState<Record<ToggleSectionKey, boolean>>(readSavedSections);
-  const activeProjects = projects.filter((project) => ACTIVE_PROJECT_STATUSES.includes(project.status));
-  const draftProjects = projects.filter((project) => project.status === "draft");
-  const finishedProjects = projects.filter((project) => FINISHED_PROJECT_STATUSES.includes(project.status));
-  const archivedProjects = projects.filter((project) => project.status === "archived");
+  const { activeProjects, draftProjects, finishedProjects, archivedProjects } = useMemo(() => ({
+    activeProjects: projects.filter((project) => ACTIVE_PROJECT_STATUSES.includes(project.status)),
+    draftProjects: projects.filter((project) => project.status === "draft"),
+    finishedProjects: projects.filter((project) => FINISHED_PROJECT_STATUSES.includes(project.status)),
+    archivedProjects: projects.filter((project) => project.status === "archived"),
+  }), [projects]);
   const collapsedProjects = activeProjects;
 
   useEffect(() => {

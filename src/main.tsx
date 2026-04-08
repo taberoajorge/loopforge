@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import {
   createBrowserRouter,
@@ -11,15 +11,24 @@ import { initializeTheme } from "./stores/themeStore";
 import "./index.css";
 import { AppLayout } from "./pages/AppLayout";
 import { Home } from "./features/projects/Home";
-import { WizardLayout } from "./features/wizard/WizardLayout";
-import { Describe } from "./features/wizard/Describe";
-import { Plan } from "./features/wizard/Plan";
-import { Atomize } from "./features/wizard/Atomize";
-import { Configure } from "./features/wizard/Configure";
-import { Launch } from "./features/wizard/Launch";
-import { Monitor } from "./features/monitor/Monitor";
+
+const WizardLayout = lazy(() => import("./features/wizard/WizardLayout").then((mod) => ({ default: mod.WizardLayout })));
+const Describe = lazy(() => import("./features/wizard/Describe").then((mod) => ({ default: mod.Describe })));
+const Plan = lazy(() => import("./features/wizard/Plan").then((mod) => ({ default: mod.Plan })));
+const Atomize = lazy(() => import("./features/wizard/Atomize").then((mod) => ({ default: mod.Atomize })));
+const Configure = lazy(() => import("./features/wizard/Configure").then((mod) => ({ default: mod.Configure })));
+const Launch = lazy(() => import("./features/wizard/Launch").then((mod) => ({ default: mod.Launch })));
+const Monitor = lazy(() => import("./features/monitor/Monitor").then((mod) => ({ default: mod.Monitor })));
 
 initializeTheme();
+
+function LazyFallback() {
+  return (
+    <div className="flex items-center justify-center h-full bg-void">
+      <p className="text-text-dim text-xs font-mono animate-pulse">Loading...</p>
+    </div>
+  );
+}
 
 function FrozenPlaceholder() {
   return (
@@ -58,6 +67,10 @@ function RouteError() {
   );
 }
 
+function SuspenseWrap({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<LazyFallback />}>{children}</Suspense>;
+}
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -67,17 +80,17 @@ const router = createBrowserRouter([
       { index: true, Component: Home },
       {
         path: "new",
-        Component: WizardLayout,
+        element: <SuspenseWrap><WizardLayout /></SuspenseWrap>,
         children: [
-          { path: "describe", Component: Describe },
-          { path: "describe/:id", Component: Describe },
-          { path: "plan/:id", Component: Plan },
-          { path: "atomize/:id", Component: Atomize },
-          { path: "configure/:id", Component: Configure },
-          { path: "launch/:id", Component: Launch },
+          { path: "describe", element: <SuspenseWrap><Describe /></SuspenseWrap> },
+          { path: "describe/:id", element: <SuspenseWrap><Describe /></SuspenseWrap> },
+          { path: "plan/:id", element: <SuspenseWrap><Plan /></SuspenseWrap> },
+          { path: "atomize/:id", element: <SuspenseWrap><Atomize /></SuspenseWrap> },
+          { path: "configure/:id", element: <SuspenseWrap><Configure /></SuspenseWrap> },
+          { path: "launch/:id", element: <SuspenseWrap><Launch /></SuspenseWrap> },
         ],
       },
-      { path: "monitor/:id", Component: Monitor },
+      { path: "monitor/:id", element: <SuspenseWrap><Monitor /></SuspenseWrap> },
       { path: "connections", Component: FrozenPlaceholder },
       { path: "plugins", Component: FrozenPlaceholder },
     ],

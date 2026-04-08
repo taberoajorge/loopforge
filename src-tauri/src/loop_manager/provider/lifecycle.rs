@@ -71,6 +71,7 @@ impl Provider for ShellProvider {
 
             match self.try_advance_fallback() {
                 None => {
+                    #[cfg(feature = "frozen")]
                     crate::notifications::notify_all_rate_limited(&self.app, &self.project_name);
                 }
                 Some(fallback) => {
@@ -130,6 +131,7 @@ impl Provider for ShellProvider {
 
         self.insert_iteration(story_id, &agent, duration_secs, outcome);
         if outcome == "success" {
+            #[cfg(feature = "frozen")]
             crate::notifications::notify_story_completed(&self.app, story_id, &self.project_name);
         }
 

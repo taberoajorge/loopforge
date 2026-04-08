@@ -27,6 +27,7 @@ interface NotificationState {
   markAsRead: (notificationId: string) => void;
   markAllAsRead: (projectId?: string) => void;
   clearNotifications: (projectId?: string) => void;
+  totalUnreadCount: () => number;
   unreadCountForProject: (projectId: string) => number;
   ringColorForProject: (projectId: string) => RingColor | null;
   getNotificationsForProject: (projectId: string) => AppNotification[];
@@ -91,6 +92,9 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
         ? state.notifications.filter((notif) => notif.projectId !== projectId)
         : [],
     })),
+
+  totalUnreadCount: () =>
+    get().notifications.filter((notif) => !notif.read).length,
 
   unreadCountForProject: (projectId) =>
     get().notifications.filter(

@@ -13,7 +13,13 @@ pub fn is_done(done_file: &Path) -> bool {
 pub fn check_and_clear_done(done_file: &Path) -> bool {
     if done_file.exists() {
         logger::log_success(".ralph-done detected, finishing");
-        let _ = std::fs::remove_file(done_file);
+        if let Err(remove_err) = std::fs::remove_file(done_file) {
+            tracing::warn!(
+                path = %done_file.display(),
+                error = %remove_err,
+                "failed to remove done file"
+            );
+        }
         return true;
     }
     false
@@ -31,39 +37,55 @@ pub async fn wait_while_paused(pause_file: &Path) {
 }
 
 pub fn save_state(state_file: &Path, content: &str) {
-    let _ = crate::atomic_write::atomic_write(state_file, content.as_bytes());
+    if let Err(write_err) = crate::atomic_write::atomic_write(state_file, content.as_bytes()) {
+        tracing::warn!(
+            path = %state_file.display(),
+            error = %write_err,
+            "failed to save state"
+        );
+    }
 }
 
 pub fn clear_state(state_file: &Path) {
-    let _ = std::fs::remove_file(state_file);
+    if state_file.exists() {
+        if let Err(remove_err) = std::fs::remove_file(state_file) {
+            tracing::warn!(
+                path = %state_file.display(),
+                error = %remove_err,
+                "failed to clear state file"
+            );
+        }
+    }
 }
 
 pub fn reset_all(state_file: &Path, pause_file: &Path, done_file: &Path) {
-    let _ = std::fs::remove_file(state_file);
-    let _ = std::fs::remove_file(pause_file);
-    let _ = std::fs::remove_file(done_file);
+    for path in [state_file, pause_file, done_file] {
+        if path.exists() {
+            if let Err(remove_err) = std::fs::remove_file(path) {
+                tracing::warn!(
+                    path = %path.display(),
+                    error = %remove_err,
+                    "failed to remove file during reset"
+                );
+            }
+        }
+    }
     logger::log_success("State reset");
 }
 
 pub async fn wait_with_countdown(seconds: u64, reason: &str) {
-    println!();
-    logger::log_warning(&format!("Waiting: {reason}"));
-    println!(
-        "   Duration: {}...",
-        logger::format_duration(seconds)
+    tracing::warn!(
+        duration = %logger::format_duration(seconds),
+        reason,
+        "Waiting"
     );
-    println!();
 
     let mut remaining = seconds;
     while remaining > 0 {
         let chunk = if remaining > 60 { 60 } else { 1 };
-        print!(
-            "\r   {} remaining...                              ",
-            logger::format_duration(remaining)
-        );
+        tracing::debug!(remaining = %logger::format_duration(remaining), "countdown");
         sleep(Duration::from_secs(chunk)).await;
         remaining = remaining.saturating_sub(chunk);
     }
-    println!("\r   {}                                          ", "Continuing...".to_string());
-    println!();
+    tracing::info!("Wait complete, continuing");
 }

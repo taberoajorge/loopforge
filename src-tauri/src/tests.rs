@@ -551,6 +551,7 @@ fn session_stats_calculation() {
     assert!((success_rate - 0.8).abs() < 0.001);
 }
 
+#[cfg(feature = "frozen")]
 #[test]
 fn diagnostic_parser_handles_tsc_output() {
     let sample = "src/app.ts(12,5): error TS2304: Cannot find name 'foo'.\nsrc/lib.ts(3,1): error TS1005: ';' expected.";
@@ -559,12 +560,14 @@ fn diagnostic_parser_handles_tsc_output() {
     assert_eq!(diagnostics[0].error_type, "TS2304");
 }
 
+#[cfg(feature = "frozen")]
 #[test]
 fn diagnostic_parser_handles_empty_input() {
     let diagnostics = crate::diagnostic_parser::parse_diagnostics("");
     assert!(diagnostics.is_empty());
 }
 
+#[cfg(feature = "frozen")]
 #[test]
 fn summary_complexity_classification() {
     assert_eq!(
