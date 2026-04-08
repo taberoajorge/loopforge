@@ -1,0 +1,11 @@
+{
+  "projectName": "minimal-project",
+  "stories": [
+    {
+      "id": "S-001",
+      "title": "Basic feature",
+      "description": "A minimal story with only required fields",
+      "passes": false
+    }
+  ]
+}

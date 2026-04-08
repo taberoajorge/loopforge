@@ -1,0 +1,89 @@
+{
+  "projectName": "test-project",
+  "feature": "authentication",
+  "workingDirectory": "/tmp/test-project",
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "stories": [
+    {
+      "id": "S-001",
+      "title": "Implement JWT authentication",
+      "description": "Add JWT-based authentication to the API endpoints",
+      "acceptanceCriteria": [
+        "User can authenticate with valid credentials",
+        "Invalid credentials return 401"
+      ],
+      "scope": {
+        "filesToModify": ["src/auth.rs"],
+        "filesToCreate": ["src/jwt.rs"],
+        "filesToAvoid": ["migrations/*"]
+      },
+      "verification": {
+        "commands": ["cargo test"],
+        "assertions": ["grep -q 'jwt' src/auth.rs"]
+      },
+      "commitMessage": "feat(auth): implement JWT authentication",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 60,
+      "dependsOn": [],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-002",
+      "title": "Add logout endpoint",
+      "description": "Implement token invalidation on logout so sessions can be terminated",
+      "acceptanceCriteria": [
+        "Logout invalidates the token",
+        "Subsequent requests with revoked token return 401"
+      ],
+      "scope": {
+        "filesToModify": ["src/auth.rs"],
+        "filesToCreate": [],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": ["cargo test"],
+        "assertions": []
+      },
+      "commitMessage": "feat(auth): add logout endpoint",
+      "priority": "high",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 30,
+      "dependsOn": ["S-001"],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-003",
+      "title": "Write auth integration tests",
+      "description": "Comprehensive test suite covering all authentication flows",
+      "acceptanceCriteria": [
+        "All auth endpoints have test coverage",
+        "Tests pass with cargo test"
+      ],
+      "scope": {
+        "filesToModify": [],
+        "filesToCreate": ["tests/auth_integration.rs"],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": ["cargo test"],
+        "assertions": []
+      },
+      "commitMessage": "test(auth): add integration tests",
+      "priority": "medium",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 30,
+      "dependsOn": ["S-001", "S-002"],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    }
+  ]
+}
