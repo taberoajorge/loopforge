@@ -13,6 +13,7 @@ mod models;
 mod plan_engine;
 mod projects;
 mod storage;
+mod test_support;
 mod tray;
 
 mod connections;
