@@ -1,0 +1,31 @@
+{
+  "projectName": "fixture-test",
+  "feature": "happy-path",
+  "workingDirectory": "/tmp/fixture-test",
+  "stories": [
+    {
+      "id": "FIX-001",
+      "title": "Single passing story",
+      "description": "A story that the fixture provider will pass on the first try",
+      "acceptanceCriteria": ["Agent exits with code 0"],
+      "scope": {
+        "filesToModify": [],
+        "filesToCreate": [],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": ["true"],
+        "assertions": []
+      },
+      "commitMessage": null,
+      "priority": "high",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 5,
+      "dependsOn": [],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    }
+  ]
+}

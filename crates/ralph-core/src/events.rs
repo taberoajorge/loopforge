@@ -55,3 +55,42 @@ pub struct NoopEventSink;
 impl LoopEventSink for NoopEventSink {
     fn emit(&self, _event: LoopEvent) {}
 }
+
+pub struct RecordingEventSink {
+    events: std::sync::Mutex<Vec<LoopEvent>>,
+}
+
+impl RecordingEventSink {
+    pub fn new() -> Self {
+        Self {
+            events: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    pub fn events(&self) -> Vec<LoopEvent> {
+        self.events.lock().unwrap().clone()
+    }
+
+    pub fn event_types(&self) -> Vec<String> {
+        self.events
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|event| match event {
+                LoopEvent::Heartbeat { .. } => "heartbeat".into(),
+                LoopEvent::VerificationStarted { .. } => "verification_started".into(),
+                LoopEvent::VerificationFailed { .. } => "verification_failed".into(),
+                LoopEvent::VerificationPassed { .. } => "verification_passed".into(),
+                LoopEvent::PromptBuilt { .. } => "prompt_built".into(),
+                LoopEvent::StorySkipped { .. } => "story_skipped".into(),
+                LoopEvent::HealthCheckWaiting { .. } => "health_check_waiting".into(),
+            })
+            .collect()
+    }
+}
+
+impl LoopEventSink for RecordingEventSink {
+    fn emit(&self, event: LoopEvent) {
+        self.events.lock().unwrap().push(event);
+    }
+}
