@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod fixture;
 
 use anyhow::Result;
 use std::path::Path;

@@ -1,0 +1,31 @@
+{
+  "projectName": "fixture-test",
+  "feature": "loop-failure",
+  "workingDirectory": "/tmp/fixture-test",
+  "stories": [
+    {
+      "id": "FAIL-001",
+      "title": "Story that always fails",
+      "description": "A story that the fixture provider will fail every time",
+      "acceptanceCriteria": ["This should never pass"],
+      "scope": {
+        "filesToModify": [],
+        "filesToCreate": [],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [],
+        "assertions": []
+      },
+      "commitMessage": null,
+      "priority": "high",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 5,
+      "dependsOn": [],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    }
+  ]
+}
