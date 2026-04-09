@@ -15,6 +15,13 @@ El gate E2E inicial solo cubre recorridos soportados por la aplicacion vigente:
 
 Todo modulo no visible, congelado, desconectado o sin entrypoint activo queda fuera de este gate hasta que vuelva a formar parte de la superficie real del producto.
 
+Los modulos congelados excluidos de forma explicita en este gate inicial son:
+
+- `plugins`
+- `connections`
+- `ephemeral_query`
+- `summary_generator`
+
 ## Que Cambia Respecto Al Plan Anterior
 
 La estrategia previa mezclaba infraestructura candidata, cobertura futura y contratos amplios de producto. Esa version ya no sirve como fuente de verdad para aprobar la aplicacion actual.
@@ -94,6 +101,7 @@ Quedan fuera de esta version:
 
 - contratos de prueba heredados que asumian cobertura total del workspace
 - suites definidas para modulos no expuestos al usuario
+- cobertura inicial para modulos congelados como `plugins`, `connections`, `ephemeral_query` y `summary_generator`
 - matrices de compatibilidad o automatizacion avanzada que no bloquean el flujo principal actual
 - cobertura de features futuras o reconexiones pendientes
 
