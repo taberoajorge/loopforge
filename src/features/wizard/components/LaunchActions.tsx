@@ -4,13 +4,14 @@ import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card";
 
 type LaunchActionsProps = {
+  launchDisabled: boolean;
   launching: boolean;
   onBack: () => void;
   onCancel: () => void;
   onLaunch: () => void;
 };
 
-export function LaunchActions({ launching, onBack, onCancel, onLaunch }: LaunchActionsProps) {
+export function LaunchActions({ launchDisabled, launching, onBack, onCancel, onLaunch }: LaunchActionsProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
@@ -53,7 +54,7 @@ export function LaunchActions({ launching, onBack, onCancel, onLaunch }: LaunchA
         <Button variant="secondary" onClick={onBack} disabled={launching}>
           Back
         </Button>
-        <Button variant="primary" className="flex-1" disabled={launching} onClick={onLaunch}>
+        <Button variant="primary" className="flex-1" disabled={launching || launchDisabled} onClick={onLaunch}>
           {launching ? "Initializing..." : "Launch loop"}
         </Button>
       </CardContent>

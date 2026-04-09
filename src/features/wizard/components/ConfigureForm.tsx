@@ -6,11 +6,12 @@ import { Input } from "../../../components/ui/input";
 import { NativeSelect } from "../../../components/ui/native-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
 import type { AgentCapabilities } from "../../../lib/tauri";
+import type { ConfigureErrors } from "../configureValidation";
 
 type ScmProvider = "auto" | "github" | "gitlab" | "none";
 
 type ConfigureFormProps = {
-  executeAgent: string; executeModel: string | null; executeEffort: string | null; capabilities: AgentCapabilities | null; selectableAgentNames: string[]; fallbackChain: string[]; agentsNotInChain: string[]; newAgent: string;
+  executeAgent: string; executeModel: string | null; executeEffort: string | null; capabilities: AgentCapabilities | null; errors: ConfigureErrors; selectableAgentNames: string[]; fallbackChain: string[]; agentsNotInChain: string[]; newAgent: string;
   gutterThreshold: number; maxIterations: number; cooldownSeconds: number; testCommand: string; maxVerificationRetries: number;
   scmProvider: ScmProvider; reviewPollingInterval: number; reviewTimeout: number;
   onExecuteAgentChange: (value: string) => void; onExecuteModelChange: (value: string | null) => void; onExecuteEffortChange: (value: string | null) => void; onNewAgentChange: (value: string) => void; onAddAgentToChain: () => void;
@@ -26,6 +27,7 @@ export function ConfigureForm(props: ConfigureFormProps) {
     executeModel,
     executeEffort,
     capabilities,
+    errors,
     selectableAgentNames,
     fallbackChain,
     agentsNotInChain,
@@ -70,7 +72,7 @@ export function ConfigureForm(props: ConfigureFormProps) {
             <Card>
               <CardHeader><CardTitle>Agent routing</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <Field label="Execute agent">
+                <Field label="Execute agent" errorText={errors.executeAgent}>
                   <Select value={executeAgent} onValueChange={onExecuteAgentChange}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{selectableAgentNames.map((agentName) => <SelectItem key={agentName} value={agentName}>{agentName}</SelectItem>)}</SelectContent>
@@ -126,17 +128,17 @@ export function ConfigureForm(props: ConfigureFormProps) {
               <CardHeader><CardTitle>Loop parameters</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 grid-cols-2">
-                  <Field label="Gutter threshold">
-                    <Input type="number" min={1} max={20} value={gutterThreshold} onChange={(event) => onGutterThresholdChange(Number(event.target.value))} />
+                  <Field label="Gutter threshold" errorText={errors.gutterThreshold}>
+                    <Input type="number" min={1} max={20} invalid={Boolean(errors.gutterThreshold)} value={gutterThreshold} onChange={(event) => onGutterThresholdChange(Number(event.target.value))} />
                   </Field>
-                  <Field label="Max iterations">
-                    <Input type="number" min={1} max={500} value={maxIterations} onChange={(event) => onMaxIterationsChange(Number(event.target.value))} />
+                  <Field label="Max iterations" errorText={errors.maxIterations}>
+                    <Input type="number" min={1} max={500} invalid={Boolean(errors.maxIterations)} value={maxIterations} onChange={(event) => onMaxIterationsChange(Number(event.target.value))} />
                   </Field>
-                  <Field label="Cooldown (s)">
-                    <Input type="number" min={0} max={300} value={cooldownSeconds} onChange={(event) => onCooldownSecondsChange(Number(event.target.value))} />
+                  <Field label="Cooldown (s)" errorText={errors.cooldownSeconds}>
+                    <Input type="number" min={0} max={300} invalid={Boolean(errors.cooldownSeconds)} value={cooldownSeconds} onChange={(event) => onCooldownSecondsChange(Number(event.target.value))} />
                   </Field>
-                  <Field label="Verification retries">
-                    <Input type="number" min={1} max={10} value={maxVerificationRetries} onChange={(event) => onMaxVerificationRetriesChange(Number(event.target.value))} />
+                  <Field label="Verification retries" errorText={errors.maxVerificationRetries}>
+                    <Input type="number" min={1} max={10} invalid={Boolean(errors.maxVerificationRetries)} value={maxVerificationRetries} onChange={(event) => onMaxVerificationRetriesChange(Number(event.target.value))} />
                   </Field>
                 </div>
                 <Field label="Test command">
@@ -162,11 +164,11 @@ export function ConfigureForm(props: ConfigureFormProps) {
                   </Select>
                 </Field>
                 <div className="grid gap-4 grid-cols-2">
-                  <Field label="Poll interval (s)">
-                    <Input type="number" min={10} max={600} value={reviewPollingInterval} onChange={(event) => onReviewPollingIntervalChange(Number(event.target.value))} />
+                  <Field label="Poll interval (s)" errorText={errors.reviewPollingInterval}>
+                    <Input type="number" min={10} max={600} invalid={Boolean(errors.reviewPollingInterval)} value={reviewPollingInterval} onChange={(event) => onReviewPollingIntervalChange(Number(event.target.value))} />
                   </Field>
-                  <Field label="Timeout (s)">
-                    <Input type="number" min={60} max={3600} value={reviewTimeout} onChange={(event) => onReviewTimeoutChange(Number(event.target.value))} />
+                  <Field label="Timeout (s)" errorText={errors.reviewTimeout}>
+                    <Input type="number" min={60} max={3600} invalid={Boolean(errors.reviewTimeout)} value={reviewTimeout} onChange={(event) => onReviewTimeoutChange(Number(event.target.value))} />
                   </Field>
                 </div>
               </CardContent>

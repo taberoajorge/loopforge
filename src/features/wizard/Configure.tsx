@@ -5,8 +5,11 @@ import type { AgentCapabilities } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agentStore";
 import { useWizardStore } from "../../stores/wizardStore";
 import { buildDraftPayload } from "../../lib/draft-payload";
+import { validateConfig, type ConfigureErrors } from "./configureValidation";
 import { ConfigureForm } from "./components/ConfigureForm";
+
 const KNOWN_AGENTS = ["claude", "codex", "gemini", "opencode", "cursor"];
+
 export function Configure() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -29,6 +32,7 @@ export function Configure() {
   const [scmProvider, setScmProvider] = useState(config.scmProvider);
   const [reviewPollingInterval, setReviewPollingInterval] = useState(config.reviewPollingInterval);
   const [reviewTimeout, setReviewTimeout] = useState(config.reviewTimeout);
+  const [errors, setErrors] = useState<ConfigureErrors>({});
   const [newAgent, setNewAgent] = useState("");
   const dragIndexRef = useRef<number | null>(null);
   const availableAgentNames = agents.filter((agent) => agent.installed).map((agent) => agent.name);
@@ -84,15 +88,12 @@ export function Configure() {
   function handleRemoveFromChain(agentName: string) {
     setFallbackChain((previousChain) => previousChain.filter((existingAgentName) => existingAgentName !== agentName));
   }
-
   function handleDragStart(index: number) {
     dragIndexRef.current = index;
   }
-
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
   }
-
   function handleDrop(toIndex: number) {
     if (dragIndexRef.current === null || dragIndexRef.current === toIndex) return;
     const reorderedChain = [...fallbackChain];
@@ -101,15 +102,29 @@ export function Configure() {
     setFallbackChain(reorderedChain);
     dragIndexRef.current = null;
   }
-
   async function handleNext() {
     if (!id) return;
+    const nextErrors = validateConfig({
+      executeAgent,
+      gutterThreshold,
+      maxIterations,
+      cooldownSeconds,
+      maxVerificationRetries,
+      reviewPollingInterval,
+      reviewTimeout,
+    });
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+    setErrors({});
+    const sanitizedFallbackChain = fallbackChain.filter((agentName) => agentName !== executeAgent);
     const configPayload = {
       schemaVersion: 1,
       executeAgent,
       executeModel,
       executeEffort,
-      fallbackChain: fallbackChain.filter((agentName) => agentName !== executeAgent),
+      fallbackChain: sanitizedFallbackChain,
       gutterThreshold,
       maxIterations,
       cooldownSeconds,
@@ -124,7 +139,7 @@ export function Configure() {
       executeAgent,
       executeModel,
       executeEffort,
-      fallbackChain,
+      fallbackChain: sanitizedFallbackChain,
       gutterThreshold,
       maxIterations,
       cooldownSeconds,
@@ -145,6 +160,7 @@ export function Configure() {
       executeModel={executeModel}
       executeEffort={executeEffort}
       capabilities={capabilities}
+      errors={errors}
       selectableAgentNames={selectableAgentNames}
       fallbackChain={fallbackChain}
       agentsNotInChain={agentsNotInChain}

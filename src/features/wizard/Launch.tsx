@@ -26,9 +26,16 @@ export function Launch() {
 
   const totalMinutes = stories.reduce((sum, story) => sum + story.estimatedMinutes, 0);
   const totalHours = (totalMinutes / 60).toFixed(1);
+  const readinessIssues = [
+    projectData.name.trim() ? null : "Project name is missing.",
+    projectData.workingDirectory.trim() ? null : "Working directory is missing.",
+    stories.length > 0 ? null : "Add at least one story before launching.",
+    config.executeAgent.trim() ? null : "Execution agent is missing.",
+  ].filter((issue): issue is string => Boolean(issue));
+  const launchDisabled = readinessIssues.length > 0;
 
   async function handleLaunch() {
-    if (!id || launching) return;
+    if (!id || launching || launchDisabled) return;
     setLaunching(true);
     setLaunchError(null);
 
@@ -39,6 +46,9 @@ export function Launch() {
 
       await startLoop({
         projectId,
+        agent: config.executeAgent,
+        model: config.executeModel,
+        effort: config.executeEffort,
       });
 
       reset();
@@ -96,13 +106,30 @@ export function Launch() {
               {config.testCommand ? <SummaryRow label="Test command" value={config.testCommand} /> : null}
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Readiness</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <SummaryRow label="Status" value={launchDisabled ? "Needs attention" : "Ready"} />
+              {launchDisabled ? (
+                <div className="space-y-2">
+                  {readinessIssues.map((issue) => (
+                    <p key={issue} className="text-sm font-sans text-destructive">{issue}</p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm font-sans text-text-muted">All required launch inputs are present.</p>
+              )}
+            </CardContent>
+          </Card>
           {launchError ? (
             <Card variant="ghost" className="border-destructive/40 bg-destructive/5">
               <CardContent className="p-3 text-sm font-mono text-destructive">Launch failed: {launchError}</CardContent>
             </Card>
           ) : null}
         </div>
-        <LaunchActions launching={launching} onBack={handleBack} onCancel={handleBack} onLaunch={() => { void handleLaunch(); }} />
+        <LaunchActions launchDisabled={launchDisabled} launching={launching} onBack={handleBack} onCancel={handleBack} onLaunch={() => { void handleLaunch(); }} />
       </div>
     </div>
   );
