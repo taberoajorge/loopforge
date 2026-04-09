@@ -16,6 +16,22 @@ pub async fn spawn_ask(
     message_id: String,
     project_dir: std::path::PathBuf,
 ) -> Result<(), AskEngineError> {
+    if let Ok(crate::test_support::TestMode::Enabled(runtime)) =
+        crate::test_support::resolve_test_mode()
+    {
+        let project_id = args.project_id.clone();
+        let question = args.question.clone();
+        let mid = message_id.clone();
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            crate::ask_engine::fixture::spawn_fixture_ask(
+                app_clone, project_id, mid, &question, &runtime,
+            )
+            .await;
+        });
+        return Ok(());
+    }
+
     let agent_binary = resolve_agent_binary(&app, &args.agent).await?;
 
     let artifact_dir = crate::storage::artifacts::project_artifact_dir(&app, &args.project_id)
