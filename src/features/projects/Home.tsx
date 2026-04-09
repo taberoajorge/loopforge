@@ -50,7 +50,7 @@ export function Home() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden" data-testid="home-page">
       <div className="shrink-0 grid items-start gap-6 p-6 pb-2 xl:grid-cols-[minmax(0,1fr)_17.5rem]">
         <div className="px-1 py-1">
           <h1 className="text-3xl font-mono font-bold text-primary text-glow-primary tracking-widest mb-1">
@@ -62,6 +62,7 @@ export function Home() {
           </p>
           <button
             onClick={() => navigate("/new/describe")}
+            data-testid="home-start-project-button"
             className="px-8 py-3 rounded-md bg-primary text-void font-bold font-sans text-sm shadow-glow-primary hover:brightness-110 transition-all uppercase tracking-wider"
           >
             Start new project

@@ -24,7 +24,7 @@ export function DraftCard({ project, onDiscard }: DraftCardProps) {
   const description = project.description || "No description";
 
   return (
-    <Card variant="ghost" className="border-dashed">
+    <Card variant="ghost" className="border-dashed" data-testid={`draft-card-${project.id}`}>
       <CardHeader className="gap-3 border-b-0">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
@@ -43,6 +43,7 @@ export function DraftCard({ project, onDiscard }: DraftCardProps) {
       <CardContent className="flex items-center gap-2 border-t border-border/60 px-4 py-3">
         <Link
           to={`/new/${wizardStep}/${project.id}`}
+          data-testid={`draft-resume-${project.id}`}
           className={cn(buttonVariants({ variant: "primary", size: "sm" }))}
         >
           Resume
