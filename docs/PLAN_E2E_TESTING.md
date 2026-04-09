@@ -68,6 +68,20 @@ El gate pasa si la suite confirma estos comportamientos:
 
 El gate no exige cobertura exhaustiva de ramas, combinatorias ni modulos internos sin superficie publica actual.
 
+## Contrato De Directorio De Datos Para E2E
+
+Existe una discrepancia entre el uso de `app_data_dir()` en la implementacion actual y el contrato de artefactos documentado en `AGENTS.md` bajo `~/.config/loopforge/projects/<project-id>/`.
+
+Para las pruebas E2E, la unica regla operativa es esta: los artefactos del proyecto se validan en `app_data_dir()/projects/<project-id>`, usando la ruta de datos que resuelve la aplicacion en runtime para la plataforma donde corre la suite.
+
+En consecuencia:
+
+- `app_data_dir()` define la ubicacion base real que debe inspeccionar la prueba
+- el contrato de `AGENTS.md` se interpreta como la forma logica del arbol `projects/<project-id>/` y del set de archivos esperados, no como un path absoluto portable entre plataformas
+- las assertions E2E deben comprobar `draft.json`, `plan.md`, `prd.json`, `config.json`, `prompt.md` y `guardrails.md` dentro de esa ubicacion resuelta en runtime
+
+Con esta regla, el documento mantiene una sola fuente de verdad operativa para ubicar artefactos: la suite sigue el directorio de datos efectivo de la app y dentro de el valida el contrato de archivos por proyecto.
+
 ## Reglas De Alcance
 
 - Si un flujo no tiene entrypoint visible en la UI actual, no entra en v2.
