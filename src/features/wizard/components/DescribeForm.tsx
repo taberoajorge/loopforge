@@ -65,7 +65,7 @@ export function DescribeForm(props: DescribeFormProps) {
     onNext,
   } = props;
   return (
-    <div className="mx-auto max-w-5xl p-8">
+    <form aria-label="Project description form" data-testid="describe-form" className="mx-auto max-w-5xl p-8" onSubmit={(event) => { event.preventDefault(); onNext(); }}>
       <div className="mb-8">
         <h2 className="text-lg font-mono font-bold uppercase tracking-widest text-text">PROJECT IDENTITY</h2>
         <p className="mt-1 text-sm font-sans text-text-muted">Tell the AI what you want to build. The more specific, the better the plan.</p>
@@ -96,7 +96,7 @@ export function DescribeForm(props: DescribeFormProps) {
                       invalid={Boolean(errors.workingDirectory)}
                       onChange={(event) => onWorkingDirectoryChange(event.target.value)}
                     />
-                    <Button variant="secondary" size="md" onClick={onBrowseDirectory}>Browse</Button>
+                    <Button variant="secondary" size="md" data-testid="describe-browse-directory" onClick={onBrowseDirectory}>Browse</Button>
                   </div>
                 </Field>
               ) : (
@@ -190,9 +190,9 @@ Be specific about requirements, constraints, and goals."
         </div>
       </div>
       <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
-        <Button variant="ghost" size="sm" onClick={onCancel}>Cancel process</Button>
-        <Button variant="primary" size="md" disabled={submitting} onClick={onNext}>{submitting ? "Creating..." : "Next"}</Button>
+        <Button variant="ghost" size="sm" data-testid="describe-cancel-button" onClick={onCancel}>Cancel process</Button>
+        <Button variant="primary" size="md" type="submit" data-testid="describe-next-button" disabled={submitting}>{submitting ? "Creating..." : "Next"}</Button>
       </div>
-    </div>
+    </form>
   );
 }

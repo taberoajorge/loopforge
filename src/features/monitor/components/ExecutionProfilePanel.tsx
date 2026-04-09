@@ -89,7 +89,7 @@ export function ExecutionProfilePanel({ projectId, config, isPaused, onSaved }: 
   const loading = capabilities === null;
 
   return (
-    <div className="px-6 py-4">
+    <div className="px-6 py-4" role="region" aria-label="Execution profile" data-testid="execution-profile-panel">
       <div className="grid grid-cols-[11rem_1fr_8rem_auto] items-end gap-3">
         <Field label="Execute agent">
           <Select value={executeAgent} onValueChange={setExecuteAgent} disabled={!isPaused}>
@@ -109,7 +109,7 @@ export function ExecutionProfilePanel({ projectId, config, isPaused, onSaved }: 
             <SelectContent>{(capabilities?.efforts ?? []).map((effort) => <SelectItem key={effort.id} value={effort.id}>{effort.label}</SelectItem>)}</SelectContent>
           </Select>
         </Field>
-        <Button variant="secondary" size="md" disabled={!isPaused || !dirty || saving} onClick={() => { void handleSave(); }}>
+        <Button variant="secondary" size="md" data-testid="execution-profile-save-button" disabled={!isPaused || !dirty || saving} onClick={() => { void handleSave(); }}>
           {saving ? "Saving..." : "Save profile"}
         </Button>
       </div>

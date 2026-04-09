@@ -147,32 +147,34 @@ export function Describe() {
   }
 
   return (
-    <DescribeForm
-      name={name}
-      description={description}
-      workingDirectory={workingDirectory}
-      workspaceMode={workspaceMode}
-      selectedConnectionId={selectedConnectionId}
-      planAgent={planAgent}
-      planModel={planModel}
-      planEffort={planEffort}
-      capabilities={capabilities}
-      errors={errors}
-      connections={connections}
-      allAgents={allAgents}
-      availableAgentsCount={availableAgents.length}
-      submitting={submitting}
-      onNameChange={(value) => { setName(value); setErrors((previousErrors) => ({ ...previousErrors, name: "" })); }}
-      onDescriptionChange={(value) => { setDescription(value); setErrors((previousErrors) => ({ ...previousErrors, description: "" })); if (planContent) markStale(2); }}
-      onWorkingDirectoryChange={(value) => { setWorkingDirectory(value); setErrors((previousErrors) => ({ ...previousErrors, workingDirectory: "" })); }}
-      onWorkspaceModeChange={setWorkspaceMode}
-      onConnectionChange={(value) => { setSelectedConnectionId(value); setErrors((previousErrors) => ({ ...previousErrors, workingDirectory: "" })); }}
-      onBrowseDirectory={() => { void handleBrowseDirectory(); }}
-      onPlanAgentChange={setPlanAgent}
-      onPlanModelChange={setPlanModel}
-      onPlanEffortChange={setPlanEffort}
-      onCancel={() => { void handleCancelProcess(); }}
-      onNext={() => { void handleNext(); }}
-    />
+    <section aria-label="Describe project" data-testid="describe-page">
+      <DescribeForm
+        name={name}
+        description={description}
+        workingDirectory={workingDirectory}
+        workspaceMode={workspaceMode}
+        selectedConnectionId={selectedConnectionId}
+        planAgent={planAgent}
+        planModel={planModel}
+        planEffort={planEffort}
+        capabilities={capabilities}
+        errors={errors}
+        connections={connections}
+        allAgents={allAgents}
+        availableAgentsCount={availableAgents.length}
+        submitting={submitting}
+        onNameChange={(value) => { setName(value); setErrors((previousErrors) => ({ ...previousErrors, name: "" })); }}
+        onDescriptionChange={(value) => { setDescription(value); setErrors((previousErrors) => ({ ...previousErrors, description: "" })); if (planContent) markStale(2); }}
+        onWorkingDirectoryChange={(value) => { setWorkingDirectory(value); setErrors((previousErrors) => ({ ...previousErrors, workingDirectory: "" })); }}
+        onWorkspaceModeChange={setWorkspaceMode}
+        onConnectionChange={(value) => { setSelectedConnectionId(value); setErrors((previousErrors) => ({ ...previousErrors, workingDirectory: "" })); }}
+        onBrowseDirectory={() => { void handleBrowseDirectory(); }}
+        onPlanAgentChange={setPlanAgent}
+        onPlanModelChange={setPlanModel}
+        onPlanEffortChange={setPlanEffort}
+        onCancel={() => { void handleCancelProcess(); }}
+        onNext={() => { void handleNext(); }}
+      />
+    </section>
   );
 }

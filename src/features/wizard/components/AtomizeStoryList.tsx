@@ -55,13 +55,13 @@ function StoryCard({
   }
 
   return (
-    <Card draggable onDragStart={() => onDragStart(index)} onDragOver={onDragOver} onDrop={() => onDrop(index)}>
+    <Card draggable role="article" aria-label={`Story ${story.id}`} data-testid={`atomize-story-${story.id}`} onDragStart={() => onDragStart(index)} onDragOver={onDragOver} onDrop={() => onDrop(index)}>
       <CardHeader className="flex flex-row items-center justify-between gap-3 p-3">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-semibold text-primary">{story.id}</span>
           <Badge variant={PRIORITY_BADGE[story.priority]}>{story.priority}</Badge>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => onRequestRemoveStory(story)}>
+        <Button variant="ghost" size="sm" data-testid={`atomize-story-remove-${story.id}`} onClick={() => onRequestRemoveStory(story)}>
           Remove
         </Button>
       </CardHeader>
@@ -81,7 +81,7 @@ function StoryCard({
           </>
         ) : (
           <>
-            <button className="w-full text-left" onClick={() => setEditing(true)}>
+            <button className="w-full text-left" aria-label={`Edit story ${story.id}`} data-testid={`atomize-story-edit-${story.id}`} onClick={() => setEditing(true)}>
               <p className="text-sm font-medium text-text">{story.title}</p>
               {story.description ? <p className="text-xs text-text-muted">{story.description}</p> : null}
             </button>
@@ -110,11 +110,11 @@ export function AtomizeStoryList({
     const message = atomizeError
       ? "Atomization failed — add stories manually or go back."
       : "Atomizing plan into stories...";
-    return <div className="flex h-full items-center justify-center p-6 text-sm text-text-dim">{message}</div>;
+    return <div className="flex h-full items-center justify-center p-6 text-sm text-text-dim" role="status" data-testid="atomize-story-list-status">{message}</div>;
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="h-full" role="region" aria-label="Atomized stories" data-testid="atomize-story-list">
       <ScrollViewport className="h-full" padding="md">
         <ScrollContent className="space-y-3">
           {stories.map((story, index) => (

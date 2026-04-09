@@ -152,7 +152,7 @@ export function PlanStreamPanel(props: PlanStreamPanelProps) {
   }
 
   return (
-    <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-none border-0 border-r">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-none border-0 border-r" role="region" aria-label="Plan activity stream" data-testid="plan-stream-panel">
       <CardHeader className="gap-3 p-3">
         <div className="flex items-center gap-2">
           <CardTitle className="text-xs font-mono uppercase tracking-widest text-text-muted">
@@ -177,10 +177,10 @@ export function PlanStreamPanel(props: PlanStreamPanelProps) {
                       An existing plan was found. Continue with it or start fresh?
                     </p>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={onAcceptExisting}>
+                      <Button size="sm" data-testid="plan-stream-use-existing-button" onClick={onAcceptExisting}>
                         Use Existing Plan
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={onRestartPlan}>
+                      <Button size="sm" variant="secondary" data-testid="plan-stream-start-fresh-button" onClick={onRestartPlan}>
                         Start Fresh
                       </Button>
                     </div>
@@ -233,6 +233,8 @@ export function PlanStreamPanel(props: PlanStreamPanelProps) {
         ) : (
           <div className="flex w-full gap-2">
             <Input
+              aria-label="Plan stream input"
+              data-testid="plan-stream-input"
               value={userInput}
               placeholder={planComplete ? "Describe changes to re-plan..." : "Send message to agent..."}
               onChange={(event) => onUserInputChange(event.target.value)}
@@ -247,6 +249,7 @@ export function PlanStreamPanel(props: PlanStreamPanelProps) {
             />
             <Button
               size="sm" variant="secondary"
+              data-testid="plan-stream-send-button"
               onClick={onSendInput}
               disabled={!planComplete && activityEvents.length === 0}
             >

@@ -96,13 +96,10 @@ export function AppSidebar({ onToggleNotifications, totalUnread }: AppSidebarPro
   }
 
   return (
-    <Sidebar className="overflow-x-hidden">
+    <Sidebar className="overflow-x-hidden" aria-label="Primary navigation" data-testid="app-sidebar">
       <SidebarHeader className={collapsed ? "gap-1 p-1" : "gap-2"}>
         <div className={collapsed ? "flex items-center justify-between" : "flex min-w-0 flex-1 items-center gap-2"}>
-          <SidebarTrigger
-            aria-label="Toggle navigation"
-            className={collapsed ? "h-6 w-6" : "shrink-0"}
-          />
+          <SidebarTrigger aria-label="Toggle navigation" data-testid="app-sidebar-toggle-navigation" className={collapsed ? "h-6 w-6" : "shrink-0"} />
           {collapsed ? null : (
             <NavLink to="/" className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 hover:bg-sidebar-accent">
               <span className="text-xs font-bold tracking-[0.12em] text-sidebar-primary">LF</span>
@@ -117,6 +114,7 @@ export function AppSidebar({ onToggleNotifications, totalUnread }: AppSidebarPro
             className={collapsed ? "relative h-6 w-6 text-sidebar-foreground/70 hover:text-sidebar-foreground" : "relative shrink-0 text-sidebar-foreground/70 hover:text-sidebar-foreground"}
             onClick={onToggleNotifications}
             aria-label="Toggle notifications"
+            data-testid="app-sidebar-toggle-notifications"
           >
             <Bell className={collapsed ? "h-3.5 w-3.5" : "h-4 w-4"} />
             {totalUnread > 0 ? (
@@ -135,7 +133,7 @@ export function AppSidebar({ onToggleNotifications, totalUnread }: AppSidebarPro
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton active={location.pathname === "/"} onClick={() => navigate("/")}>
+                <SidebarMenuButton active={location.pathname === "/"} aria-label="Home" data-testid="app-sidebar-home" onClick={() => navigate("/")}>
                   <House className="h-4 w-4 shrink-0" />
                   <SidebarMenuLabel>Home</SidebarMenuLabel>
                 </SidebarMenuButton>
@@ -185,6 +183,8 @@ export function AppSidebar({ onToggleNotifications, totalUnread }: AppSidebarPro
           variant="primary"
           size={collapsed ? "icon" : "sm"}
           fullWidth={!collapsed}
+          aria-label="New Project"
+          data-testid="app-sidebar-new-project"
           onClick={() => {
             useWizardStore.getState().reset();
             navigate("/new/describe");
