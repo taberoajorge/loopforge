@@ -1,35 +1,37 @@
 use crate::ask_engine::args::{agent_env_vars, build_ask_args, is_safe_binary_name};
 use crate::ask_engine::context::build_ask_context;
 use crate::ask_engine::session::AskSessionsState;
-use crate::ask_engine::types::{AskCompletePayload, AskErrorPayload, AskStreamPayload, StartAskArgs};
+use crate::ask_engine::types::{
+    AskCompletePayload, AskErrorPayload, AskStreamPayload, StartAskArgs,
+};
 use crate::ask_engine::AskEngineError;
 use crate::db::DbState;
 use crate::events::{EVENT_ASK_COMPLETE, EVENT_ASK_ERROR, EVENT_ASK_STREAM};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
-pub async fn spawn_ask(
-    app: AppHandle,
+pub async fn spawn_ask<R: Runtime>(
+    app: AppHandle<R>,
     sessions: AskSessionsState,
     args: StartAskArgs,
     message_id: String,
     project_dir: std::path::PathBuf,
 ) -> Result<(), AskEngineError> {
-    if let Ok(crate::test_support::TestMode::Enabled(runtime)) =
-        crate::test_support::resolve_test_mode()
-    {
-        let project_id = args.project_id.clone();
-        let question = args.question.clone();
-        let mid = message_id.clone();
-        let app_clone = app.clone();
-        tokio::spawn(async move {
-            crate::ask_engine::fixture::spawn_fixture_ask(
-                app_clone, project_id, mid, &question, &runtime,
-            )
-            .await;
-        });
-        return Ok(());
+    if let Ok(mode) = crate::test_support::runtime::resolve_test_mode() {
+        if let Some(runtime) = mode.runtime().cloned() {
+            let project_id = args.project_id.clone();
+            let question = args.question.clone();
+            let mid = message_id.clone();
+            let app_clone = app.clone();
+            tokio::spawn(async move {
+                crate::ask_engine::fixture::spawn_fixture_ask(
+                    app_clone, project_id, mid, &question, &runtime,
+                )
+                .await;
+            });
+            return Ok(());
+        }
     }
 
     let agent_binary = resolve_agent_binary(&app, &args.agent).await?;
@@ -46,7 +48,12 @@ pub async fn spawn_ask(
     };
 
     let full_prompt = format!("{context}\n\n## User Question\n{}", args.question);
-    let agent_args = build_ask_args(&args.agent, &full_prompt, &project_dir, args.model.as_deref());
+    let agent_args = build_ask_args(
+        &args.agent,
+        &full_prompt,
+        &project_dir,
+        args.model.as_deref(),
+    );
     let env_vars = agent_env_vars(&args.agent);
 
     let (mut event_rx, child) = if args.agent == "codex" {
@@ -101,7 +108,13 @@ pub async fn spawn_ask(
                 CommandEvent::Terminated(status) => {
                     let success = status.code.map(|code| code == 0).unwrap_or(false);
                     if success && !collected.trim().is_empty() {
-                        save_assistant_message(&app_clone, &project_id, &collected, &agent_name, agent_model.as_deref());
+                        save_assistant_message(
+                            &app_clone,
+                            &project_id,
+                            &collected,
+                            &agent_name,
+                            agent_model.as_deref(),
+                        );
                         let _ = app_clone.emit(
                             EVENT_ASK_COMPLETE,
                             AskCompletePayload {
@@ -150,8 +163,8 @@ fn is_agent_noise(text: &str) -> bool {
         || trimmed.starts_with("For more information, try '--help'")
 }
 
-fn save_assistant_message(
-    app: &AppHandle,
+fn save_assistant_message<R: Runtime>(
+    app: &AppHandle<R>,
     project_id: &str,
     content: &str,
     agent: &str,
@@ -179,13 +192,22 @@ fn build_null_stdin_command(binary: &str, args: &[String]) -> String {
         .iter()
         .map(|arg| format!("'{}'", arg.replace('\'', "'\\''")))
         .collect();
-    format!("{binary} {args} < /dev/null", binary = binary, args = escaped_args.join(" "))
+    format!(
+        "{binary} {args} < /dev/null",
+        binary = binary,
+        args = escaped_args.join(" ")
+    )
 }
 
-async fn resolve_agent_binary(app: &AppHandle, agent: &str) -> Result<String, AskEngineError> {
+async fn resolve_agent_binary<R: Runtime>(
+    app: &AppHandle<R>,
+    agent: &str,
+) -> Result<String, AskEngineError> {
     let binary = crate::agent_runtime::cli_binary_name(agent);
     if !is_safe_binary_name(binary) {
-        return Err(AskEngineError::Shell(format!("Invalid agent name: {agent}")));
+        return Err(AskEngineError::Shell(format!(
+            "Invalid agent name: {agent}"
+        )));
     }
 
     let lookup = format!("command -v {binary}");
@@ -209,7 +231,9 @@ async fn resolve_agent_binary(app: &AppHandle, agent: &str) -> Result<String, As
         .to_string();
 
     if resolved.is_empty() {
-        return Err(AskEngineError::Shell(format!("Agent '{agent}' not resolvable")));
+        return Err(AskEngineError::Shell(format!(
+            "Agent '{agent}' not resolvable"
+        )));
     }
 
     Ok(resolved)
