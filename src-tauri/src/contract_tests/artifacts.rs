@@ -1,3 +1,6 @@
+#[path = "wizard_persistence.rs"]
+mod wizard_persistence;
+
 use super::harness::TestHarness;
 use super::support::{
     infer_status, load_config, project_detail, seed_project, session_ended_at, start_ask,
@@ -17,11 +20,19 @@ async fn happy_path_persists_artifacts_and_runtime_histories() {
     let has_config = load_config(&harness, &project.id).await.is_some();
 
     assert!(matches!(
-        infer_status(&detail.project.status, detail.total_stories, has_config, false),
+        infer_status(
+            &detail.project.status,
+            detail.total_stories,
+            has_config,
+            false
+        ),
         ProjectStatus::Ready
     ));
     assert_eq!(detail.total_stories, 1);
-    assert_eq!(artifact_dir.to_string_lossy(), harness.artifact_dir(&project.id).to_string_lossy());
+    assert_eq!(
+        artifact_dir.to_string_lossy(),
+        harness.artifact_dir(&project.id).to_string_lossy()
+    );
     for name in ["draft.json", "plan.md", "prd.json", "config.json"] {
         assert!(artifact_dir.join(name).exists(), "{name} must exist");
     }
@@ -34,7 +45,12 @@ async fn happy_path_persists_artifacts_and_runtime_histories() {
     let detail = project_detail(&harness, &project.id).await;
     let has_config = load_config(&harness, &project.id).await.is_some();
     assert!(matches!(
-        infer_status(&detail.project.status, detail.total_stories, has_config, false),
+        infer_status(
+            &detail.project.status,
+            detail.total_stories,
+            has_config,
+            false
+        ),
         ProjectStatus::Completed
     ));
     assert_eq!(detail.passed_count, 1);
@@ -107,6 +123,8 @@ async fn malformed_artifacts_are_detected_deterministically() {
     std::fs::write(artifact_dir.join("config.json"), "{ also broken").unwrap();
 
     assert!(Prd::load(&artifact_dir.join("prd.json")).is_err());
-    let raw_config = load_config(&harness, &project.id).await.expect("config payload");
+    let raw_config = load_config(&harness, &project.id)
+        .await
+        .expect("config payload");
     assert!(serde_json::from_str::<crate::projects::ProjectConfig>(&raw_config).is_err());
 }
