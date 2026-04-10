@@ -13,6 +13,7 @@ const DEFAULT_DIALOG_DIR: &str = "test-dialogs";
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FixtureSet {
     HappyPath,
+    NoAgents,
     PlanError,
     AtomizeError,
     LoopFailure,
@@ -22,6 +23,7 @@ impl FixtureSet {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::HappyPath => "happy-path",
+            Self::NoAgents => "no-agents",
             Self::PlanError => "plan-error",
             Self::AtomizeError => "atomize-error",
             Self::LoopFailure => "loop-failure",
@@ -31,6 +33,7 @@ impl FixtureSet {
     fn parse(raw: &str) -> Result<Self, TestConfigError> {
         match raw {
             "happy-path" => Ok(Self::HappyPath),
+            "no-agents" => Ok(Self::NoAgents),
             "plan-error" => Ok(Self::PlanError),
             "atomize-error" => Ok(Self::AtomizeError),
             "loop-failure" => Ok(Self::LoopFailure),
@@ -82,7 +85,7 @@ pub(crate) enum TestConfigError {
     )]
     InvalidTestMode(String),
     #[error(
-        "test config error: unknown fixture set '{0}'; expected one of: happy-path, plan-error, atomize-error, loop-failure"
+        "test config error: unknown fixture set '{0}'; expected one of: happy-path, no-agents, plan-error, atomize-error, loop-failure"
     )]
     UnknownFixtureSet(String),
     #[error("test config error: {0} is not valid UTF-8")]

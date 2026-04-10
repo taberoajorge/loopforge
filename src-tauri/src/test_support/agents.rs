@@ -61,6 +61,9 @@ const FIXTURE_AGENTS: &[FixtureAgentSpec] = &[
 ];
 
 pub(crate) fn fixture_agents(runtime: &TestRuntime) -> Vec<AgentInfo> {
+    if matches!(runtime.fixture_set(), super::runtime::FixtureSet::NoAgents) {
+        return Vec::new();
+    }
     let fixture_tag = runtime.fixture_set().as_str();
     FIXTURE_AGENTS
         .iter()
@@ -77,6 +80,9 @@ pub(crate) fn fixture_capabilities(
     runtime: &TestRuntime,
     agent: &str,
 ) -> Option<AgentCapabilities> {
+    if matches!(runtime.fixture_set(), super::runtime::FixtureSet::NoAgents) {
+        return None;
+    }
     let spec = FIXTURE_AGENTS.iter().find(|spec| spec.name == agent)?;
     let source = format!("fixture:{}", runtime.fixture_set().as_str());
     Some(AgentCapabilities {

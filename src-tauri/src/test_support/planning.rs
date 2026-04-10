@@ -20,6 +20,7 @@ pub(crate) struct FixturePlanRun {
 pub(crate) fn fixture_plan_run(runtime: &TestRuntime, project_id: &str) -> FixturePlanRun {
     match runtime.fixture_set() {
         FixtureSet::HappyPath => happy_path(project_id),
+        FixtureSet::NoAgents => plan_error(project_id),
         FixtureSet::PlanError => plan_error(project_id),
         _ => happy_path(project_id),
     }
