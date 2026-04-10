@@ -17,6 +17,7 @@ const PRIORITY_BADGE: Record<UserStory["priority"], "danger" | "warning" | "info
 type AtomizeStoryListProps = {
   stories: UserStory[];
   atomizeStarted: boolean;
+  isDone: boolean;
   atomizeError: string | null;
   onUpdateStory: (storyId: string, patch: Partial<UserStory>) => void;
   onRequestRemoveStory: (story: UserStory) => void;
@@ -99,6 +100,7 @@ function StoryCard({
 export function AtomizeStoryList({
   stories,
   atomizeStarted,
+  isDone,
   atomizeError,
   onUpdateStory,
   onRequestRemoveStory,
@@ -108,8 +110,10 @@ export function AtomizeStoryList({
 }: AtomizeStoryListProps) {
   if (!atomizeStarted || stories.length === 0) {
     const message = atomizeError
-      ? "Atomization failed — add stories manually or go back."
-      : "Atomizing plan into stories...";
+      ? "Atomization failed. Add stories manually or go back."
+      : isDone
+        ? "Atomization completed with no stories. Add a story manually or go back."
+        : "Atomizing plan into stories...";
     return <div className="flex h-full items-center justify-center p-6 text-sm text-text-dim" role="status" data-testid="atomize-story-list-status">{message}</div>;
   }
 

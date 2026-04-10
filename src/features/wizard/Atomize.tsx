@@ -48,6 +48,15 @@ export function Atomize() {
   const pipeline = useAtomizerPipeline(id);
   const totalMinutes = stories.reduce((sum, story) => sum + story.estimatedMinutes, 0);
   const totalHours = (totalMinutes / 60).toFixed(1);
+  const addStoryDisabled = !pipeline.atomizeStarted || pipeline.isRunning;
+  const nextDisabled = pipeline.isRunning || stories.length === 0;
+  const footerStatus = !pipeline.atomizeStarted || pipeline.isRunning
+    ? `Processing · ${pipeline.pipelinePercent}% · ${pipeline.formatElapsed(pipeline.elapsedSeconds)}`
+    : pipeline.atomizeError
+      ? "Atomization failed"
+      : pipeline.isDone && stories.length === 0
+        ? "Atomization Complete · 0 Stories"
+        : `Atomization Complete · ${stories.length} Stories · ${totalHours}h`;
 
   const handleDragStart = (index: number) => { dragIndexRef.current = index; };
   const handleDragOver = (event: DragEvent) => { event.preventDefault(); };
@@ -100,13 +109,14 @@ export function Atomize() {
           <div className="flex items-center gap-2">
             <Badge variant="neutral">{stories.length} stories</Badge>
             <Badge variant="neutral">{totalHours}h est</Badge>
-            <Button variant="outline" size="sm" disabled={pipeline.atomizeStarted && !pipeline.isDone} onClick={() => addStory(makeBlankStory(stories.length))}>Add story</Button>
+            <Button variant="outline" size="sm" disabled={addStoryDisabled} onClick={() => addStory(makeBlankStory(stories.length))}>Add story</Button>
           </div>
         </CardHeader>
         <CardContent className="min-h-0 flex-1 p-0">
           <AtomizeStoryList
             stories={stories}
             atomizeStarted={pipeline.atomizeStarted}
+            isDone={pipeline.isDone}
             atomizeError={pipeline.atomizeError}
             onUpdateStory={updateStory}
             onRequestRemoveStory={setStoryToRemove}
@@ -117,8 +127,8 @@ export function Atomize() {
         </CardContent>
         <CardFooter className="justify-between">
           <Button variant="secondary" size="sm" onClick={() => setDiscardOpen(true)}>Discard draft</Button>
-          <span className={`text-xs text-text-muted${pipeline.isRunning ? " animate-pulse" : ""}`}>{pipeline.isDone && stories.length > 0 ? `Atomization Complete · ${stories.length} Stories · ${totalHours}h` : `Processing · ${pipeline.pipelinePercent}% · ${pipeline.formatElapsed(pipeline.elapsedSeconds)}`}</span>
-          <Button variant="primary" onClick={handleNext} disabled={!pipeline.isDone && stories.length === 0}>Proceed to validation</Button>
+          <span className={`text-xs text-text-muted${pipeline.isRunning ? " animate-pulse" : ""}`}>{footerStatus}</span>
+          <Button variant="primary" onClick={handleNext} disabled={nextDisabled}>Proceed to validation</Button>
         </CardFooter>
       </Card>
       <AtomizeConfirmationDialog open={discardOpen} onOpenChange={setDiscardOpen} title="Discard this draft?" description="Plan and PRD artifacts will be deleted." confirmLabel="Discard draft" onConfirm={confirmDiscardDraft} />
