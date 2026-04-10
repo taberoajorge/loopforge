@@ -52,6 +52,21 @@ fn known_agent_binary(agent: &str) -> Option<&'static str> {
         .map(|(_, binary)| *binary)
 }
 
+fn resolve_test_runtime() -> Option<crate::test_support::runtime::TestRuntime> {
+    crate::test_support::runtime::resolve_test_mode()
+        .ok()
+        .and_then(|mode| mode.runtime().cloned())
+}
+
+fn store_detected_agents(
+    state: State<'_, AgentRegistryState>,
+    detected: Vec<AgentInfo>,
+) -> Result<Vec<AgentInfo>, AgentError> {
+    let mut registry = state.0.lock().map_err(|_| AgentError::LockPoisoned)?;
+    registry.agents = detected.clone();
+    Ok(detected)
+}
+
 async fn probe_agent(app: &AppHandle, binary: &str) -> (bool, Option<String>) {
     let _ = app;
     let path_env = crate::agent_runtime_env::probe_path_env();
@@ -109,6 +124,11 @@ pub async fn detect_agents(
     app: AppHandle,
     state: State<'_, AgentRegistryState>,
 ) -> Result<Vec<AgentInfo>, AgentError> {
+    if let Some(runtime) = resolve_test_runtime() {
+        let detected = crate::test_support::agents::fixture_agents(&runtime);
+        return store_detected_agents(state, detected);
+    }
+
     let mut detected = Vec::with_capacity(KNOWN_AGENTS.len());
 
     for (name, binary) in KNOWN_AGENTS {
@@ -121,10 +141,7 @@ pub async fn detect_agents(
         });
     }
 
-    let mut registry = state.0.lock().map_err(|_| AgentError::LockPoisoned)?;
-    registry.agents = detected.clone();
-
-    Ok(detected)
+    store_detected_agents(state, detected)
 }
 
 #[tauri::command]
@@ -132,6 +149,10 @@ pub async fn get_agent_capabilities(
     agent: String,
 ) -> Result<crate::agent_profiles::AgentCapabilities, AgentError> {
     let normalized = agent.trim().to_lowercase();
+    if let Some(runtime) = resolve_test_runtime() {
+        return crate::test_support::agents::fixture_capabilities(&runtime, &normalized)
+            .ok_or_else(|| AgentError::UnknownAgent(normalized));
+    }
     let Some(binary_name) = known_agent_binary(&normalized) else {
         return Err(AgentError::UnknownAgent(normalized));
     };
