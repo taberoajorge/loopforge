@@ -1,8 +1,11 @@
 use crate::atomizer::AtomizerError;
 use std::path::{Path, PathBuf};
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 
-pub(super) fn artifact_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, AtomizerError> {
+pub(super) fn artifact_dir<R: Runtime>(
+    app: &AppHandle<R>,
+    project_id: &str,
+) -> Result<PathBuf, AtomizerError> {
     crate::storage::artifacts::project_artifact_dir(app, project_id)
         .map_err(AtomizerError::Template)
 }

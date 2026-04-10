@@ -6,9 +6,12 @@ use crate::atomizer::stages::{stage_atomize, stage_chunk, stage_merge, stage_sum
 use crate::atomizer::templates::load_templates;
 use crate::atomizer::{AtomizeArgs, AtomizerError};
 use ralph_core::prd::Prd;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 
-pub async fn run_atomizer(app: AppHandle, args: AtomizeArgs) -> Result<Prd, AtomizerError> {
+pub async fn run_atomizer<R: Runtime>(
+    app: AppHandle<R>,
+    args: AtomizeArgs,
+) -> Result<Prd, AtomizerError> {
     if !args.project_dir.exists() {
         return Err(AtomizerError::Path(format!(
             "Working directory not found: {}",
@@ -101,6 +104,12 @@ pub async fn run_atomizer(app: AppHandle, args: AtomizeArgs) -> Result<Prd, Atom
         .map_err(|err| AtomizerError::Validation(err.to_string()))?;
     save_artifacts(&artifact_path, &prd)?;
 
-    emit_progress(&app, pid, 4, "merge", &format!("Done — {} stories", prd.stories.len()));
+    emit_progress(
+        &app,
+        pid,
+        4,
+        "merge",
+        &format!("Done — {} stories", prd.stories.len()),
+    );
     Ok(prd)
 }

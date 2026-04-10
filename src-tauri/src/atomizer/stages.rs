@@ -6,10 +6,10 @@ use crate::atomizer::types::{AtomizedStoryDraft, AtomizerError, ChunkSection};
 use minijinja::{context, Environment};
 use ralph_core::prd::Prd;
 use std::path::Path;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 
-pub(super) async fn stage_summarize(
-    app: &AppHandle,
+pub(super) async fn stage_summarize<R: Runtime>(
+    app: &AppHandle<R>,
     project_id: &str,
     env: &Environment<'_>,
     plan_content: &str,
@@ -29,15 +29,17 @@ pub(super) async fn stage_summarize(
             .render(context! { plan_content => chunk })
             .map_err(|err| AtomizerError::Template(err.to_string()))?;
         let hb = Some((project_id.to_string(), 1, "summarize".to_string()));
-        let result = invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb).await?;
+        let result =
+            invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb)
+                .await?;
         condensed_parts.push(result);
     }
 
     Ok(condensed_parts.join("\n\n"))
 }
 
-pub(super) async fn stage_chunk(
-    app: &AppHandle,
+pub(super) async fn stage_chunk<R: Runtime>(
+    app: &AppHandle<R>,
     project_id: &str,
     env: &Environment<'_>,
     condensed_plan: &str,
@@ -54,7 +56,8 @@ pub(super) async fn stage_chunk(
         .map_err(|err| AtomizerError::Template(err.to_string()))?;
 
     let hb = Some((project_id.to_string(), 2, "chunk".to_string()));
-    let raw = invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb).await?;
+    let raw =
+        invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb).await?;
     parse_json_from_candidates::<Vec<ChunkSection>>(&raw, '[').map_err(|(err, candidate)| {
         AtomizerError::JsonParse {
             stage: "chunk",
@@ -76,8 +79,8 @@ fn build_json_retry_prompt(section_title: &str, section_content: &str, failed_ra
     )
 }
 
-pub(super) async fn stage_atomize(
-    app: &AppHandle,
+pub(super) async fn stage_atomize<R: Runtime>(
+    app: &AppHandle<R>,
     project_id: &str,
     env: &Environment<'_>,
     sections: &[ChunkSection],
@@ -102,7 +105,8 @@ pub(super) async fn stage_atomize(
             .map_err(|err| AtomizerError::Template(err.to_string()))?;
 
         let hb = Some((project_id.to_string(), 3, "atomize".to_string()));
-        let raw = invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb).await?;
+        let raw = invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb)
+            .await?;
 
         let stories: Vec<AtomizedStoryDraft> = match parse_json_from_candidates(&raw, '[') {
             Ok(stories) => stories,
@@ -142,8 +146,8 @@ pub(super) async fn stage_atomize(
     Ok(all_stories)
 }
 
-pub(super) async fn stage_merge(
-    app: &AppHandle,
+pub(super) async fn stage_merge<R: Runtime>(
+    app: &AppHandle<R>,
     project_id: &str,
     env: &Environment<'_>,
     stories: Vec<AtomizedStoryDraft>,
@@ -153,10 +157,11 @@ pub(super) async fn stage_merge(
     effort: Option<&str>,
     project_dir: &Path,
 ) -> Result<Prd, AtomizerError> {
-    let stories_json = serde_json::to_string_pretty(&stories).map_err(|err| AtomizerError::JsonParse {
-        stage: "merge",
-        detail: err.to_string(),
-    })?;
+    let stories_json =
+        serde_json::to_string_pretty(&stories).map_err(|err| AtomizerError::JsonParse {
+            stage: "merge",
+            detail: err.to_string(),
+        })?;
 
     let generated_at = chrono::Utc::now().to_rfc3339();
     let tmpl = env
@@ -171,9 +176,12 @@ pub(super) async fn stage_merge(
         .map_err(|err| AtomizerError::Template(err.to_string()))?;
 
     let hb = Some((project_id.to_string(), 4, "merge".to_string()));
-    let raw = invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb).await?;
-    parse_json_from_candidates::<Prd>(&raw, '{').map_err(|(err, candidate)| AtomizerError::JsonParse {
-        stage: "merge",
-        detail: format!("{err}: raw={}...", &candidate[..candidate.len().min(400)]),
+    let raw =
+        invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb).await?;
+    parse_json_from_candidates::<Prd>(&raw, '{').map_err(|(err, candidate)| {
+        AtomizerError::JsonParse {
+            stage: "merge",
+            detail: format!("{err}: raw={}...", &candidate[..candidate.len().min(400)]),
+        }
     })
 }
