@@ -10,7 +10,9 @@ import {
 } from "../../test/fixtures";
 import {
   invokeMock,
+  mockDialogSelection,
   mockTauriCommands,
+  openDialogMock,
   type TauriCommandArgs,
 } from "../../test/mocks";
 import { renderRoute } from "../../test/renderRoute";
@@ -148,5 +150,23 @@ describe("Describe", () => {
     expect(useWizardStore.getState().projectData.description).toBe(
       "Cover the project entry path and the describe step.",
     );
+  });
+
+  it("fills the working directory from the mocked desktop dialog", async () => {
+    const user = userEvent.setup();
+    mockDialogSelection("/work/from-dialog");
+    mockTauriCommands({
+      list_connections: [],
+      detect_agents: [createAgentInfo()],
+      get_agent_capabilities: createAgentCapabilities(),
+    });
+
+    renderRoute([{ path: "/new/describe", element: <Describe /> }], ["/new/describe"]);
+
+    await screen.findByTestId("describe-form");
+    await user.click(screen.getByTestId("describe-browse-directory"));
+
+    expect(openDialogMock).toHaveBeenCalledWith({ directory: true, multiple: false });
+    expect(screen.getByDisplayValue("/work/from-dialog")).toBeInTheDocument();
   });
 });

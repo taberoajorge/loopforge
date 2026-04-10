@@ -21,3 +21,14 @@ export {
   resetTauriMocks,
   subscribeTauriEvent,
 } from "./tauri";
+export {
+  currentWindowMock,
+  getCurrentWindowMock,
+  isPermissionGrantedMock,
+  mockDialogSelection,
+  mockNotificationPermission,
+  mockWindowMaximized,
+  openDialogMock,
+  requestPermissionMock,
+  resetDesktopMocks,
+} from "./desktop";

@@ -125,4 +125,23 @@ describe("Monitor", () => {
     await waitFor(() => expect(stopLoop).toHaveBeenCalledWith({ projectId: "project-001" }));
     expect(listProjects).toHaveBeenCalledTimes(3);
   });
+
+  it("keeps inactive monitor tabs disabled while other tabs remain selectable", async () => {
+    const user = userEvent.setup();
+    mockTauriCommands({
+      get_project_snapshot: createProjectSnapshot({ status: "failed" }),
+      get_project_stories: STORIES,
+      get_iteration_history: [],
+    });
+
+    renderMonitor();
+
+    expect(await screen.findByText("SESSION MONITOR: LoopForge")).toBeInTheDocument();
+    const askTab = screen.getByRole("tab", { name: "Ask" });
+    expect(askTab).toBeDisabled();
+
+    await user.click(screen.getByRole("tab", { name: "Output" }));
+    expect(screen.getByTestId("output-tab")).toBeInTheDocument();
+    expect(askTab).toHaveAttribute("aria-selected", "false");
+  });
 });
