@@ -1,13 +1,15 @@
+#[cfg(not(test))]
 use crate::atomizer::{AtomizeArgs, AtomizerError};
+#[cfg(not(test))]
 use crate::commands::validation::{optional_trimmed, required_trimmed};
+#[cfg(not(test))]
 use ralph_core::prd::Prd;
+#[cfg(not(test))]
 use tauri::AppHandle;
 
+#[cfg(not(test))]
 #[tauri::command]
-pub async fn run_atomizer(
-    app: AppHandle,
-    args: AtomizeArgs,
-) -> Result<Prd, AtomizerError> {
+pub async fn run_atomizer(app: AppHandle, args: AtomizeArgs) -> Result<Prd, AtomizerError> {
     let normalized_args = AtomizeArgs {
         project_id: required_trimmed(args.project_id, "project_id").map_err(AtomizerError::Path)?,
         project_name: required_trimmed(args.project_name, "project_name")

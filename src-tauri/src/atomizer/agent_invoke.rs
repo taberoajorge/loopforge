@@ -6,10 +6,13 @@ use crate::atomizer::AtomizerError;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 use tauri_plugin_shell::ShellExt;
 
-async fn resolve_agent_binary(app: &AppHandle, agent: &str) -> Result<String, AtomizerError> {
+async fn resolve_agent_binary<R: Runtime>(
+    app: &AppHandle<R>,
+    agent: &str,
+) -> Result<String, AtomizerError> {
     let binary = crate::agent_runtime::cli_binary_name(agent);
     if !is_safe_binary_name(binary) {
         return Err(AtomizerError::AgentFailed(format!(
@@ -48,7 +51,12 @@ async fn resolve_agent_binary(app: &AppHandle, agent: &str) -> Result<String, At
     Ok(resolved)
 }
 
-fn spawn_heartbeat(app: AppHandle, project_id: String, stage: u8, stage_name: String) -> Arc<AtomicBool> {
+fn spawn_heartbeat<R: Runtime>(
+    app: AppHandle<R>,
+    project_id: String,
+    stage: u8,
+    stage_name: String,
+) -> Arc<AtomicBool> {
     let done = Arc::new(AtomicBool::new(false));
     let done_flag = done.clone();
     tokio::spawn(async move {
@@ -60,14 +68,20 @@ fn spawn_heartbeat(app: AppHandle, project_id: String, stage: u8, stage_name: St
             }
             tick += 1;
             let elapsed = tick * 8;
-            emit_progress(&app, &project_id, stage, &stage_name, &format!("Working... {elapsed}s"));
+            emit_progress(
+                &app,
+                &project_id,
+                stage,
+                &stage_name,
+                &format!("Working... {elapsed}s"),
+            );
         }
     });
     done
 }
 
-pub(super) async fn invoke_agent(
-    app: &AppHandle,
+pub(super) async fn invoke_agent<R: Runtime>(
+    app: &AppHandle<R>,
     agent: &str,
     model: Option<&str>,
     effort: Option<&str>,
@@ -77,8 +91,8 @@ pub(super) async fn invoke_agent(
     invoke_agent_with_heartbeat(app, agent, model, effort, prompt, project_dir, None).await
 }
 
-pub(super) async fn invoke_agent_with_heartbeat(
-    app: &AppHandle,
+pub(super) async fn invoke_agent_with_heartbeat<R: Runtime>(
+    app: &AppHandle<R>,
     agent: &str,
     model: Option<&str>,
     effort: Option<&str>,
@@ -90,7 +104,8 @@ pub(super) async fn invoke_agent_with_heartbeat(
     let args = build_agent_args(agent, prompt, project_dir, model, effort);
     let env_vars = agent_env_vars(agent);
 
-    let hb_done = heartbeat.map(|(pid, stage, name)| spawn_heartbeat(app.clone(), pid, stage, name));
+    let hb_done =
+        heartbeat.map(|(pid, stage, name)| spawn_heartbeat(app.clone(), pid, stage, name));
 
     let result = invoke_inner(app, agent, &agent_binary, &args, &env_vars, project_dir).await;
 
@@ -105,8 +120,8 @@ fn needs_null_stdin(agent: &str) -> bool {
     matches!(agent, "codex" | "gemini" | "opencode")
 }
 
-async fn invoke_inner(
-    app: &AppHandle,
+async fn invoke_inner<R: Runtime>(
+    app: &AppHandle<R>,
     agent: &str,
     agent_binary: &str,
     args: &[String],

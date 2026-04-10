@@ -1,7 +1,14 @@
-use crate::commands::validation::{optional_trimmed, required_trimmed};
-use crate::plan_engine::{PlanEngineError, PlanSessionInfo, PlanSessionsState, StartPlanArgs};
-use tauri::{AppHandle, State};
+use crate::commands::validation::required_trimmed;
+#[cfg(not(test))]
+use crate::commands::validation::optional_trimmed;
+use crate::plan_engine::{PlanEngineError, PlanSessionsState};
+#[cfg(not(test))]
+use crate::plan_engine::{PlanSessionInfo, StartPlanArgs};
+#[cfg(not(test))]
+use tauri::AppHandle;
+use tauri::State;
 
+#[cfg(not(test))]
 #[tauri::command]
 pub async fn start_plan(
     app: AppHandle,
@@ -42,6 +49,7 @@ pub async fn stop_plan(
     crate::plan_engine::stop_plan(state, normalized_project_id).await
 }
 
+#[cfg(not(test))]
 #[tauri::command]
 pub async fn query_plan_status(
     state: State<'_, PlanSessionsState>,

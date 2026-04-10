@@ -1,14 +1,16 @@
-use crate::commands::validation::{non_empty_trimmed_list, optional_trimmed, required_trimmed};
-use crate::loop_manager::{LoopError, LoopManagerState, SessionStats, StartLoopArgs};
+use crate::commands::validation::required_trimmed;
+#[cfg(not(test))]
+use crate::commands::validation::{non_empty_trimmed_list, optional_trimmed};
+use crate::loop_manager::{LoopError, LoopManagerState, SessionStats};
+#[cfg(not(test))]
+use crate::loop_manager::StartLoopArgs;
 use crate::storage::db::DbState;
 use serde::Serialize;
 use tauri::{AppHandle, State};
 
+#[cfg(not(test))]
 #[tauri::command]
-pub async fn start_loop(
-    app: AppHandle,
-    args: StartLoopArgs,
-) -> Result<String, LoopError> {
+pub async fn start_loop(app: AppHandle, args: StartLoopArgs) -> Result<String, LoopError> {
     let normalized_args = StartLoopArgs {
         project_id: required_trimmed(args.project_id, "project_id").map_err(LoopError::Path)?,
         project_name: args
@@ -44,7 +46,8 @@ pub async fn stop_loop(
     loop_state: State<'_, LoopManagerState>,
     project_id: String,
 ) -> Result<(), LoopError> {
-    let normalized_project_id = required_trimmed(project_id, "project_id").map_err(LoopError::Path)?;
+    let normalized_project_id =
+        required_trimmed(project_id, "project_id").map_err(LoopError::Path)?;
     crate::loop_manager::stop_loop(app, loop_state, normalized_project_id).await
 }
 
@@ -55,7 +58,8 @@ pub async fn session_stats(
     loop_state: State<'_, LoopManagerState>,
     project_id: String,
 ) -> Result<SessionStats, LoopError> {
-    let normalized_project_id = required_trimmed(project_id, "project_id").map_err(LoopError::Path)?;
+    let normalized_project_id =
+        required_trimmed(project_id, "project_id").map_err(LoopError::Path)?;
     crate::loop_manager::session_stats(app, db, loop_state, normalized_project_id).await
 }
 
@@ -75,7 +79,9 @@ pub async fn get_iteration_history(
     project_id: String,
 ) -> Result<Vec<IterationRow>, LoopError> {
     let pid = required_trimmed(project_id, "project_id").map_err(LoopError::Path)?;
-    let conn = db.0.lock().map_err(|_| LoopError::Internal("database lock poisoned".into()))?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| LoopError::Internal("database lock poisoned".into()))?;
     let mut stmt = conn
         .prepare(
             "SELECT i.story_id, i.started_at, i.duration_secs, i.result, i.agent_used \

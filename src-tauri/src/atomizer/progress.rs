@@ -1,7 +1,13 @@
 use crate::atomizer::AtomizeProgress;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
-pub(super) fn emit_progress(app: &AppHandle, project_id: &str, stage: u8, stage_name: &str, message: &str) {
+pub(super) fn emit_progress<R: Runtime>(
+    app: &AppHandle<R>,
+    project_id: &str,
+    stage: u8,
+    stage_name: &str,
+    message: &str,
+) {
     let _ = app.emit(
         "atomization-progress",
         AtomizeProgress {
