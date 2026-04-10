@@ -42,6 +42,7 @@ async function installFixtureAgents(binDir: string) {
 
 export async function createDesktopTestEnvironment(): Promise<DesktopTestEnvironment> {
   const rootDir = await mkdtemp(path.join(os.tmpdir(), "loopforge-e2e-"));
+  const fixtureSet = process.env.LOOPFORGE_E2E_FIXTURE_SET ?? "happy-path";
   const tauriDriverPath =
     process.env.TAURI_DRIVER_PATH ??
     path.join(
@@ -82,7 +83,7 @@ export async function createDesktopTestEnvironment(): Promise<DesktopTestEnviron
       PATH: fixturePath,
       TAURI_DRIVER_PATH: tauriDriverPath,
       LOOPFORGE_TEST_MODE: "1",
-      LOOPFORGE_TEST_FIXTURE_SET: "happy-path",
+      LOOPFORGE_TEST_FIXTURE_SET: fixtureSet,
       LOOPFORGE_TEST_DATA_DIR: loopforgeDataDir,
       LOOPFORGE_TEST_DIALOG_DIR: dialogDir,
       XDG_CONFIG_HOME: xdgConfigHome,

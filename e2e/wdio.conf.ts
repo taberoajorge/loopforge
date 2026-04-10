@@ -1,4 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { accessSync, constants } from "node:fs";
 import { access } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
@@ -31,9 +32,29 @@ function buildDesktopApp() {
   if (process.env.LOOPFORGE_E2E_SKIP_BUILD === "1") {
     return;
   }
+  const localTauriPath = path.join(
+    projectRoot,
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "tauri.cmd" : "tauri",
+  );
+  const buildCommand = (() => {
+    try {
+      accessSync(localTauriPath, constants.X_OK);
+      return {
+        command: localTauriPath,
+        args: ["build", "--debug", "--no-bundle"],
+      };
+    } catch {
+      return {
+        command: "bun",
+        args: ["run", "tauri", "build", "--debug", "--no-bundle"],
+      };
+    }
+  })();
   const build = spawnSync(
-    "bun",
-    ["run", "tauri", "build", "--debug", "--no-bundle"],
+    buildCommand.command,
+    buildCommand.args,
     { cwd: projectRoot, stdio: "inherit" },
   );
   if (build.status !== 0) {

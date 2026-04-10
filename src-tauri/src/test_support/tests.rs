@@ -83,6 +83,22 @@ fn enabled_runtime_reads_fixture_and_paths() {
 }
 
 #[test]
+fn enabled_runtime_reads_no_agents_fixture() {
+    let guard = EnvGuard::new();
+    guard.clear();
+    std::env::set_var("LOOPFORGE_TEST_MODE", "1");
+    std::env::set_var("LOOPFORGE_TEST_FIXTURE_SET", "no-agents");
+
+    let runtime = resolve_test_mode()
+        .expect("resolve enabled runtime")
+        .runtime()
+        .cloned()
+        .expect("enabled runtime");
+
+    assert_eq!(runtime.fixture_set(), FixtureSet::NoAgents);
+}
+
+#[test]
 fn rejects_unknown_fixture_set() {
     let guard = EnvGuard::new();
     guard.clear();
@@ -109,6 +125,23 @@ fn rejects_invalid_test_mode() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn detect_agents_returns_empty_inventory_for_no_agents_fixture() {
+    let guard = EnvGuard::new();
+    guard.clear();
+    std::env::set_var("LOOPFORGE_TEST_MODE", "1");
+    std::env::set_var("LOOPFORGE_TEST_FIXTURE_SET", "no-agents");
+
+    let runtime = resolve_test_mode()
+        .expect("resolve enabled runtime")
+        .runtime()
+        .cloned()
+        .expect("enabled runtime");
+    let detected = super::agents::fixture_agents(&runtime);
+
+    assert!(detected.is_empty());
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn detect_agents_returns_fixture_inventory_in_test_mode() {
     let guard = EnvGuard::new();
     guard.clear();
@@ -129,7 +162,10 @@ async fn detect_agents_returns_fixture_inventory_in_test_mode() {
         detected[0].version.as_deref(),
         Some("loop-failure-claude-1.0.0")
     );
-    assert_eq!(detected[1].version.as_deref(), Some("loop-failure-codex-1.0.0"));
+    assert_eq!(
+        detected[1].version.as_deref(),
+        Some("loop-failure-codex-1.0.0")
+    );
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -147,7 +183,10 @@ async fn get_agent_capabilities_returns_fixture_profile_in_test_mode() {
     assert_eq!(capabilities.source, "fixture:plan-error");
     assert!(capabilities.supports_model);
     assert!(capabilities.supports_effort);
-    assert_eq!(capabilities.default_model.as_deref(), Some("fixture-gpt-5.4"));
+    assert_eq!(
+        capabilities.default_model.as_deref(),
+        Some("fixture-gpt-5.4")
+    );
     assert_eq!(capabilities.default_effort.as_deref(), Some("medium"));
     assert_eq!(capabilities.models.len(), 2);
     assert_eq!(capabilities.models[0].id, "fixture-gpt-5.4");
