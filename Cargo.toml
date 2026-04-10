@@ -1,3 +1,8 @@
 [workspace]
-members = ["crates/app-services", "crates/ralph-core", "src-tauri"]
+members = [
+    "crates/app-services",
+    "crates/loopforge-app-core",
+    "crates/ralph-core",
+    "src-tauri",
+]
 resolver = "2"

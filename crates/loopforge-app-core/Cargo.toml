@@ -1,0 +1,7 @@
+[package]
+name = "loopforge-app-core"
+version = "0.1.0"
+edition = "2021"
+description = "Application core services for LoopForge backend orchestration"
+
+[dependencies]
