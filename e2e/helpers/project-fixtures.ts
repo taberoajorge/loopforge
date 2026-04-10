@@ -9,6 +9,7 @@ type SeedProjectArgs = {
   name: string;
   description: string;
   wizardStep: "describe" | "plan" | "atomize" | "configure" | "launch";
+  status?: "draft" | "ready" | "paused" | "blocked" | "failed" | "completed" | "archived";
   draft: Record<string, unknown>;
   plan?: string;
   prd?: string;
@@ -81,6 +82,7 @@ export async function seedProjectFixture(args: SeedProjectArgs) {
   await waitForDatabase();
   const workspaceDir = readEnv("LOOPFORGE_E2E_WORKSPACE_DIR");
   const targetDir = projectDir(args.id);
+  const status = args.status ?? "draft";
   await mkdir(targetDir, { recursive: true });
   await Promise.all([
     writeFile(path.join(targetDir, "draft.json"), JSON.stringify(args.draft, null, 2)),
@@ -95,8 +97,8 @@ export async function seedProjectFixture(args: SeedProjectArgs) {
     database.prepare(
       `INSERT OR REPLACE INTO projects (
         id, name, description, status, working_directory, created_at, updated_at, wizard_step, wizard_state_json
-      ) VALUES (?, ?, ?, 'draft', ?, ?, ?, ?, NULL)`,
-    ).run(args.id, args.name, args.description, workspaceDir, now(), now(), args.wizardStep);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+    ).run(args.id, args.name, args.description, status, workspaceDir, now(), now(), args.wizardStep);
   } finally {
     database.close();
   }
