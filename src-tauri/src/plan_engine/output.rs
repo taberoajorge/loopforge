@@ -2,7 +2,7 @@ use crate::activity::{ActivityClassifier, PlanEventKind};
 use crate::plan_engine::payloads::{PlanActivityBatchPayload, PlanActivityPayload};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
 pub(super) fn buffer_text_segments(
     text: &str,
@@ -33,9 +33,9 @@ pub(super) fn buffer_text_segments(
     }
 }
 
-pub(super) fn flush_event_buffer(
+pub(super) fn flush_event_buffer<R: Runtime>(
     buffer: &Arc<Mutex<Vec<PlanActivityPayload>>>,
-    app: &AppHandle,
+    app: &AppHandle<R>,
     project_id: &str,
 ) {
     let events: Vec<PlanActivityPayload> = {

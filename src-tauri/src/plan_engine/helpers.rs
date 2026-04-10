@@ -1,11 +1,11 @@
 use crate::plan_engine::args::is_safe_binary_name;
 use crate::plan_engine::PlanEngineError;
 use std::path::PathBuf;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 use tauri_plugin_shell::ShellExt;
 
-pub(super) async fn resolve_agent_binary(
-    app: &AppHandle,
+pub(super) async fn resolve_agent_binary<R: Runtime>(
+    app: &AppHandle<R>,
     agent: &str,
 ) -> Result<String, PlanEngineError> {
     let binary = crate::agent_runtime::cli_binary_name(agent);
@@ -45,7 +45,10 @@ pub(super) async fn resolve_agent_binary(
     Ok(resolved)
 }
 
-pub(super) fn artifact_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, PlanEngineError> {
+pub(super) fn artifact_dir<R: Runtime>(
+    app: &AppHandle<R>,
+    project_id: &str,
+) -> Result<PathBuf, PlanEngineError> {
     crate::storage::artifacts::project_artifact_dir(app, project_id).map_err(PlanEngineError::Path)
 }
 

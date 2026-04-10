@@ -1,7 +1,7 @@
 mod activity;
 mod agent_profiles;
-mod agent_runtime_env;
 mod agent_runtime;
+mod agent_runtime_env;
 mod agents;
 mod ask_engine;
 mod atomizer;
@@ -39,6 +39,8 @@ mod summary_generator;
 mod worktree_manager;
 
 #[cfg(test)]
+mod contract_tests;
+#[cfg(test)]
 mod tests;
 
 use db::DbState;
@@ -46,6 +48,8 @@ use tauri::{Manager, RunEvent, WindowEvent};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    agent_runtime_env::ensure_full_path_env();
+
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
@@ -112,7 +116,7 @@ pub fn run() {
                     let ids: Vec<String> = sessions.sessions.keys().cloned().collect();
                     for plan_id in ids {
                         if let Some(entry) = sessions.sessions.remove(&plan_id) {
-                            let _ = entry.child.kill();
+                            let _ = entry.handle.kill();
                         }
                     }
                 }
@@ -177,8 +181,7 @@ pub fn run() {
             let loop_state = app_handle.state::<loop_manager::LoopManagerState>();
             if let Ok(handles) = loop_state.0.lock() {
                 for handle in handles.values() {
-                    let args_json =
-                        serde_json::to_string(&handle.args).unwrap_or_default();
+                    let args_json = serde_json::to_string(&handle.args).unwrap_or_default();
                     let _ = db.save_loop_state(&handle.args.project_id, &args_json);
                 }
             }

@@ -1,13 +1,22 @@
 mod args;
 mod errors;
+mod fixture;
 mod helpers;
 mod monitor;
 mod output;
-mod payloads;
+pub(crate) mod payloads;
 pub mod sessions;
 mod start;
 mod status;
+pub(crate) mod trace;
 mod write;
+
+#[cfg(test)]
+mod tests_fixture_errors;
+#[cfg(test)]
+mod tests_fixture_happy;
+#[cfg(test)]
+mod tests_fixture_support;
 
 pub use errors::PlanEngineError;
 pub use sessions::{PlanSessionInfo, PlanSessionsState, StartPlanArgs};
