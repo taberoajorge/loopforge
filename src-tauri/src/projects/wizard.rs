@@ -3,19 +3,19 @@ use crate::projects::artifacts::{artifact_dir, non_empty_file_content};
 use crate::projects::repository::{row_to_project, PROJECT_COLUMNS};
 use crate::projects::{ProjectError, WizardResumeState};
 use ralph_core::prd::Prd;
+use serde_json::{Map, Value};
 use std::path::Path;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, Runtime, State};
 
-pub async fn finalize_draft(
-    app: AppHandle,
+pub async fn finalize_draft<R: Runtime>(
+    app: AppHandle<R>,
     db: State<'_, DbState>,
     project_id: String,
 ) -> Result<(), ProjectError> {
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = db
-        .0
-        .lock()
-        .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
     conn.execute(
         "UPDATE projects SET wizard_step = NULL, wizard_state_json = NULL, updated_at = ?1 WHERE id = ?2",
         rusqlite::params![now, project_id],
@@ -29,15 +29,14 @@ pub async fn finalize_draft(
     Ok(())
 }
 
-pub async fn discard_draft(
-    app: AppHandle,
+pub async fn discard_draft<R: Runtime>(
+    app: AppHandle<R>,
     db: State<'_, DbState>,
     project_id: String,
 ) -> Result<(), ProjectError> {
-    let conn = db
-        .0
-        .lock()
-        .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
     let deleted = conn.execute(
         "DELETE FROM projects WHERE id = ?1 AND status = 'draft'",
         rusqlite::params![project_id],
@@ -62,14 +61,15 @@ pub async fn save_wizard_state(
     wizard_step: String,
     wizard_state_json: String,
 ) -> Result<(), ProjectError> {
+    let (_, canonical_json) =
+        canonical_wizard_payload(&wizard_state_json, Some(wizard_step.as_str()))?;
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = db
-        .0
-        .lock()
-        .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
     let updated = conn.execute(
         "UPDATE projects SET wizard_step = ?1, wizard_state_json = ?2, updated_at = ?3 WHERE id = ?4",
-        rusqlite::params![wizard_step, wizard_state_json, now, project_id],
+        rusqlite::params![wizard_step, canonical_json, now, project_id],
     )?;
     if updated == 0 {
         return Err(ProjectError::NotFound(project_id));
@@ -77,27 +77,20 @@ pub async fn save_wizard_state(
     Ok(())
 }
 
-pub async fn save_draft(
-    app: AppHandle,
+pub async fn save_draft<R: Runtime>(
+    app: AppHandle<R>,
     project_id: String,
     draft_json: String,
 ) -> Result<(), ProjectError> {
     let artifacts = artifact_dir(&app, &project_id)?;
     std::fs::create_dir_all(&artifacts)?;
-    let draft_value = serde_json::from_str::<serde_json::Value>(&draft_json)?;
-    std::fs::write(artifacts.join("draft.json"), &draft_json)?;
-    let draft_step = draft_value
-        .get("currentStep")
-        .and_then(|value| value.as_str())
-        .map(|step| step.trim().to_string())
-        .filter(|step| !step.is_empty())
-        .unwrap_or_else(|| "describe".to_string());
+    let (draft_step, canonical_json) = canonical_wizard_payload(&draft_json, None)?;
+    std::fs::write(artifacts.join("draft.json"), &canonical_json)?;
     let now = chrono::Utc::now().to_rfc3339();
     let db = app.state::<DbState>();
-    let conn = db
-        .0
-        .lock()
-        .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
     let _ = conn.execute(
         "UPDATE projects SET wizard_step = ?1, wizard_state_json = NULL, updated_at = ?2 WHERE id = ?3",
         rusqlite::params![draft_step, now, project_id],
@@ -105,27 +98,51 @@ pub async fn save_draft(
     Ok(())
 }
 
-pub async fn load_draft(
-    app: AppHandle,
+fn canonical_wizard_payload(
+    payload_json: &str,
+    fallback_step: Option<&str>,
+) -> Result<(String, String), ProjectError> {
+    let mut payload = serde_json::from_str::<Map<String, Value>>(payload_json)?;
+    let step = normalized_wizard_step(fallback_step, &payload);
+    payload.insert("currentStep".to_string(), Value::String(step.clone()));
+    Ok((step, serde_json::to_string(&Value::Object(payload))?))
+}
+
+fn normalized_wizard_step(fallback_step: Option<&str>, payload: &Map<String, Value>) -> String {
+    fallback_step
+        .map(str::trim)
+        .filter(|step| !step.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            payload
+                .get("currentStep")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|step| !step.is_empty())
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "describe".to_string())
+}
+
+pub async fn load_draft<R: Runtime>(
+    app: AppHandle<R>,
     project_id: String,
 ) -> Result<Option<String>, ProjectError> {
     let artifacts = artifact_dir(&app, &project_id)?;
     non_empty_file_content(&artifacts.join("draft.json"))
 }
 
-pub async fn resume_wizard(
-    app: AppHandle,
+pub async fn resume_wizard<R: Runtime>(
+    app: AppHandle<R>,
     db: State<'_, DbState>,
     project_id: String,
 ) -> Result<WizardResumeState, ProjectError> {
     let (project, wizard_state_json) = {
-        let conn = db
-            .0
-            .lock()
-            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
-        let query = format!(
-            "SELECT {PROJECT_COLUMNS}, wizard_state_json FROM projects WHERE id = ?1"
-        );
+        let conn =
+            db.0.lock()
+                .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+        let query =
+            format!("SELECT {PROJECT_COLUMNS}, wizard_state_json FROM projects WHERE id = ?1");
         let mut stmt = conn.prepare(&query)?;
         stmt.query_row(rusqlite::params![project_id], |row| {
             Ok((row_to_project(row)?, row.get::<_, Option<String>>(8)?))
@@ -145,7 +162,8 @@ pub async fn resume_wizard(
 
     let dir = artifact_dir(&app, &project_id)?;
     let artifact_plan = non_empty_file_content(&dir.join("plan.md"))?;
-    let legacy_plan = non_empty_file_content(&Path::new(&project.working_directory).join("plan.md"))?;
+    let legacy_plan =
+        non_empty_file_content(&Path::new(&project.working_directory).join("plan.md"))?;
     let has_plan = artifact_plan.is_some() || legacy_plan.is_some();
 
     let artifact_prd = Prd::load(&dir.join("prd.json"))
