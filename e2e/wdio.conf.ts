@@ -76,6 +76,15 @@ function killTauriDriver() {
   tauriDriver = undefined;
 }
 
+function syncDesktopTestEnvironment(environment: DesktopTestEnvironment) {
+  Object.assign(process.env, environment.env, {
+    LOOPFORGE_E2E_ROOT_DIR: environment.rootDir,
+    LOOPFORGE_E2E_HOME_DIR: environment.homeDir,
+    LOOPFORGE_E2E_WORKSPACE_DIR: environment.workspaceDir,
+    LOOPFORGE_E2E_XDG_DATA_HOME: environment.xdgDataHome,
+  });
+}
+
 export const config = {
   runner: "local",
   specs: ["./e2e/specs/**/*.e2e.ts"],
@@ -102,6 +111,7 @@ export const config = {
   ],
   async onPrepare() {
     testEnvironment = await createDesktopTestEnvironment();
+    syncDesktopTestEnvironment(testEnvironment);
     buildDesktopApp();
     await assertPathExists(tauriDriverPath, "tauri-driver");
     await assertPathExists(applicationPath, "desktop app binary");
