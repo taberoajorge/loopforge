@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum PlanEngineError {
     #[error("Shell error: {0}")]
     Shell(String),
+    #[error("Config error: {0}")]
+    Config(String),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Path error: {0}")]

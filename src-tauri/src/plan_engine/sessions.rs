@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri_plugin_shell::process::CommandChild;
+use tokio::task::AbortHandle;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -25,8 +26,42 @@ pub enum PlanSessionStatus {
     Stalled,
 }
 
+pub enum PlanSessionHandle {
+    Shell(CommandChild),
+    Fixture(FixturePlanSession),
+}
+
+pub struct FixturePlanSession {
+    abort: AbortHandle,
+}
+
+impl FixturePlanSession {
+    pub fn new(abort: AbortHandle) -> Self {
+        Self { abort }
+    }
+}
+
+impl PlanSessionHandle {
+    pub fn write(&mut self, payload: &[u8]) -> Result<(), String> {
+        match self {
+            Self::Shell(child) => child.write(payload).map_err(|err| err.to_string()),
+            Self::Fixture(_) => Ok(()),
+        }
+    }
+
+    pub fn kill(self) -> Result<(), String> {
+        match self {
+            Self::Shell(child) => child.kill().map_err(|err| err.to_string()),
+            Self::Fixture(session) => {
+                session.abort.abort();
+                Ok(())
+            }
+        }
+    }
+}
+
 pub struct PlanSessionEntry {
-    pub child: CommandChild,
+    pub handle: PlanSessionHandle,
     pub status: PlanSessionStatus,
     pub agent_name: String,
     pub started_at: Instant,
