@@ -27,6 +27,34 @@ const tauriDriverPath =
     "bin",
     process.platform === "win32" ? "tauri-driver.exe" : "tauri-driver",
   );
+const FIXTURE_SETS = new Set([
+  "atomize-error",
+  "happy-path",
+  "loop-failure",
+  "no-agents",
+  "no-stories",
+  "plan-error",
+]);
+
+function inferFixtureSetFromSpecArg(): string | undefined {
+  const specArgs = process.argv.flatMap((argument, index, allArgs) => {
+    if (argument === "--spec") {
+      return allArgs[index + 1] ? [allArgs[index + 1]] : [];
+    }
+    if (argument.startsWith("--spec=")) {
+      return [argument.slice("--spec=".length)];
+    }
+    return [];
+  });
+  for (const specArg of specArgs) {
+    for (const rawSpecPath of specArg.split(",")) {
+      const specName = path.basename(rawSpecPath.trim(), ".e2e.ts");
+      if (FIXTURE_SETS.has(specName)) {
+        return specName;
+      }
+    }
+  }
+}
 
 function buildDesktopApp() {
   if (process.env.LOOPFORGE_E2E_SKIP_BUILD === "1") {
@@ -131,6 +159,12 @@ export const config = {
     },
   ],
   async onPrepare() {
+    if (!process.env.LOOPFORGE_E2E_FIXTURE_SET) {
+      const fixtureSet = inferFixtureSetFromSpecArg();
+      if (fixtureSet) {
+        process.env.LOOPFORGE_E2E_FIXTURE_SET = fixtureSet;
+      }
+    }
     testEnvironment = await createDesktopTestEnvironment();
     syncDesktopTestEnvironment(testEnvironment);
     buildDesktopApp();

@@ -37,7 +37,7 @@ export function useAtomizerPipeline(projectId: string | undefined) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
-    if (!projectId || startedRef.current) return;
+    if (!projectId) return;
     const snap = useWizardStore.getState();
     if (!snap.projectData.name) return;
     if (snap.stories.length > 0 && snap.projectId === projectId) {
@@ -52,7 +52,6 @@ export function useAtomizerPipeline(projectId: string | undefined) {
     setStageMessage("Summarizing plan...");
     setStages(INITIAL_STAGES.map((stage) => ({ ...stage, status: stage.number === 1 ? "running" : "pending" })));
     let disposed = false;
-    let listenerReleased = false;
     const unlistenPromise = onAtomizationProgress((progress: AtomizeProgress) => {
       if (progress.projectId !== projectId) return;
       setStageMessage(progress.message);
@@ -65,8 +64,6 @@ export function useAtomizerPipeline(projectId: string | undefined) {
       ));
     });
     const releaseListener = () => {
-      if (listenerReleased) return;
-      listenerReleased = true;
       unlistenPromise.then((unlisten) => unlisten());
     };
     const inFlightPromise = atomizerPromiseByProject.get(projectId) ?? runAtomizer({
@@ -95,10 +92,10 @@ export function useAtomizerPipeline(projectId: string | undefined) {
       if (atomizerPromiseByProject.get(projectId) === inFlightPromise) {
         atomizerPromiseByProject.delete(projectId);
       }
-      releaseListener();
     });
     return () => {
       disposed = true;
+      startedRef.current = false;
       releaseListener();
     };
   }, [projectId]);

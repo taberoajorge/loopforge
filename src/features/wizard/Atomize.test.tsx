@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createAtomizeProgress,
   createAtomizedPrd,
+  createPrd,
   createWizardProjectData,
 } from "../../test/fixtures";
 import { emitTauriEvent, mockTauriCommands } from "../../test/mocks";
@@ -94,5 +95,34 @@ describe("Atomize", () => {
     expect(screen.getByTestId("atomize-story-S-005")).toBeInTheDocument();
     expect(screen.getByTestId("atomize-story-S-006")).toBeInTheDocument();
     expect(runAtomizerCommand).not.toHaveBeenCalled();
+  });
+
+  it("shows an atomizer error state without enabling validation", async () => {
+    mockTauriCommands({
+      run_atomizer: vi.fn(async () => Promise.reject(new Error("JSON parse error at stage chunk"))),
+    });
+
+    renderAtomizeRoute();
+
+    expect(await screen.findByText("JSON parse error at stage chunk")).toBeInTheDocument();
+    expect(screen.getByTestId("atomize-story-list-status")).toHaveTextContent(
+      "Atomization failed. Add stories manually or go back.",
+    );
+    expect(screen.getByRole("button", { name: "Add story" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Proceed to validation" })).toBeDisabled();
+  });
+
+  it("shows an empty result state when atomization succeeds with no stories", async () => {
+    mockTauriCommands({ run_atomizer: vi.fn(async () => createPrd({ stories: [], totalEstimatedMinutes: 0 })) });
+
+    renderAtomizeRoute();
+
+    expect(await screen.findByText("Done. 0 stories generated.")).toBeInTheDocument();
+    expect(screen.getByTestId("atomize-story-list-status")).toHaveTextContent(
+      "Atomization completed with no stories. Add a story manually or go back.",
+    );
+    expect(screen.getByText("Atomization Complete · 0 Stories")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add story" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Proceed to validation" })).toBeDisabled();
   });
 });
