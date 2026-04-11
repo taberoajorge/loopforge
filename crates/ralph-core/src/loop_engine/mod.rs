@@ -3,6 +3,7 @@ mod iteration;
 mod outcome;
 mod prd_lifecycle;
 mod rate_limiter;
+pub mod scheduler;
 pub mod worktree;
 
 pub use worktree::{LoopExecutionState, WorktreeExecutionState, PRIMARY_WORKTREE_ID};
@@ -18,7 +19,7 @@ use crate::health;
 use crate::logger;
 use crate::prompt::PromptBuilder;
 use crate::providers::Provider;
-use crate::scheduler;
+use crate::scheduler as story_scheduler;
 use crate::state;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -58,7 +59,7 @@ pub async fn run<P: Provider>(
             logger::log_success(&format!("All stories completed! {} passed, {} blocked.", prd.passed_count(), prd.blocked_count()));
             break;
         }
-        let next_story = match scheduler::ready_stories(&prd).into_iter().next() {
+        let next_story = match story_scheduler::ready_stories(&prd).into_iter().next() {
             Some(story) => story.clone(),
             None => {
                 logger::log_success("No more actionable stories. Done.");
