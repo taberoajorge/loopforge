@@ -1,0 +1,9 @@
+[package]
+name = "loopforge-app"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+loopforge-ui = { path = "../loopforge-ui" }
