@@ -28,13 +28,7 @@ use theme::{ThemeName, ThemeStore};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScreenId { Dashboard, Wizard, Planning, Atomization, Monitor }
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ScreenView {
-    Dashboard(HomeScreen),
-    Wizard(ProjectWizardScreen),
-    Planning(PlanningScreen),
-    Atomization(AtomizationScreen),
-    Monitor(MonitorScreen),
-}
+pub enum ScreenView { Dashboard(HomeScreen), Wizard(ProjectWizardScreen), Planning(PlanningScreen), Atomization(AtomizationScreen), Monitor(MonitorScreen) }
 #[derive(Debug, Clone)]
 pub struct NativeShellApp {
     active_screen: ScreenId,
@@ -170,5 +164,36 @@ impl NativeShellApp {
             ScreenId::Atomization => ScreenView::Atomization(AtomizationScreen::themed(palette, self.atomization_state.clone())),
             ScreenId::Monitor => ScreenView::Monitor(MonitorScreen::themed(palette, self.monitor_state.clone())),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use super::{LoopService, NativeShellApp, ScreenView};
+    fn temp_projects_root() -> std::path::PathBuf {
+        let stamp = SystemTime::now().duration_since(UNIX_EPOCH).expect("time").as_nanos();
+        std::env::temp_dir().join(format!("loopforge-shell-app-{}-{}", std::process::id(), stamp))
+    }
+    #[test]
+    fn boot_restores_active_session_into_monitor() {
+        let projects_root = temp_projects_root();
+        LoopService::new(projects_root.clone()).start_session("project-active", "Active project").expect("start");
+        let app = NativeShellApp::boot_with_paths(None, Some(projects_root.clone())).expect("boot");
+        assert!(matches!(app.render(), ScreenView::Monitor(_)));
+        assert!(app.home().primary_actions.iter().any(|action| action.id == "open-monitor" && action.label == "Reattach active loop"));
+        let _ = fs::remove_dir_all(projects_root);
+    }
+    #[test]
+    fn boot_restores_resumable_session_into_dashboard() {
+        let projects_root = temp_projects_root();
+        let mut loop_service = LoopService::new(projects_root.clone());
+        loop_service.start_session("project-resume", "Resumable project").expect("start");
+        loop_service.stop_session().expect("stop");
+        let app = NativeShellApp::boot_with_paths(None, Some(projects_root.clone())).expect("boot");
+        assert!(matches!(app.render(), ScreenView::Dashboard(_)));
+        assert!(app.home().primary_actions.iter().any(|action| action.id == "open-monitor" && action.label == "Resume loop session"));
+        let _ = fs::remove_dir_all(projects_root);
     }
 }
