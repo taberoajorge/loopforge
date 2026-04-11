@@ -1,6 +1,7 @@
 pub mod atomic_write;
 pub mod config;
 pub mod detection;
+pub mod diff;
 pub mod errors;
 pub mod events;
 pub mod git;
@@ -16,6 +17,7 @@ pub mod scheduler;
 pub mod state;
 pub mod verification;
 pub mod worktree;
+pub use diff::{DiffError, UnifiedDiffRequest, unified_diff};
 pub use loop_engine::scheduler::{CompletionScheduler, MergeAction, WorktreeCompletion};
 pub use loop_engine::worktree::{LoopExecutionState, WorktreeExecutionState, PRIMARY_WORKTREE_ID};
 
