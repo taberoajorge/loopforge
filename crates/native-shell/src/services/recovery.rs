@@ -1,6 +1,6 @@
 use std::io;
 
-use super::loops::{LoopService, LoopUpdate};
+use super::loops_service::{LoopService, LoopUpdate};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RecoveryAction {
@@ -21,11 +21,7 @@ impl RecoveryService {
     pub fn recover(loop_service: &mut LoopService) -> io::Result<Option<RecoveredSession>> {
         let Some(mut update) = loop_service.load_persisted_session()? else { return Ok(None); };
         let action = if update.running { RecoveryAction::Reattach } else { RecoveryAction::Resume };
-        let event_message = if action == RecoveryAction::Reattach {
-            "Recovered active session and reattached monitor."
-        } else {
-            "Recovered paused session ready to resume."
-        };
+        let event_message = if action == RecoveryAction::Reattach { "Recovered active session and reattached monitor." } else { "Recovered paused session ready to resume." };
         update.events.push(event_message.to_owned());
         Ok(Some(RecoveredSession { action, update }))
     }
@@ -37,7 +33,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{RecoveryAction, RecoveryService};
-    use crate::loops_service::LoopService;
+    use super::super::loops_service::LoopService;
 
     fn temp_projects_root() -> std::path::PathBuf {
         let stamp = SystemTime::now().duration_since(UNIX_EPOCH).expect("time").as_nanos();
@@ -53,6 +49,7 @@ mod tests {
         let recovered = RecoveryService::recover(&mut reader).expect("recover").expect("session");
         assert_eq!(recovered.action, RecoveryAction::Reattach);
         assert!(recovered.update.running);
+        assert!(recovered.update.events.iter().any(|event| event.contains("reattached")));
         let _ = fs::remove_dir_all(projects_root);
     }
 
@@ -66,6 +63,7 @@ mod tests {
         let recovered = RecoveryService::recover(&mut reader).expect("recover").expect("session");
         assert_eq!(recovered.action, RecoveryAction::Resume);
         assert!(!recovered.update.running);
+        assert!(recovered.update.events.iter().any(|event| event.contains("ready to resume")));
         let _ = fs::remove_dir_all(projects_root);
     }
 }

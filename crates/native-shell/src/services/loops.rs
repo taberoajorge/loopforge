@@ -76,7 +76,7 @@ impl LoopService {
         let raw_state = fs::read_to_string(&self.persistence_path)?;
         let Some(session) = Self::parse_session(&raw_state) else { return Ok(None); };
         self.session = Some(session.clone());
-        Ok(Some(Self::to_update(session, vec![String::from("Persisted loop session restored on startup.")])))
+        Ok(Some(Self::to_update(session.clone(), vec![Self::startup_restore_event(session.running)])))
     }
 
     fn persist_session(&self, session: &LoopSession) -> io::Result<()> {
@@ -124,6 +124,10 @@ impl LoopService {
         }
     }
 
+    fn startup_restore_event(running: bool) -> String {
+        if running { String::from("Persisted active loop session restored on startup.") } else { String::from("Persisted resumable loop session restored on startup.") }
+    }
+
     fn timestamp_nanos() -> u128 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos() }
 }
 
@@ -166,6 +170,7 @@ mod tests {
         assert_eq!(recovered.project_name, started.project_name);
         assert_eq!(recovered.session_id, started.session_id);
         assert!(recovered.events.iter().any(|event| event.contains("restored")));
+        assert!(recovered.events.iter().any(|event| event.contains("active")));
         let _ = fs::remove_dir_all(projects_root);
     }
 
@@ -180,6 +185,7 @@ mod tests {
         assert_eq!(recovered.project_id, started.project_id);
         assert_eq!(recovered.session_id, stopped.session_id);
         assert!(!recovered.running);
+        assert!(recovered.events.iter().any(|event| event.contains("resumable")));
         let _ = fs::remove_dir_all(projects_root);
     }
 }

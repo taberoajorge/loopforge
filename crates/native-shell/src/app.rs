@@ -134,7 +134,7 @@ impl NativeShellApp {
         if let Some(recovered_session) = RecoveryService::recover(&mut self.loop_service)? {
             self.apply_loop_update(&recovered_session.update);
             self.sync_home_with_recovered_session(&recovered_session.update, recovered_session.action);
-            if recovered_session.action == RecoveryAction::Reattach { self.active_screen = ScreenId::Monitor; }
+            self.active_screen = if recovered_session.action == RecoveryAction::Reattach { ScreenId::Monitor } else { ScreenId::Dashboard };
         }
         Ok(())
     }
