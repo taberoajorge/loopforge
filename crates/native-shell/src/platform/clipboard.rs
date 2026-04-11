@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 use std::process::{Command, Stdio};
 
 #[derive(Debug)]
@@ -27,28 +27,40 @@ impl Display for ClipboardError {
 
 impl std::error::Error for ClipboardError {}
 
+#[derive(Debug, Default, Clone, Copy)]
+pub struct ClipboardService;
+
+impl ClipboardService {
+    pub fn write_text(&self, text: &str) -> Result<(), ClipboardError> {
+        if cfg!(target_os = "macos") {
+            return run_clipboard_command("pbcopy", &[], text).map_err(map_missing_command_error);
+        }
+        if cfg!(target_os = "linux") {
+            return run_linux_clipboard_command(text);
+        }
+        if cfg!(target_os = "windows") {
+            return run_clipboard_command("clip", &[], text).map_err(map_missing_command_error);
+        }
+        Err(ClipboardError::UnsupportedPlatform)
+    }
+}
+
 pub fn write_text(text: &str) -> Result<(), ClipboardError> {
-    if cfg!(target_os = "macos") {
-        return run_clipboard_command("pbcopy", &[], text);
-    }
-    if cfg!(target_os = "linux") {
-        return run_linux_clipboard_command(text);
-    }
-    if cfg!(target_os = "windows") {
-        return run_clipboard_command("clip", &[], text);
-    }
-    Err(ClipboardError::UnsupportedPlatform)
+    ClipboardService.write_text(text)
 }
 
 fn run_linux_clipboard_command(text: &str) -> Result<(), ClipboardError> {
-    if command_exists("wl-copy") {
-        return run_clipboard_command("wl-copy", &["--trim-newline"], text);
-    }
-    if command_exists("xclip") {
-        return run_clipboard_command("xclip", &["-selection", "clipboard"], text);
-    }
-    if command_exists("xsel") {
-        return run_clipboard_command("xsel", &["--clipboard", "--input"], text);
+    let candidates: [(&str, &[&str]); 3] = [
+        ("wl-copy", &["--trim-newline"]),
+        ("xclip", &["-selection", "clipboard"]),
+        ("xsel", &["--clipboard", "--input"]),
+    ];
+    for (command_name, arguments) in candidates {
+        match run_clipboard_command(command_name, arguments, text) {
+            Ok(()) => return Ok(()),
+            Err(error) if is_missing_command_error(&error) => continue,
+            Err(error) => return Err(error),
+        }
     }
     Err(ClipboardError::MissingClipboardCommand)
 }
@@ -84,10 +96,16 @@ fn run_clipboard_command(
     Err(ClipboardError::CommandFailed(stderr))
 }
 
-fn command_exists(command_name: &str) -> bool {
-    Command::new("sh")
-        .args(["-c", &format!("command -v {command_name} >/dev/null 2>&1")])
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false)
+fn map_missing_command_error(error: ClipboardError) -> ClipboardError {
+    if is_missing_command_error(&error) {
+        return ClipboardError::MissingClipboardCommand;
+    }
+    error
+}
+
+fn is_missing_command_error(error: &ClipboardError) -> bool {
+    match error {
+        ClipboardError::Io(io_error) => io_error.kind() == ErrorKind::NotFound,
+        _ => false,
+    }
 }
