@@ -3,7 +3,6 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoopUpdate {
     pub project_id: String,
@@ -101,14 +100,17 @@ impl LoopService {
             .lines()
             .filter_map(|line| line.split_once('=').map(|(key, value)| (key.trim().to_owned(), value.trim().to_owned())))
             .collect::<HashMap<_, _>>();
+        let project_id = entries.get("project_id")?.to_owned();
+        let project_name = entries.get("project_name").cloned().unwrap_or_else(|| project_id.clone());
+        let parse_u32 = |key: &str| entries.get(key).and_then(|value| value.parse::<u32>().ok()).unwrap_or(0);
         Some(LoopSession {
-            project_id: entries.get("project_id")?.to_owned(),
-            project_name: entries.get("project_name")?.to_owned(),
+            project_id,
+            project_name,
             session_id: entries.get("session_id")?.to_owned(),
-            running: entries.get("running")?.parse().ok()?,
-            completed_iterations: entries.get("completed_iterations")?.parse().ok()?,
-            blocked_states: entries.get("blocked_states")?.parse().ok()?,
-            rate_limit_events: entries.get("rate_limit_events")?.parse().ok()?,
+            running: entries.get("running").and_then(|value| value.parse::<bool>().ok()).unwrap_or(false),
+            completed_iterations: parse_u32("completed_iterations"),
+            blocked_states: parse_u32("blocked_states"),
+            rate_limit_events: parse_u32("rate_limit_events"),
         })
     }
 
