@@ -74,9 +74,8 @@ impl LoopService {
         if !self.persistence_path.exists() { return Ok(None); }
         let raw_state = fs::read_to_string(&self.persistence_path)?;
         let Some(session) = Self::parse_session(&raw_state) else { return Ok(None); };
-        let running = session.running;
         self.session = Some(session.clone());
-        Ok(Some(Self::to_update(session, vec![Self::startup_restore_event(running)])))
+        Ok(Some(Self::to_update(session, Vec::new())))
     }
 
     fn persist_session(&self, session: &LoopSession) -> io::Result<()> {
@@ -127,10 +126,6 @@ impl LoopService {
         }
     }
 
-    fn startup_restore_event(running: bool) -> String {
-        if running { String::from("Persisted active loop session restored on startup.") } else { String::from("Persisted resumable loop session restored on startup.") }
-    }
-
     fn timestamp_nanos() -> u128 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos() }
 }
 
@@ -175,8 +170,7 @@ mod tests {
         assert_eq!(recovered.completed_iterations, started.completed_iterations);
         assert_eq!(recovered.blocked_states, started.blocked_states);
         assert_eq!(recovered.rate_limit_events, started.rate_limit_events);
-        assert!(recovered.events.iter().any(|event| event.contains("restored")));
-        assert!(recovered.events.iter().any(|event| event.contains("active")));
+        assert!(recovered.events.is_empty());
         let _ = fs::remove_dir_all(projects_root);
     }
 
@@ -194,7 +188,7 @@ mod tests {
         assert_eq!(recovered.completed_iterations, stopped.completed_iterations);
         assert_eq!(recovered.blocked_states, stopped.blocked_states);
         assert_eq!(recovered.rate_limit_events, stopped.rate_limit_events);
-        assert!(recovered.events.iter().any(|event| event.contains("resumable")));
+        assert!(recovered.events.is_empty());
         let _ = fs::remove_dir_all(projects_root);
     }
 }
