@@ -15,3 +15,6 @@ resolver = "2"
 [workspace.metadata.loopforge]
 primary_runtime = "native-shell"
 legacy_runtime = "react-router-tauri-bridge"
+primary_frontend_entry = "src/main.tsx"
+legacy_frontend_entry = "src/router.tsx"
+legacy_bridge_mode = "compatibility-only"

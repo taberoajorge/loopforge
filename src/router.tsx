@@ -10,6 +10,8 @@ import {
 import { AppLayout } from "./pages/AppLayout";
 import { Home } from "./features/projects/Home";
 
+export const legacyRouterRuntime = "compatibility-only";
+
 const WizardLayout = lazy(() => import("./features/wizard/WizardLayout").then((moduleItem) => ({ default: moduleItem.WizardLayout })));
 const Describe = lazy(() => import("./features/wizard/Describe").then((moduleItem) => ({ default: moduleItem.Describe })));
 const Plan = lazy(() => import("./features/wizard/Plan").then((moduleItem) => ({ default: moduleItem.Plan })));
@@ -67,7 +69,7 @@ function SuspenseWrap({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<LazyFallback />}>{children}</Suspense>;
 }
 
-const router = createBrowserRouter([
+const legacyRouter = createBrowserRouter([
   {
     path: "/",
     Component: AppLayout,
@@ -93,10 +95,12 @@ const router = createBrowserRouter([
   },
 ]);
 
-export function mountLegacyRouter(rootElement: HTMLElement) {
+export function mountLegacyRouterCompatibility(rootElement: HTMLElement) {
   createRoot(rootElement).render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <RouterProvider router={legacyRouter} />
     </StrictMode>,
   );
 }
+
+export const mountLegacyRouter = mountLegacyRouterCompatibility;

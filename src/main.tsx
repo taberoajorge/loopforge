@@ -20,21 +20,9 @@ function NativeShellBoot() {
   );
 }
 
-function shouldLoadLegacyRouter(): boolean {
-  const isLegacyMode = import.meta.env.MODE === "legacy-router";
-  const hasLegacyQuery = new URLSearchParams(window.location.search).has("legacy-router");
-  return isLegacyMode || hasLegacyQuery;
-}
-
-async function mountApplication() {
+function mountApplication() {
   const rootElement = document.getElementById("root");
   if (!rootElement) {
-    return;
-  }
-
-  if (shouldLoadLegacyRouter()) {
-    const { mountLegacyRouter } = await import("./router");
-    mountLegacyRouter(rootElement);
     return;
   }
 
@@ -45,4 +33,4 @@ async function mountApplication() {
   );
 }
 
-void mountApplication();
+mountApplication();

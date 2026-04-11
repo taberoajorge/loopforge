@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --mode native-shell",
-    "dev:legacy": "vite --mode legacy-router",
+    "dev": "bun run dev:native-shell",
+    "dev:native-shell": "vite --mode native-shell",
+    "dev:legacy": "vite --mode legacy-router --open \"/?legacy-router\"",
     "dev:tauri": "node dev-tauri.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
