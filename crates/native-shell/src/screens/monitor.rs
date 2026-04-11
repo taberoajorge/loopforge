@@ -14,5 +14,5 @@ impl MonitorScreenClipboard {
 }
 
 fn copy(text: &str) -> Result<(), String> {
-    ClipboardService.write_text(text).map_err(|error| error.to_string())
+    ClipboardService::write_text(text).map_err(|error| error.to_string())
 }

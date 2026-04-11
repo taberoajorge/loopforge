@@ -31,7 +31,7 @@ impl std::error::Error for ClipboardError {}
 pub struct ClipboardService;
 
 impl ClipboardService {
-    pub fn write_text(&self, text: &str) -> Result<(), ClipboardError> {
+    pub fn write_text(text: &str) -> Result<(), ClipboardError> {
         if cfg!(target_os = "macos") {
             return run_clipboard_command("pbcopy", &[], text).map_err(map_missing_command_error);
         }
