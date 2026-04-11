@@ -110,7 +110,7 @@ fn confirm_macos(
             "unexpected dialog button '{button}'"
         )));
     }
-    if output.stderr.contains("User canceled") {
+    if is_user_canceled(&output.stderr) {
         return Ok(NativeDialogButton::Cancel);
     }
     Err(DialogError::CommandFailed(output.stderr))
@@ -132,7 +132,7 @@ fn pick_path_macos(prompt: &str, folder: bool) -> Result<Option<PathBuf>, Dialog
         }
         return Ok(Some(PathBuf::from(path)));
     }
-    if output.stderr.contains("User canceled") {
+    if is_user_canceled(&output.stderr) {
         return Ok(None);
     }
     Err(DialogError::CommandFailed(output.stderr))
@@ -172,6 +172,11 @@ fn parse_button_label(output: &str) -> Result<&str, DialogError> {
         .find_map(|segment| segment.trim().strip_prefix("button returned:"))
         .map(str::trim)
         .ok_or_else(|| DialogError::InvalidResponse(output.to_string()))
+}
+
+#[cfg(target_os = "macos")]
+fn is_user_canceled(output: &str) -> bool {
+    output.contains("User canceled") || output.contains("User cancelled")
 }
 
 #[cfg(target_os = "macos")]
