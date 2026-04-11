@@ -14,6 +14,7 @@ pub mod prompt;
 pub mod providers;
 pub mod state;
 pub mod verification;
+pub mod worktree;
 
 #[allow(dead_code)]
 pub mod plugin;
