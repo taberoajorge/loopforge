@@ -16,6 +16,7 @@ pub mod scheduler;
 pub mod state;
 pub mod verification;
 pub mod worktree;
+pub use loop_engine::worktree::{LoopExecutionState, WorktreeExecutionState, PRIMARY_WORKTREE_ID};
 
 #[allow(dead_code)]
 pub mod plugin;
