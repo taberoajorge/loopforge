@@ -5,3 +5,6 @@ members = [
     "crates/ralph-core",
 ]
 resolver = "2"
+
+[workspace.metadata.native-shell]
+default-screen = "dashboard"
