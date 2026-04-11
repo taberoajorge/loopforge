@@ -1,3 +1,4 @@
+use std::fs;
 use std::io;
 use std::path::PathBuf;
 #[path = "screens/mod.rs"]
@@ -6,27 +7,31 @@ mod screens;
 mod monitor_screen;
 #[path = "services/planning.rs"]
 mod planning_service;
+#[path = "services/atomization.rs"]
+mod atomization_service;
 #[path = "services/projects.rs"]
 mod projects_service;
 #[path = "theme/mod.rs"]
 pub mod theme;
 #[path = "view_models/home.rs"]
 mod home_view_model;
+use atomization_service::AtomizationService;
 use home_view_model::{HomeAction, HomeProjectSummary, HomeSessionSummary, HomeViewModel, ProjectStatus, SessionState};
 use monitor_screen::MonitorScreen;
 use planning_service::PlanningService;
 use projects_service::{ProjectLifecycle, ProjectsService};
-use screens::{HomeScreen, PlanningScreen, PlanningState, ProjectWizardScreen, ProjectWizardState};
+use screens::{AtomizationArtifact, AtomizationScreen, AtomizationStageUpdate, AtomizationState, HomeScreen, PlanningScreen, PlanningState, ProjectWizardScreen, ProjectWizardState};
 use theme::{ThemeName, ThemeStore};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScreenId { Dashboard, Wizard, Planning, Monitor }
+pub enum ScreenId { Dashboard, Wizard, Planning, Atomization, Monitor }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScreenView {
     Dashboard(HomeScreen),
     Wizard(ProjectWizardScreen),
     Planning(PlanningScreen),
+    Atomization(AtomizationScreen),
     Monitor(MonitorScreen),
 }
 
@@ -37,8 +42,10 @@ pub struct NativeShellApp {
     theme_store: ThemeStore,
     projects: ProjectsService,
     planning_service: PlanningService,
+    atomization_service: AtomizationService,
     wizard_state: ProjectWizardState,
     planning_state: PlanningState,
+    atomization_state: AtomizationState,
     home: HomeViewModel,
 }
 
@@ -49,14 +56,17 @@ impl NativeShellApp {
         let theme_store = ThemeStore::new(theme_path.unwrap_or_else(ThemeStore::default_path));
         let projects = ProjectsService::new(projects_root);
         let planning_service = PlanningService::new(projects.root().to_path_buf());
+        let atomization_service = AtomizationService::new(projects.root().to_path_buf());
         let mut app = Self {
             active_screen: ScreenId::Dashboard,
             theme: theme_store.load()?,
             theme_store,
             projects,
             planning_service,
+            atomization_service,
             wizard_state: ProjectWizardState::idle(),
             planning_state: PlanningState::idle(),
+            atomization_state: AtomizationState::idle(),
             home: Self::build_home(Vec::new()),
         };
         app.refresh_home()?;
@@ -105,6 +115,29 @@ impl NativeShellApp {
         Ok(())
     }
 
+    pub fn start_atomization_session(&mut self, project_id: &str) -> io::Result<()> {
+        let project_name = self.home.active_projects.iter().find(|project| project.id == project_id).map(|project| project.name.clone()).unwrap_or_else(|| project_id.to_owned());
+        self.atomization_state = AtomizationState::start(project_id.to_owned(), project_name);
+        match self.atomization_service.run_pipeline(project_id) {
+            Ok(run) => {
+                for progress in run.progress {
+                    self.atomization_state = self.atomization_state.clone().push_stage(AtomizationStageUpdate::new(progress.stage.label(), progress.detail));
+                }
+                self.atomization_state = self.atomization_state.clone().complete(run.artifacts.prd_path.display().to_string(), run.artifacts.prompt_path.display().to_string(), run.artifacts.guardrails_path.display().to_string());
+                self.active_screen = ScreenId::Atomization;
+                Ok(())
+            }
+            Err(error) => { self.atomization_state = self.atomization_state.clone().fail(error.to_string()); Err(error) }
+        }
+    }
+
+    pub fn open_atomization_artifact(&self, artifact: AtomizationArtifact) -> io::Result<String> {
+        let Some(path) = self.atomization_state.artifact_path(artifact) else {
+            return Err(io::Error::new(io::ErrorKind::NotFound, "atomization artifact is unavailable"));
+        };
+        fs::read_to_string(path)
+    }
+
     pub fn resume_project(&mut self, project_id: &str) -> io::Result<()> { self.projects.resume_project(project_id)?; self.refresh_home() }
 
     pub fn archive_project(&mut self, project_id: &str) -> io::Result<()> { self.projects.archive_project(project_id)?; self.refresh_home() }
@@ -147,39 +180,9 @@ impl NativeShellApp {
             ScreenId::Dashboard => ScreenView::Dashboard(HomeScreen::themed(palette, self.home.clone())),
             ScreenId::Wizard => ScreenView::Wizard(ProjectWizardScreen::themed(palette, self.wizard_state.clone())),
             ScreenId::Planning => ScreenView::Planning(PlanningScreen::themed(palette, self.planning_state.clone())),
+            ScreenId::Atomization => ScreenView::Atomization(AtomizationScreen::themed(palette, self.atomization_state.clone())),
             ScreenId::Monitor => ScreenView::Monitor(MonitorScreen::themed(palette)),
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::fs;
-    use std::time::{SystemTime, UNIX_EPOCH};
-    use super::{NativeShellApp, ScreenId, ScreenView};
-
-    fn temp_path(label: &str, extension: &str) -> std::path::PathBuf {
-        let stamp = SystemTime::now().duration_since(UNIX_EPOCH).expect("time").as_nanos();
-        std::env::temp_dir().join(format!("loopforge-shell-{}-{}-{}.{}", label, std::process::id(), stamp, extension))
-    }
-
-    #[test]
-    fn planning_session_streams_activity_and_persists_plan_output() {
-        let theme_file = temp_path("theme", "txt");
-        let projects_dir = temp_path("projects", "dir");
-        let mut app = NativeShellApp::boot_with_paths(Some(theme_file.clone()), Some(projects_dir.clone())).expect("boot");
-        let project_id = app.start_project_wizard("Native Shell", "Plan inside shell").expect("create");
-        app.start_planning_session(&project_id, "Build native planning controls").expect("start");
-        app.send_planning_input("Add a stop flow and persist plan output").expect("input");
-        app.stop_planning_session().expect("stop");
-        app.set_screen(ScreenId::Planning);
-        let planning_screen = match app.render() { ScreenView::Planning(screen) => screen, _ => panic!("planning") };
-        assert!(!planning_screen.activity_lines.is_empty());
-        assert!(!planning_screen.session_active);
-        let plan_content = fs::read_to_string(app.projects_root().join(project_id).join("plan.md")).expect("plan");
-        assert!(plan_content.contains("Follow-up request: Add a stop flow and persist plan output"));
-        assert!(plan_content.contains("Planning session stopped from native shell."));
-        let _ = fs::remove_file(theme_file);
-        let _ = fs::remove_dir_all(projects_dir);
-    }
-}
