@@ -142,7 +142,7 @@ impl NativeShellApp {
         self.monitor_state = MonitorState::start(update.project_id.clone(), update.project_name.clone()).apply_update(update.session_id.clone(), update.running, update.events.clone(), update.completed_iterations, update.blocked_states, update.rate_limit_events);
     }
     fn sync_home_with_recovered_session(&mut self, update: &loops_service::LoopUpdate, action: RecoveryAction) {
-        let session_state = if update.running { SessionState::Healthy } else { SessionState::Blocked };
+        let session_state = if update.blocked_states > 0 { SessionState::Blocked } else { SessionState::Healthy };
         let project_status = if update.running { ProjectStatus::Running } else { ProjectStatus::Idle };
         if let Some(project) = self.home.active_projects.iter_mut().find(|project| project.id == update.project_id) {
             project.status = project_status;

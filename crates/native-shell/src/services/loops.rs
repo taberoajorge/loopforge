@@ -168,4 +168,18 @@ mod tests {
         assert!(recovered.events.iter().any(|event| event.contains("restored")));
         let _ = fs::remove_dir_all(projects_root);
     }
+
+    #[test]
+    fn stopped_session_is_restored_as_resumable() {
+        let projects_root = temp_projects_root();
+        let mut writer = LoopService::new(projects_root.clone());
+        let started = writer.start_session("project-resume", "Resumable project").expect("start");
+        let stopped = writer.stop_session().expect("stop").expect("session");
+        let mut reader = LoopService::new(projects_root.clone());
+        let recovered = reader.load_persisted_session().expect("recover").expect("session");
+        assert_eq!(recovered.project_id, started.project_id);
+        assert_eq!(recovered.session_id, stopped.session_id);
+        assert!(!recovered.running);
+        let _ = fs::remove_dir_all(projects_root);
+    }
 }

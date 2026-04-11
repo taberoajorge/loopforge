@@ -30,3 +30,42 @@ impl RecoveryService {
         Ok(Some(RecoveredSession { action, update }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::{RecoveryAction, RecoveryService};
+    use crate::loops_service::LoopService;
+
+    fn temp_projects_root() -> std::path::PathBuf {
+        let stamp = SystemTime::now().duration_since(UNIX_EPOCH).expect("time").as_nanos();
+        std::env::temp_dir().join(format!("loopforge-shell-recovery-{}-{}", std::process::id(), stamp))
+    }
+
+    #[test]
+    fn recover_reattaches_running_session() {
+        let projects_root = temp_projects_root();
+        let mut writer = LoopService::new(projects_root.clone());
+        writer.start_session("project-active", "Active project").expect("start");
+        let mut reader = LoopService::new(projects_root.clone());
+        let recovered = RecoveryService::recover(&mut reader).expect("recover").expect("session");
+        assert_eq!(recovered.action, RecoveryAction::Reattach);
+        assert!(recovered.update.running);
+        let _ = fs::remove_dir_all(projects_root);
+    }
+
+    #[test]
+    fn recover_surfaces_resumable_session() {
+        let projects_root = temp_projects_root();
+        let mut writer = LoopService::new(projects_root.clone());
+        writer.start_session("project-resume", "Resumable project").expect("start");
+        writer.stop_session().expect("stop").expect("session");
+        let mut reader = LoopService::new(projects_root.clone());
+        let recovered = RecoveryService::recover(&mut reader).expect("recover").expect("session");
+        assert_eq!(recovered.action, RecoveryAction::Resume);
+        assert!(!recovered.update.running);
+        let _ = fs::remove_dir_all(projects_root);
+    }
+}
