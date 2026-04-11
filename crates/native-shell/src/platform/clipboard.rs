@@ -32,27 +32,59 @@ pub struct ClipboardService;
 
 impl ClipboardService {
     pub fn write_text(text: &str) -> Result<(), ClipboardError> {
-        if cfg!(target_os = "macos") {
-            return run_clipboard_command("pbcopy", &[], text).map_err(map_missing_command_error);
+        #[cfg(target_os = "macos")]
+        {
+            return write_with_candidates(&[ClipboardCommand::new("pbcopy", &[])], text);
         }
-        if cfg!(target_os = "linux") {
-            return run_linux_clipboard_command(text);
+        #[cfg(target_os = "linux")]
+        {
+            return write_with_candidates(
+                &[
+                    ClipboardCommand::new("wl-copy", &["--trim-newline"]),
+                    ClipboardCommand::new("xclip", &["-selection", "clipboard"]),
+                    ClipboardCommand::new("xsel", &["--clipboard", "--input"]),
+                ],
+                text,
+            );
         }
-        if cfg!(target_os = "windows") {
-            return run_clipboard_command("clip", &[], text).map_err(map_missing_command_error);
+        #[cfg(target_os = "windows")]
+        {
+            return write_with_candidates(
+                &[
+                    ClipboardCommand::new("clip", &[]),
+                    ClipboardCommand::new(
+                        "powershell",
+                        &["-NoProfile", "-Command", "Set-Clipboard"],
+                    ),
+                ],
+                text,
+            );
         }
-        Err(ClipboardError::UnsupportedPlatform)
+        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+        {
+            Err(ClipboardError::UnsupportedPlatform)
+        }
     }
 }
 
-fn run_linux_clipboard_command(text: &str) -> Result<(), ClipboardError> {
-    let candidates: [(&str, &[&str]); 3] = [
-        ("wl-copy", &["--trim-newline"]),
-        ("xclip", &["-selection", "clipboard"]),
-        ("xsel", &["--clipboard", "--input"]),
-    ];
-    for (command_name, arguments) in candidates {
-        match run_clipboard_command(command_name, arguments, text) {
+#[derive(Debug, Clone, Copy)]
+struct ClipboardCommand {
+    command_name: &'static str,
+    arguments: &'static [&'static str],
+}
+
+impl ClipboardCommand {
+    const fn new(command_name: &'static str, arguments: &'static [&'static str]) -> Self {
+        Self {
+            command_name,
+            arguments,
+        }
+    }
+}
+
+fn write_with_candidates(candidates: &[ClipboardCommand], text: &str) -> Result<(), ClipboardError> {
+    for candidate in candidates {
+        match run_clipboard_command(candidate.command_name, candidate.arguments, text) {
             Ok(()) => return Ok(()),
             Err(error) if is_missing_command_error(&error) => continue,
             Err(error) => return Err(error),
@@ -90,13 +122,6 @@ fn run_clipboard_command(
         )));
     }
     Err(ClipboardError::CommandFailed(stderr))
-}
-
-fn map_missing_command_error(error: ClipboardError) -> ClipboardError {
-    if is_missing_command_error(&error) {
-        return ClipboardError::MissingClipboardCommand;
-    }
-    error
 }
 
 fn is_missing_command_error(error: &ClipboardError) -> bool {
