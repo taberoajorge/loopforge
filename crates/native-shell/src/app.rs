@@ -134,10 +134,11 @@ impl NativeShellApp {
         if let Some(recovered_session) = RecoveryService::recover(&mut self.loop_service)? {
             self.apply_loop_update(&recovered_session.update);
             self.sync_home_with_recovered_session(&recovered_session.update, recovered_session.action);
-            self.active_screen = if recovered_session.action.opens_monitor() { ScreenId::Monitor } else { ScreenId::Dashboard };
+            self.active_screen = Self::screen_for_recovery_action(recovered_session.action);
         }
         Ok(())
     }
+    fn screen_for_recovery_action(action: RecoveryAction) -> ScreenId { if action.opens_monitor() { ScreenId::Monitor } else { ScreenId::Dashboard } }
     fn apply_loop_update(&mut self, update: &loops_service::LoopUpdate) {
         self.monitor_state = MonitorState::start(update.project_id.clone(), update.project_name.clone()).apply_update(update.session_id.clone(), update.running, update.events.clone(), update.completed_iterations, update.blocked_states, update.rate_limit_events);
     }

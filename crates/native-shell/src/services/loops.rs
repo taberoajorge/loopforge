@@ -170,6 +170,9 @@ mod tests {
         assert_eq!(recovered.project_id, started.project_id);
         assert_eq!(recovered.project_name, started.project_name);
         assert_eq!(recovered.session_id, started.session_id);
+        assert_eq!(recovered.completed_iterations, started.completed_iterations);
+        assert_eq!(recovered.blocked_states, started.blocked_states);
+        assert_eq!(recovered.rate_limit_events, started.rate_limit_events);
         assert!(recovered.events.iter().any(|event| event.contains("restored")));
         assert!(recovered.events.iter().any(|event| event.contains("active")));
         let _ = fs::remove_dir_all(projects_root);
@@ -186,6 +189,9 @@ mod tests {
         assert_eq!(recovered.project_id, started.project_id);
         assert_eq!(recovered.session_id, stopped.session_id);
         assert!(!recovered.running);
+        assert_eq!(recovered.completed_iterations, stopped.completed_iterations);
+        assert_eq!(recovered.blocked_states, stopped.blocked_states);
+        assert_eq!(recovered.rate_limit_events, stopped.rate_limit_events);
         assert!(recovered.events.iter().any(|event| event.contains("resumable")));
         let _ = fs::remove_dir_all(projects_root);
     }
