@@ -45,10 +45,6 @@ impl ClipboardService {
     }
 }
 
-pub fn write_text(text: &str) -> Result<(), ClipboardError> {
-    ClipboardService.write_text(text)
-}
-
 fn run_linux_clipboard_command(text: &str) -> Result<(), ClipboardError> {
     let candidates: [(&str, &[&str]); 3] = [
         ("wl-copy", &["--trim-newline"]),
