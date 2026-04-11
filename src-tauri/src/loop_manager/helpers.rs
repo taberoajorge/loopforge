@@ -99,7 +99,7 @@ fn project_error(error: ProjectError) -> LoopError {
         ProjectError::Db(message) => LoopError::Db(message),
         ProjectError::Io(source) => LoopError::Io(source),
         ProjectError::Json(source) => LoopError::Internal(source.to_string()),
-        ProjectError::NotFound(project_id) => LoopError::Internal(project_id),
+        ProjectError::NotFound(project_id) => LoopError::Path(project_id),
         ProjectError::Path(message) => LoopError::Path(message),
     }
 }
