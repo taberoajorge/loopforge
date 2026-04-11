@@ -7,6 +7,9 @@ pub mod scheduler;
 pub mod worktree;
 
 pub use worktree::{LoopExecutionState, WorktreeExecutionState, PRIMARY_WORKTREE_ID};
+pub use crate::scheduler::worktree_runner::{
+    ProvisionedWorktree, provision as provision_worktree, run_in_worktree,
+};
 
 use crate::config::RalphConfig;
 use crate::detection::failure_memory::FailureMemory;
