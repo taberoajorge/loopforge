@@ -31,6 +31,22 @@ impl std::error::Error for ClipboardError {}
 pub struct ClipboardService;
 
 impl ClipboardService {
+    pub fn copy_dashboard_prompt(prompt_text: &str) -> Result<(), ClipboardError> {
+        Self::write_text(prompt_text)
+    }
+
+    pub fn copy_project_identifier(project_identifier: &str) -> Result<(), ClipboardError> {
+        Self::write_text(project_identifier)
+    }
+
+    pub fn copy_log_output(log_output: &str) -> Result<(), ClipboardError> {
+        Self::write_text(log_output)
+    }
+
+    pub fn copy_session_identifier(session_identifier: &str) -> Result<(), ClipboardError> {
+        Self::write_text(session_identifier)
+    }
+
     pub fn write_text(text: &str) -> Result<(), ClipboardError> {
         #[cfg(target_os = "macos")]
         {

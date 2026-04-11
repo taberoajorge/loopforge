@@ -5,14 +5,11 @@ pub struct MonitorScreenClipboard;
 
 impl MonitorScreenClipboard {
     pub fn copy_log_output(log_output: &str) -> Result<(), String> {
-        copy(log_output)
+        ClipboardService::copy_log_output(log_output).map_err(|error| error.to_string())
     }
 
     pub fn copy_session_identifier(session_identifier: &str) -> Result<(), String> {
-        copy(session_identifier)
+        ClipboardService::copy_session_identifier(session_identifier)
+            .map_err(|error| error.to_string())
     }
-}
-
-fn copy(text: &str) -> Result<(), String> {
-    ClipboardService::write_text(text).map_err(|error| error.to_string())
 }
