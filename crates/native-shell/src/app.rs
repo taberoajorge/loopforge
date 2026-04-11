@@ -1,19 +1,22 @@
 use std::io;
 use std::path::PathBuf;
 
-#[path = "screens/home.rs"]
-mod home_screen;
+#[path = "screens/mod.rs"]
+mod screens;
 #[path = "screens/monitor.rs"]
 mod monitor_screen;
 #[path = "screens/project_wizard.rs"]
 mod project_wizard_screen;
 #[path = "theme/mod.rs"]
 pub mod theme;
+#[path = "view_models/home.rs"]
+mod home_view_model;
 
-use home_screen::HomeScreen;
 use monitor_screen::MonitorScreen;
 use project_wizard_screen::ProjectWizardScreen;
+use screens::HomeScreen;
 use theme::{ThemeName, ThemeStore};
+use home_view_model::HomeViewModel;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScreenId {
@@ -34,6 +37,7 @@ pub struct NativeShellApp {
     active_screen: ScreenId,
     theme: ThemeName,
     theme_store: ThemeStore,
+    home: HomeViewModel,
 }
 
 impl NativeShellApp {
@@ -44,6 +48,7 @@ impl NativeShellApp {
             active_screen: ScreenId::Dashboard,
             theme,
             theme_store,
+            home: HomeViewModel::seeded(),
         })
     }
 
@@ -61,10 +66,16 @@ impl NativeShellApp {
         self.theme
     }
 
+    pub fn home(&self) -> &HomeViewModel {
+        &self.home
+    }
+
     pub fn render(&self) -> ScreenView {
         let palette = self.theme.palette();
         match self.active_screen {
-            ScreenId::Dashboard => ScreenView::Dashboard(HomeScreen::themed(palette)),
+            ScreenId::Dashboard => {
+                ScreenView::Dashboard(HomeScreen::themed(palette, self.home.clone()))
+            }
             ScreenId::Wizard => ScreenView::Wizard(ProjectWizardScreen::themed(palette)),
             ScreenId::Monitor => ScreenView::Monitor(MonitorScreen::themed(palette)),
         }
@@ -76,6 +87,7 @@ mod tests {
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use super::home_view_model::ProjectStatus;
     use super::theme::ThemeName;
     use super::{NativeShellApp, ScreenId, ScreenView};
 
@@ -137,6 +149,30 @@ mod tests {
 
         let second_boot = NativeShellApp::boot(Some(path.clone())).expect("boot");
         assert_eq!(second_boot.theme(), ThemeName::Dawn);
+
+        if path.exists() {
+            let _ = fs::remove_file(path);
+        }
+    }
+
+    #[test]
+    fn boots_into_dashboard_with_project_and_session_summaries() {
+        let path = temp_theme_file("dashboard");
+        let app = NativeShellApp::boot(Some(path.clone())).expect("boot");
+        let home = app.home();
+        assert_eq!(home.active_projects.len(), 2);
+        assert_eq!(home.active_projects[0].status, ProjectStatus::Running);
+        assert_eq!(home.recent_sessions.len(), 2);
+        assert_eq!(home.primary_actions.len(), 3);
+        assert_eq!(home.primary_actions[0].id, "start-project");
+        match app.render() {
+            ScreenView::Dashboard(screen) => {
+                assert_eq!(screen.active_projects.len(), 2);
+                assert_eq!(screen.recent_sessions[0].project_id, "proj-alpha");
+                assert_eq!(screen.primary_actions[1].id, "resume-project");
+            }
+            _ => panic!("screen mismatch"),
+        }
 
         if path.exists() {
             let _ = fs::remove_file(path);
