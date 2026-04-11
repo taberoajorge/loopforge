@@ -1,18 +1,14 @@
-use crate::platform::clipboard::ClipboardService;
+use crate::platform::write_text;
 
 #[derive(Debug, Default)]
 pub struct MonitorScreenClipboard;
 
 impl MonitorScreenClipboard {
     pub fn copy_log_output(log_output: &str) -> Result<(), String> {
-        copy_with_native_clipboard(log_output)
+        write_text(log_output).map_err(|error| error.to_string())
     }
 
     pub fn copy_session_identifier(session_identifier: &str) -> Result<(), String> {
-        copy_with_native_clipboard(session_identifier)
+        write_text(session_identifier).map_err(|error| error.to_string())
     }
-}
-
-fn copy_with_native_clipboard(text: &str) -> Result<(), String> {
-    ClipboardService.write_text(text).map_err(|error| error.to_string())
 }
