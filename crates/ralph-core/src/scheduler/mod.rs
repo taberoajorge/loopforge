@@ -1,7 +1,10 @@
+mod coordinator;
 pub mod worktree_runner;
 
 use crate::prd::{Prd, UserStory};
 use std::collections::HashSet;
+
+pub use coordinator::{ArtifactCoordinator, CoordinatorError, SharedArtifactUpdate};
 
 pub fn ready_stories(prd: &Prd) -> Vec<&UserStory> {
     let passed_ids: HashSet<&str> = prd
