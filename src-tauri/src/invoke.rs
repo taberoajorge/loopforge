@@ -2,6 +2,7 @@ use crate::{agents, commands, connections, ephemeral_query, services};
 #[cfg(not(test))]
 #[path = "../../crates/loopforge-app-core/src/projects.rs"]
 mod app_core_projects;
+#[cfg(not(test))] #[path = "../../crates/loopforge-app-core/src/atomizer.rs"] mod app_core_atomizer;
 
 #[cfg(not(test))]
 pub fn attach_app(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
@@ -11,6 +12,7 @@ pub fn attach_app(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::
             "start_plan" => commands::planning::__cmd__start_plan!(plan_commands::start_plan, invoke),
             "write_to_plan" => commands::planning::__cmd__write_to_plan!(plan_commands::write_to_plan, invoke),
             "stop_plan" => commands::planning::__cmd__stop_plan!(plan_commands::stop_plan, invoke),
+            "run_atomizer" => commands::atomization::__cmd__run_atomizer!(atomizer_commands::run_atomizer, invoke),
             "create_project" => commands::projects_lifecycle::__cmd__create_project!(project_commands::create_project, invoke),
             "finalize_draft" => commands::projects_wizard::__cmd__finalize_draft!(project_commands::finalize_draft, invoke),
             "discard_draft" => commands::projects_wizard::__cmd__discard_draft!(project_commands::discard_draft, invoke),
@@ -46,6 +48,7 @@ pub fn attach_contract<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::
         }
     })
 }
+#[cfg(not(test))] mod atomizer_commands { use super::app_core_atomizer; use crate::atomizer::{AtomizeArgs, AtomizeProgress, AtomizerError}; use ralph_core::prd::Prd; use tauri::{AppHandle, Emitter}; pub async fn run_atomizer(app: AppHandle, args: AtomizeArgs) -> Result<Prd, AtomizerError> { let normalized_args = AtomizeArgs { project_id: required(args.project_id, "project_id").map_err(AtomizerError::Path)?, project_name: required(args.project_name, "project_name").map_err(AtomizerError::Path)?, project_dir: args.project_dir, agent: required(args.agent, "agent").map_err(AtomizerError::Path)?, model: optional(args.model), effort: optional(args.effort) }; let run_result = app_core_atomizer::run_atomizer(app_core_atomizer::AtomizerRequest { project_id: normalized_args.project_id.clone() }, |_| crate::atomizer::run_atomizer(app.clone(), normalized_args), |prd| prd.stories.len()).await?; for event in &run_result.events { let payload = event.as_progress_payload(); let _ = app.emit("atomization-progress", AtomizeProgress { stage: payload.stage, stage_name: payload.stage_name, message: payload.message, project_id: payload.project_id }); } Ok(run_result.output) } fn required(value: String, name: &str) -> Result<String, String> { let trimmed = value.trim().to_string(); if trimmed.is_empty() { return Err(format!("{name} is required")); } Ok(trimmed) } fn optional(value: Option<String>) -> Option<String> { value.map(|value| value.trim().to_string()).filter(|value| !value.is_empty()) } }
 
 mod plan_commands {
     use crate::app_core_plan;
