@@ -6,3 +6,6 @@ members = [
     "src-tauri",
 ]
 resolver = "2"
+
+[workspace.metadata.native-shell]
+default-screen = "dashboard"
