@@ -1,7 +1,9 @@
 [workspace]
 members = [
     "crates/app-services",
+    "crates/loopforge-app",
     "crates/loopforge-app-core",
+    "crates/loopforge-ui",
     "crates/ralph-core",
     "src-tauri",
 ]
