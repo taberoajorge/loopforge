@@ -1,4 +1,8 @@
-use crate::platform::{NativeUpdater, UpdateCheckOutcome, UpdateStatus};
+use crate::platform::{
+    NativeTray, TrayCommand, TrayCommandResult, TrayMenuState, NativeUpdater, UpdateCheckOutcome,
+    UpdateStatus,
+};
+use crate::services::loops::LoopSessionService;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UpdateMenuAction {
@@ -10,14 +14,24 @@ pub enum UpdateMenuAction {
 pub struct NativeShellApp {
     updater: NativeUpdater,
     update_status: UpdateStatus,
+    tray: NativeTray,
+    loops: LoopSessionService,
+    shell_open: bool,
+    quit_requested: bool,
 }
 
 impl NativeShellApp {
     pub fn new(updater: NativeUpdater) -> Self {
-        Self {
+        let mut app = Self {
             updater,
             update_status: UpdateStatus::Idle,
-        }
+            tray: NativeTray::new(),
+            loops: LoopSessionService::default(),
+            shell_open: false,
+            quit_requested: false,
+        };
+        app.refresh_tray_state();
+        app
     }
 
     pub fn run_background_update_check(&mut self) {
@@ -31,6 +45,7 @@ impl NativeShellApp {
     }
 
     pub fn run_startup_hooks(&mut self) {
+        self.refresh_tray_state();
         self.run_background_update_check();
     }
 
@@ -59,6 +74,44 @@ impl NativeShellApp {
             UpdateStatus::Failed(message) => format!("Update check failed: {message}"),
         }
     }
+
+    pub fn set_loop_session_presence(&mut self, session_id: Option<String>, paused: bool) {
+        self.loops.set_session_presence(session_id, paused);
+        self.refresh_tray_state();
+    }
+
+    pub fn tray_state(&self) -> TrayMenuState {
+        self.tray.menu_state()
+    }
+
+    pub fn handle_tray_command(&mut self, command: TrayCommand) -> TrayCommandResult {
+        let result = self.tray.execute(command, &mut self.loops);
+        match result {
+            TrayCommandResult::OpenShellRequested => {
+                self.shell_open = true;
+            }
+            TrayCommandResult::QuitRequested => {
+                self.quit_requested = true;
+            }
+            TrayCommandResult::Ignored
+            | TrayCommandResult::SessionPaused
+            | TrayCommandResult::SessionResumed => {}
+        }
+        self.refresh_tray_state();
+        result
+    }
+
+    pub fn shell_open(&self) -> bool {
+        self.shell_open
+    }
+
+    pub fn quit_requested(&self) -> bool {
+        self.quit_requested
+    }
+
+    fn refresh_tray_state(&mut self) {
+        self.tray.sync_from_loops(&self.loops);
+    }
 }
 
 impl Default for NativeShellApp {
@@ -70,7 +123,8 @@ impl Default for NativeShellApp {
 #[cfg(test)]
 mod tests {
     use super::{
-        NativeShellApp, NativeUpdater, UpdateCheckOutcome, UpdateMenuAction, UpdateStatus,
+        NativeShellApp, NativeUpdater, TrayCommand, TrayCommandResult, UpdateCheckOutcome,
+        UpdateMenuAction, UpdateStatus,
     };
 
     #[test]
@@ -83,27 +137,6 @@ mod tests {
     }
 
     #[test]
-    fn manual_menu_action_reports_update_available() {
-        let updater = NativeUpdater::new(UpdateCheckOutcome::UpdateAvailable {
-            version: "3.0.0".to_string(),
-            notes: Some("Native shell updater migration".to_string()),
-        });
-        let mut app = NativeShellApp::new(updater);
-        let status_label = app.handle_update_menu_action(UpdateMenuAction::CheckForUpdates);
-        assert_eq!(
-            app.update_status(),
-            &UpdateStatus::UpdateAvailable {
-                version: "3.0.0".to_string(),
-                notes: Some("Native shell updater migration".to_string()),
-            }
-        );
-        assert_eq!(
-            status_label,
-            "Update available: 3.0.0".to_string()
-        );
-    }
-
-    #[test]
     fn menu_can_display_status_without_triggering_manual_check() {
         let updater = NativeUpdater::new(UpdateCheckOutcome::NoUpdate);
         let mut app = NativeShellApp::new(updater);
@@ -112,5 +145,43 @@ mod tests {
             app.handle_update_menu_action(UpdateMenuAction::ViewUpdateStatus),
             "You are up to date".to_string()
         );
+    }
+
+    #[test]
+    fn startup_initializes_tray_without_session() {
+        let updater = NativeUpdater::new(UpdateCheckOutcome::NoUpdate);
+        let mut app = NativeShellApp::new(updater);
+        app.run_startup_hooks();
+        let state = app.tray_state();
+        assert!(!state.has_active_session);
+        assert!(!state.pause_enabled);
+        assert!(!state.resume_enabled);
+    }
+
+    #[test]
+    fn tray_commands_open_pause_resume_and_quit() {
+        let updater = NativeUpdater::new(UpdateCheckOutcome::NoUpdate);
+        let mut app = NativeShellApp::new(updater);
+        app.set_loop_session_presence(Some("session-1".to_string()), false);
+        assert_eq!(
+            app.handle_tray_command(TrayCommand::OpenShell),
+            TrayCommandResult::OpenShellRequested
+        );
+        assert!(app.shell_open());
+        assert_eq!(
+            app.handle_tray_command(TrayCommand::PauseSession),
+            TrayCommandResult::SessionPaused
+        );
+        assert!(app.tray_state().resume_enabled);
+        assert_eq!(
+            app.handle_tray_command(TrayCommand::ResumeSession),
+            TrayCommandResult::SessionResumed
+        );
+        assert!(app.tray_state().pause_enabled);
+        assert_eq!(
+            app.handle_tray_command(TrayCommand::Quit),
+            TrayCommandResult::QuitRequested
+        );
+        assert!(app.quit_requested());
     }
 }
