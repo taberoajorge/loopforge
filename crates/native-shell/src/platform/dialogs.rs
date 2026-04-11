@@ -34,9 +34,33 @@ impl NativeDialogs {
         Self
     }
 
-    pub fn confirm(&self, title: &str, message: &str) -> Result<bool, DialogError> {
-        let button = self.confirm_with_labels(title, message, "Confirm", "Cancel")?;
-        Ok(button == NativeDialogButton::Confirm)
+    pub fn confirm_project_creation(&self, project_name: &str) -> Result<bool, DialogError> {
+        let title = "Create Project";
+        let message = format!("Create project \"{project_name}\"?");
+        self.confirm_with_labels(title, &message, "Create", "Cancel")
+            .map(|button| button == NativeDialogButton::Confirm)
+    }
+
+    pub fn confirm_project_archive(&self, project_name: &str) -> Result<bool, DialogError> {
+        let title = "Archive Project";
+        let message = format!("Archive project \"{project_name}\"?");
+        self.confirm_with_labels(title, &message, "Archive", "Cancel")
+            .map(|button| button == NativeDialogButton::Confirm)
+    }
+
+    pub fn confirm_wizard_project_creation(&self, project_name: &str) -> Result<bool, DialogError> {
+        let title = "Create Project";
+        let message = format!("Create project \"{project_name}\" in the selected directory?");
+        self.confirm_with_labels(title, &message, "Create", "Cancel")
+            .map(|button| button == NativeDialogButton::Confirm)
+    }
+
+    pub fn pick_project_directory(&self) -> Result<Option<PathBuf>, DialogError> {
+        pick_path("Select project directory", true)
+    }
+
+    pub fn pick_seed_plan_file(&self) -> Result<Option<PathBuf>, DialogError> {
+        pick_path("Select a plan file", false)
     }
 
     pub fn confirm_with_labels(
@@ -57,28 +81,17 @@ impl NativeDialogs {
         }
     }
 
-    pub fn pick_folder(&self, prompt: &str) -> Result<Option<PathBuf>, DialogError> {
-        #[cfg(target_os = "macos")]
-        {
-            return pick_path_macos(prompt, true);
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            let _ = prompt;
-            Err(DialogError::UnsupportedPlatform)
-        }
-    }
+}
 
-    pub fn pick_file(&self, prompt: &str) -> Result<Option<PathBuf>, DialogError> {
-        #[cfg(target_os = "macos")]
-        {
-            return pick_path_macos(prompt, false);
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            let _ = prompt;
-            Err(DialogError::UnsupportedPlatform)
-        }
+fn pick_path(prompt: &str, folder: bool) -> Result<Option<PathBuf>, DialogError> {
+    #[cfg(target_os = "macos")]
+    {
+        return pick_path_macos(prompt, folder);
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (prompt, folder);
+        Err(DialogError::UnsupportedPlatform)
     }
 }
 
@@ -140,11 +153,7 @@ fn pick_path_macos(prompt: &str, folder: bool) -> Result<Option<PathBuf>, Dialog
 
 #[cfg(target_os = "macos")]
 #[derive(Debug)]
-struct ScriptOutput {
-    status: ExitStatus,
-    stdout: String,
-    stderr: String,
-}
+struct ScriptOutput { status: ExitStatus, stdout: String, stderr: String }
 
 #[cfg(target_os = "macos")]
 fn run_osascript(script: &str) -> Result<ScriptOutput, DialogError> {
