@@ -134,7 +134,7 @@ impl NativeShellApp {
         if let Some(recovered_session) = RecoveryService::recover(&mut self.loop_service)? {
             self.apply_loop_update(&recovered_session.update);
             self.sync_home_with_recovered_session(&recovered_session.update, recovered_session.action);
-            self.active_screen = if recovered_session.action == RecoveryAction::Reattach { ScreenId::Monitor } else { ScreenId::Dashboard };
+            self.active_screen = if recovered_session.action.opens_monitor() { ScreenId::Monitor } else { ScreenId::Dashboard };
         }
         Ok(())
     }
@@ -152,7 +152,7 @@ impl NativeShellApp {
         }
         self.home.recent_sessions.retain(|session| session.session_id != update.session_id);
         self.home.recent_sessions.insert(0, HomeSessionSummary { project_id: update.project_id.clone(), session_id: update.session_id.clone(), status: session_state });
-        let action_label = if action == RecoveryAction::Reattach { "Reattach active loop" } else { "Resume loop session" };
+        let action_label = action.home_action_label();
         if let Some(home_action) = self.home.primary_actions.iter_mut().find(|home_action| home_action.id == "open-monitor") { home_action.label = action_label.to_owned(); } else { self.home.primary_actions.push(HomeAction { id: String::from("open-monitor"), label: action_label.to_owned() }); }
     }
     fn build_home(projects: Vec<projects_service::ProjectRecord>) -> HomeViewModel {

@@ -75,8 +75,9 @@ impl LoopService {
         if !self.persistence_path.exists() { return Ok(None); }
         let raw_state = fs::read_to_string(&self.persistence_path)?;
         let Some(session) = Self::parse_session(&raw_state) else { return Ok(None); };
+        let running = session.running;
         self.session = Some(session.clone());
-        Ok(Some(Self::to_update(session.clone(), vec![Self::startup_restore_event(session.running)])))
+        Ok(Some(Self::to_update(session, vec![Self::startup_restore_event(running)])))
     }
 
     fn persist_session(&self, session: &LoopSession) -> io::Result<()> {

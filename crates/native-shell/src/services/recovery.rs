@@ -8,6 +8,26 @@ pub enum RecoveryAction {
     Resume,
 }
 
+impl RecoveryAction {
+    pub fn from_running(running: bool) -> Self {
+        if running { Self::Reattach } else { Self::Resume }
+    }
+
+    pub fn startup_event(self) -> &'static str {
+        if self == Self::Reattach {
+            "Recovered active session and reattached monitor."
+        } else {
+            "Recovered paused session ready to resume."
+        }
+    }
+
+    pub fn home_action_label(self) -> &'static str {
+        if self == Self::Reattach { "Reattach active loop" } else { "Resume loop session" }
+    }
+
+    pub fn opens_monitor(self) -> bool { self == Self::Reattach }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecoveredSession {
     pub action: RecoveryAction,
@@ -20,9 +40,8 @@ pub struct RecoveryService;
 impl RecoveryService {
     pub fn recover(loop_service: &mut LoopService) -> io::Result<Option<RecoveredSession>> {
         let Some(mut update) = loop_service.load_persisted_session()? else { return Ok(None); };
-        let action = if update.running { RecoveryAction::Reattach } else { RecoveryAction::Resume };
-        let event_message = if action == RecoveryAction::Reattach { "Recovered active session and reattached monitor." } else { "Recovered paused session ready to resume." };
-        update.events.push(event_message.to_owned());
+        let action = RecoveryAction::from_running(update.running);
+        update.events.push(action.startup_event().to_owned());
         Ok(Some(RecoveredSession { action, update }))
     }
 }
