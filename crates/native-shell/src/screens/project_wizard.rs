@@ -14,14 +14,16 @@ impl ProjectWizardScreen {
     }
 
     pub fn pick_project_directory(&self) -> Result<Option<PathBuf>, DialogError> {
-        self.dialogs.pick_project_directory()
+        self.dialogs.pick_directory("Select project directory")
     }
 
     pub fn pick_seed_plan_file(&self) -> Result<Option<PathBuf>, DialogError> {
-        self.dialogs.pick_seed_plan_file()
+        self.dialogs.pick_file("Select a plan file")
     }
 
     pub fn confirm_project_creation(&self, project_name: &str) -> Result<bool, DialogError> {
-        self.dialogs.confirm_wizard_project_creation(project_name)
+        let message = format!("Create project \"{project_name}\" in the selected directory?");
+        self.dialogs
+            .confirm("Create Project", &message, "Create", "Cancel")
     }
 }

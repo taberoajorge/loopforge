@@ -34,33 +34,23 @@ impl NativeDialogs {
         Self
     }
 
-    pub fn confirm_project_creation(&self, project_name: &str) -> Result<bool, DialogError> {
-        let title = "Create Project";
-        let message = format!("Create project \"{project_name}\"?");
-        self.confirm_with_labels(title, &message, "Create", "Cancel")
+    pub fn confirm(
+        &self,
+        title: &str,
+        message: &str,
+        confirm_label: &str,
+        cancel_label: &str,
+    ) -> Result<bool, DialogError> {
+        self.confirm_with_labels(title, message, confirm_label, cancel_label)
             .map(|button| button == NativeDialogButton::Confirm)
     }
 
-    pub fn confirm_project_archive(&self, project_name: &str) -> Result<bool, DialogError> {
-        let title = "Archive Project";
-        let message = format!("Archive project \"{project_name}\"?");
-        self.confirm_with_labels(title, &message, "Archive", "Cancel")
-            .map(|button| button == NativeDialogButton::Confirm)
+    pub fn pick_directory(&self, prompt: &str) -> Result<Option<PathBuf>, DialogError> {
+        pick_path(prompt, true)
     }
 
-    pub fn confirm_wizard_project_creation(&self, project_name: &str) -> Result<bool, DialogError> {
-        let title = "Create Project";
-        let message = format!("Create project \"{project_name}\" in the selected directory?");
-        self.confirm_with_labels(title, &message, "Create", "Cancel")
-            .map(|button| button == NativeDialogButton::Confirm)
-    }
-
-    pub fn pick_project_directory(&self) -> Result<Option<PathBuf>, DialogError> {
-        pick_path("Select project directory", true)
-    }
-
-    pub fn pick_seed_plan_file(&self) -> Result<Option<PathBuf>, DialogError> {
-        pick_path("Select a plan file", false)
+    pub fn pick_file(&self, prompt: &str) -> Result<Option<PathBuf>, DialogError> {
+        pick_path(prompt, false)
     }
 
     pub fn confirm_with_labels(

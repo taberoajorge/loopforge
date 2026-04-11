@@ -12,10 +12,14 @@ impl HomeScreen {
     }
 
     pub fn confirm_project_creation(&self, project_name: &str) -> Result<bool, DialogError> {
-        self.dialogs.confirm_project_creation(project_name)
+        let message = format!("Create project \"{project_name}\"?");
+        self.dialogs
+            .confirm("Create Project", &message, "Create", "Cancel")
     }
 
     pub fn confirm_project_archive(&self, project_name: &str) -> Result<bool, DialogError> {
-        self.dialogs.confirm_project_archive(project_name)
+        let message = format!("Archive project \"{project_name}\"?");
+        self.dialogs
+            .confirm("Archive Project", &message, "Archive", "Cancel")
     }
 }
