@@ -20,6 +20,8 @@ pub struct MonitorSession {
     pub id: String,
     pub title: String,
     pub status: String,
+    pub base_ref: Option<String>,
+    pub head_ref: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -46,11 +48,15 @@ impl MonitorState {
                     id: "session-2026-04-11".to_string(),
                     title: "Current Session".to_string(),
                     status: "running".to_string(),
+                    base_ref: None,
+                    head_ref: None,
                 },
                 MonitorSession {
                     id: "session-2026-04-10".to_string(),
                     title: "Previous Session".to_string(),
                     status: "paused".to_string(),
+                    base_ref: Some("HEAD~1".to_string()),
+                    head_ref: Some("HEAD".to_string()),
                 },
             ],
             agents: vec![
@@ -97,5 +103,16 @@ impl MonitorState {
 
     pub fn active_agent(&self) -> &MonitorAgent {
         &self.agents[self.active_agent_index]
+    }
+
+    pub fn active_selection_key(&self) -> String {
+        format!("{}::{}", self.active_session().id, self.active_agent().id)
+    }
+
+    pub fn active_diff_refs(&self) -> (Option<&str>, Option<&str>) {
+        (
+            self.active_session().base_ref.as_deref(),
+            self.active_session().head_ref.as_deref(),
+        )
     }
 }

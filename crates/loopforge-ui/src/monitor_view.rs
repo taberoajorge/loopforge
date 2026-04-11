@@ -1,11 +1,16 @@
 use crate::monitor_state::{MonitorState, MonitorSurface};
 use crate::sidebar::{build_sidebar_entries, row_count, SidebarEntry};
+use std::path::PathBuf;
+
+#[path = "diff_pane.rs"]
+mod diff_pane;
+use diff_pane::{DiffPaneSnapshot, DiffPaneState};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MonitorSnapshot {
     pub sidebar: Vec<SidebarEntry>,
     pub output_placeholder: String,
-    pub diff_placeholder: String,
+    pub diff: DiffPaneSnapshot,
     pub focused_surface: MonitorSurface,
 }
 
@@ -13,14 +18,21 @@ pub struct MonitorSnapshot {
 pub struct MonitorView {
     state: MonitorState,
     active_sidebar_row: usize,
+    diff_pane: DiffPaneState,
 }
 
 impl MonitorView {
     pub fn seeded() -> Self {
-        Self {
+        let working_directory =
+            std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let repository_path = DiffPaneState::resolve_repository_path(working_directory);
+        let mut monitor_view = Self {
             state: MonitorState::seeded(),
             active_sidebar_row: 0,
-        }
+            diff_pane: DiffPaneState::new(repository_path),
+        };
+        monitor_view.refresh_diff_pane();
+        monitor_view
     }
 
     pub fn select_sidebar_row(&mut self, row_index: usize) -> bool {
@@ -35,12 +47,17 @@ impl MonitorView {
         };
         if changed {
             self.active_sidebar_row = row_index;
+            self.refresh_diff_pane();
         }
         changed
     }
 
     pub fn cycle_focus(&mut self) {
         self.state.cycle_focus();
+    }
+
+    pub fn set_diff_scroll_top_line(&mut self, scroll_top_line: usize) {
+        self.diff_pane.set_scroll_top_line(scroll_top_line);
     }
 
     pub fn render_snapshot(&self) -> MonitorSnapshot {
@@ -52,12 +69,15 @@ impl MonitorView {
                 "Output pane: {} via {}",
                 active_session.id, active_agent.model
             ),
-            diff_placeholder: format!(
-                "Diff pane: {} for {}",
-                active_session.title, active_agent.name
-            ),
+            diff: self.diff_pane.snapshot(120),
             focused_surface: self.state.active_surface.clone(),
         }
+    }
+
+    fn refresh_diff_pane(&mut self) {
+        let (base_ref, head_ref) = self.state.active_diff_refs();
+        self.diff_pane
+            .load_for_selection(self.state.active_selection_key(), base_ref, head_ref);
     }
 }
 
@@ -67,24 +87,23 @@ mod tests {
     use crate::monitor_state::MonitorSurface;
 
     #[test]
-    fn selecting_sidebar_row_updates_output_and_diff_placeholders() {
+    fn selecting_sidebar_row_requests_new_unified_diff() {
         let mut monitor_view = MonitorView::seeded();
-        let changed = monitor_view.select_sidebar_row(2);
+        let initial_snapshot = monitor_view.render_snapshot();
+        assert_eq!(initial_snapshot.diff.request_count, 1);
+        let first_request_key = initial_snapshot.diff.request_key.clone();
+        let changed = monitor_view.select_sidebar_row(1);
         assert!(changed);
         let snapshot = monitor_view.render_snapshot();
-        assert_eq!(snapshot.output_placeholder, "Output pane: session-2026-04-11 via gpt-5-codex");
-        assert_eq!(snapshot.diff_placeholder, "Diff pane: Current Session for Codex");
+        assert_eq!(snapshot.output_placeholder, "Output pane: session-2026-04-10 via gpt-5-codex");
+        assert_eq!(snapshot.diff.request_count, 2);
+        assert_ne!(snapshot.diff.request_key, first_request_key);
         let changed_agent = monitor_view.select_sidebar_row(3);
         assert!(changed_agent);
         let updated_snapshot = monitor_view.render_snapshot();
-        assert_eq!(
-            updated_snapshot.output_placeholder,
-            "Output pane: session-2026-04-11 via claude-sonnet-4-5"
-        );
-        assert_eq!(
-            updated_snapshot.diff_placeholder,
-            "Diff pane: Current Session for Claude"
-        );
+        assert_eq!(updated_snapshot.output_placeholder, "Output pane: session-2026-04-10 via claude-sonnet-4-5");
+        assert_eq!(updated_snapshot.diff.request_count, 3);
+        assert_ne!(updated_snapshot.diff.request_key, snapshot.diff.request_key);
     }
 
     #[test]
@@ -102,10 +121,7 @@ mod tests {
         monitor_view.cycle_focus();
         let second_snapshot = monitor_view.render_snapshot();
         assert_eq!(second_snapshot.focused_surface, MonitorSurface::Diff);
-        assert_eq!(
-            second_snapshot.diff_placeholder,
-            "Diff pane: Previous Session for Codex"
-        );
+        assert!(!second_snapshot.diff.visible_lines.is_empty());
         monitor_view.cycle_focus();
         let third_snapshot = monitor_view.render_snapshot();
         assert_eq!(third_snapshot.focused_surface, MonitorSurface::Sidebar);
@@ -113,5 +129,17 @@ mod tests {
             third_snapshot.output_placeholder,
             "Output pane: session-2026-04-10 via gpt-5-codex"
         );
+    }
+
+    #[test]
+    fn diff_scroll_position_is_preserved_when_switching_selections() {
+        let mut monitor_view = MonitorView::seeded();
+        monitor_view.set_diff_scroll_top_line(20);
+        let first_snapshot = monitor_view.render_snapshot();
+        let first_scroll_top = first_snapshot.diff.scroll_top_line;
+        let changed = monitor_view.select_sidebar_row(1);
+        assert!(changed);
+        let second_snapshot = monitor_view.render_snapshot();
+        assert_eq!(second_snapshot.diff.scroll_top_line, first_scroll_top.min(second_snapshot.diff.total_lines.saturating_sub(1)));
     }
 }
