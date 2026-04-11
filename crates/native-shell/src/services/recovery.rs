@@ -41,7 +41,9 @@ impl RecoveryService {
     pub fn recover(loop_service: &mut LoopService) -> io::Result<Option<RecoveredSession>> {
         let Some(mut update) = loop_service.load_persisted_session()? else { return Ok(None); };
         let action = RecoveryAction::from_running(update.running);
-        update.events.push(action.startup_event().to_owned());
+        if !update.events.iter().any(|event| event == action.startup_event()) {
+            update.events.push(action.startup_event().to_owned());
+        }
         Ok(Some(RecoveredSession { action, update }))
     }
 }
@@ -84,5 +86,22 @@ mod tests {
         assert!(!recovered.update.running);
         assert!(recovered.update.events.iter().any(|event| event.contains("ready to resume")));
         let _ = fs::remove_dir_all(projects_root);
+    }
+
+    #[test]
+    fn recover_returns_none_without_persisted_session() {
+        let projects_root = temp_projects_root();
+        let mut service = LoopService::new(projects_root.clone());
+        let recovered = RecoveryService::recover(&mut service).expect("recover");
+        assert!(recovered.is_none());
+        let _ = fs::remove_dir_all(projects_root);
+    }
+
+    #[test]
+    fn recovery_action_surfaces_expected_home_labels() {
+        assert!(RecoveryAction::Reattach.opens_monitor());
+        assert!(!RecoveryAction::Resume.opens_monitor());
+        assert_eq!(RecoveryAction::Reattach.home_action_label(), "Reattach active loop");
+        assert_eq!(RecoveryAction::Resume.home_action_label(), "Resume loop session");
     }
 }
