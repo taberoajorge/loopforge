@@ -1,0 +1,2018 @@
+{
+  "projectName": "Refactor",
+  "feature": "",
+  "workingDirectory": "",
+  "branchName": null,
+  "stories": [
+    {
+      "id": "S-001",
+      "title": "document Floem headless-first validation strategy",
+      "description": "Write a validation strategy that explicitly treats Floem headless harness, state tests, and snapshot tests as the Phase 1 baseline. This prevents the team from blocking on an unsupported assumption about AccessKit-native end-to-end coverage.",
+      "acceptanceCriteria": [
+        "The document explicitly states that AccessKit-native E2E automation is not assumed for Floem Phase 1 validation.",
+        "The document defines headless harness tests, state tests, and snapshot tests as the required validation layers.",
+        "The document names these layers as the first-line plan for E2E coverage rather than deferring validation to later phases."
+      ],
+      "scope": {
+        "filesToModify": [],
+        "filesToCreate": [
+          "docs/validation/floem-test-strategy.md"
+        ],
+        "filesToAvoid": [
+          "src/**",
+          "src-tauri/src/**",
+          "crates/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "rg -n \"AccessKit|headless|snapshot|state tests\" docs/validation/floem-test-strategy.md"
+        ],
+        "assertions": [
+          "The strategy file rejects AccessKit-native E2E as a Phase 1 assumption.",
+          "The strategy file defines all three test layers in concrete terms."
+        ]
+      },
+      "commitMessage": "chore(docs): add Floem validation strategy",
+      "priority": "high",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 30,
+      "dependsOn": [],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-002",
+      "title": "record the Floem versus Slint decision trigger",
+      "description": "Create a short decision record that captures the trigger for choosing Slint over Floem. This keeps the refactor grounded in the stated tradeoff: accessibility automation strength versus IDE-like custom surfaces.",
+      "acceptanceCriteria": [
+        "The decision record states that Slint becomes the preferred option only if accessibility automation is a hard requirement.",
+        "The decision record states that Floem remains the Phase 1 choice while IDE-like custom surfaces are the higher priority.",
+        "The decision record presents this as an explicit trigger-based decision rather than an open-ended comparison."
+      ],
+      "scope": {
+        "filesToModify": [],
+        "filesToCreate": [
+          "docs/adr/phase1-ui-framework-choice.md"
+        ],
+        "filesToAvoid": [
+          "src/**",
+          "src-tauri/src/**",
+          "crates/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "rg -n \"Slint|Floem|accessibility automation|IDE-like custom surfaces\" docs/adr/phase1-ui-framework-choice.md"
+        ],
+        "assertions": [
+          "The ADR contains both the switch trigger and the stay-the-course condition.",
+          "The ADR frames the choice as a Phase 1 decision."
+        ]
+      },
+      "commitMessage": "chore(docs): record ui framework decision trigger",
+      "priority": "medium",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 25,
+      "dependsOn": [],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-003",
+      "title": "capture Superconductor as a layout-only benchmark",
+      "description": "Create a benchmark note that limits Superconductor usage to product-layout inspiration for terminal, diff, and guided review surfaces. This reduces the risk of copying architecture from a product that is only meant to inform interface composition.",
+      "acceptanceCriteria": [
+        "The benchmark note names terminal, diff, and guided review as the only surfaces to compare against Superconductor.",
+        "The benchmark note explicitly states that Superconductor is not an architectural model for the refactor.",
+        "The benchmark note defines concrete layout questions to evaluate without prescribing internal structure or service boundaries."
+      ],
+      "scope": {
+        "filesToModify": [],
+        "filesToCreate": [
+          "docs/benchmarks/superconductor-layout.md"
+        ],
+        "filesToAvoid": [
+          "src/**",
+          "src-tauri/src/**",
+          "crates/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "rg -n \"terminal|diff|guided review|architectural model\" docs/benchmarks/superconductor-layout.md"
+        ],
+        "assertions": [
+          "The note limits comparison scope to product layout concerns.",
+          "The note forbids treating Superconductor as a source for architecture decisions."
+        ]
+      },
+      "commitMessage": "chore(docs): add superconductor layout benchmark note",
+      "priority": "medium",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 20,
+      "dependsOn": [],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-004",
+      "title": "Create a Tauri-free app-services crate",
+      "description": "Add a new workspace crate for application service traits and DTOs that can be shared by Tauri and future native shells. This creates the seam the plan calls for before any major UI port.",
+      "acceptanceCriteria": [
+        "`crates/app-services` is registered as a workspace member and compiles without a `tauri` dependency.",
+        "The crate exposes public monitor and session service interfaces with serializable DTOs.",
+        "`src-tauri` depends on the new crate instead of defining duplicate shell-facing service contracts."
+      ],
+      "scope": {
+        "filesToModify": [
+          "Cargo.toml",
+          "src-tauri/Cargo.toml"
+        ],
+        "filesToCreate": [
+          "crates/app-services/Cargo.toml",
+          "crates/app-services/src/lib.rs",
+          "crates/app-services/src/monitor.rs",
+          "crates/app-services/src/session.rs"
+        ],
+        "filesToAvoid": [
+          "src/features/monitor/Monitor.tsx",
+          "src/features/monitor/RawOutputTab.tsx"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p app-services",
+          "cargo test"
+        ],
+        "assertions": [
+          "`cargo tree -p app-services` does not include `tauri`.",
+          "The workspace resolves `app-services` as a Cargo member."
+        ]
+      },
+      "commitMessage": "feat(core): add tauri-free app-services crate",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 60,
+      "dependsOn": [],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-005",
+      "title": "Scaffold loopforge app core crate",
+      "description": "Add a plain Rust application-core crate that will own backend service orchestration outside Tauri. This crate should define module boundaries for project services, plan sessions, atomizer orchestration, loop/session management, and event fanout.",
+      "acceptanceCriteria": [
+        "The workspace includes `crates/loopforge-app-core` and `cargo test -p loopforge-app-core` succeeds.",
+        "The crate exports dedicated modules for projects, plan sessions, atomizer orchestration, loop/session management, and event fanout.",
+        "The new crate does not depend on Tauri types such as `AppHandle`."
+      ],
+      "scope": {
+        "filesToModify": [
+          "Cargo.toml"
+        ],
+        "filesToCreate": [
+          "crates/loopforge-app-core/Cargo.toml",
+          "crates/loopforge-app-core/src/lib.rs",
+          "crates/loopforge-app-core/src/projects.rs",
+          "crates/loopforge-app-core/src/plan.rs",
+          "crates/loopforge-app-core/src/atomizer.rs",
+          "crates/loopforge-app-core/src/loop_session.rs",
+          "crates/loopforge-app-core/src/events.rs"
+        ],
+        "filesToAvoid": [
+          "src/"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p loopforge-app-core",
+          "rg \"tauri|AppHandle\" crates/loopforge-app-core"
+        ],
+        "assertions": [
+          "The new crate builds as a standalone workspace member.",
+          "Each service area is exported from `crates/loopforge-app-core/src/lib.rs`."
+        ]
+      },
+      "commitMessage": "feat(core): add app core service crate",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 45,
+      "dependsOn": [],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-006",
+      "title": "Add wizard draft roundtrip coverage",
+      "description": "Create persistence roundtrip tests for wizard drafts so saved state can be resumed without losing values. This protects the artifact contract for draft storage during the refactor.",
+      "acceptanceCriteria": [
+        "A new test file `src-tauri/tests/wizard_draft_roundtrip.rs` saves a populated wizard draft and reloads it through the resume flow with identical field values.",
+        "The roundtrip covers optional and nested draft state so serialization drift is caught, and the full Rust test suite still keeps existing artifact contract tests green."
+      ],
+      "scope": {
+        "filesToModify": [],
+        "filesToCreate": [
+          "src-tauri/tests/wizard_draft_roundtrip.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test wizard_draft_roundtrip",
+          "cargo test"
+        ],
+        "assertions": [
+          "Wizard draft roundtrip tests pass with no field loss after save and reload.",
+          "Existing artifact contract tests continue to pass in the workspace test run."
+        ]
+      },
+      "commitMessage": "test(tauri): add wizard draft roundtrip tests",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 45,
+      "dependsOn": [],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-007",
+      "title": "Unify wizard persistence around the canonical draft artifact",
+      "description": "Make `draft.json` the single canonical wizard snapshot and have both `save_wizard_state` and `save_draft` serialize the same payload. This removes the split-brain between DB JSON and filesystem state while preserving resume behavior.",
+      "acceptanceCriteria": [
+        "`save_wizard_state` and `save_draft` share one serialization path for the canonical wizard payload.",
+        "Persisting the same wizard state produces structurally identical JSON for the DB snapshot and `draft.json`.",
+        "Wizard resume continues to load successfully from the canonical payload shape."
+      ],
+      "scope": {
+        "filesToModify": [
+          "src-tauri/src/projects/wizard.rs",
+          "src-tauri/src/contract_tests/artifacts.rs"
+        ],
+        "filesToCreate": [
+          "src-tauri/src/contract_tests/wizard_persistence.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test"
+        ],
+        "assertions": [
+          "A persistence test compares DB JSON and `draft.json` for structural equality.",
+          "A resume test passes using the canonical draft payload."
+        ]
+      },
+      "commitMessage": "fix(tauri): unify wizard draft persistence",
+      "priority": "high",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-006"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-008",
+      "title": "Add plan cleanup regression coverage",
+      "description": "Add tests for plan cleanup behavior so generated plan artifacts are removed predictably without damaging other project state. This sets a clear contract before cleanup logic is refactored.",
+      "acceptanceCriteria": [
+        "A new test file `src-tauri/tests/plan_cleanup.rs` verifies cleanup removes generated plan artifacts for the targeted project when cleanup is invoked.",
+        "The suite asserts cleanup does not delete unrelated project files or artifacts, and the full Rust test suite still keeps existing artifact contract tests green."
+      ],
+      "scope": {
+        "filesToModify": [],
+        "filesToCreate": [
+          "src-tauri/tests/plan_cleanup.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test plan_cleanup",
+          "cargo test"
+        ],
+        "assertions": [
+          "Plan cleanup tests pass for both targeted removal and unrelated-file preservation cases.",
+          "Existing artifact contract tests continue to pass in the workspace test run."
+        ]
+      },
+      "commitMessage": "test(tauri): add plan cleanup tests",
+      "priority": "critical",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 30,
+      "dependsOn": [],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-009",
+      "title": "Extract worktree primitives into ralph-core",
+      "description": "Create a native-safe worktree module in `ralph-core` and move only Git/worktree operations into it. This establishes a reusable seam for create, list, remove, inspect, diff, and safe parsing without pulling Tauri-only concerns into the core library.",
+      "acceptanceCriteria": [
+        "`crates/ralph-core/src/worktree.rs` exists and is exported from `crates/ralph-core/src/lib.rs`.",
+        "The new module exposes create, list, remove, inspect, and diff operations plus safe parsing helpers for Git/worktree command output.",
+        "The worktree module compiles without Tauri, SQLite, tray, or notification dependencies."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/ralph-core/src/lib.rs"
+        ],
+        "filesToCreate": [
+          "crates/ralph-core/src/worktree.rs"
+        ],
+        "filesToAvoid": [
+          "src/",
+          "src-tauri/src/tray.rs",
+          "src-tauri/src/notifications.rs"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p ralph-core",
+          "rg \"tauri|AppHandle|rusqlite\" crates/ralph-core/src/worktree.rs"
+        ],
+        "assertions": [
+          "The public API is reachable as `ralph_core::worktree`.",
+          "No Tauri-specific imports appear in the new module."
+        ]
+      },
+      "commitMessage": "feat(core): extract worktree primitives into ralph-core",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 60,
+      "dependsOn": [],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-010",
+      "title": "Extract story scheduler",
+      "description": "Move dependency resolution out of `loop_engine::run` into a dedicated scheduler so ready-set logic is isolated and testable. This reduces coupling before any concurrency behavior is introduced.",
+      "acceptanceCriteria": [
+        "`loop_engine::run` obtains ready stories from a scheduler module instead of traversing `dependsOn` inline.",
+        "Given a mix of completed, ready, and blocked stories, the scheduler returns only stories whose `dependsOn` entries are satisfied in deterministic order."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/ralph-core/src/loop_engine.rs",
+          "crates/ralph-core/src/lib.rs"
+        ],
+        "filesToCreate": [
+          "crates/ralph-core/src/scheduler/mod.rs",
+          "crates/ralph-core/tests/scheduler_ready_sets.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p ralph-core"
+        ],
+        "assertions": [
+          "Scheduler tests cover blocked, ready, and fully satisfied dependency graphs.",
+          "`loop_engine::run` uses a single scheduler entry point to determine the next ready set."
+        ]
+      },
+      "commitMessage": "refactor(core): extract story scheduler",
+      "priority": "high",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 45,
+      "dependsOn": [],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-011",
+      "title": "Add worktree regression coverage",
+      "description": "Create an integration test for worktree behavior in ralph-core so the refactor has an explicit contract around setup and teardown. This reduces the risk of changing repository workspace semantics while other phase-0 work lands.",
+      "acceptanceCriteria": [
+        "A new integration test file `crates/ralph-core/tests/worktree.rs` covers successful worktree creation and teardown in an isolated temporary repository.",
+        "The test suite asserts that repeated setup does not leak worktree state or mutate unrelated repository contents, and the full Rust test suite still keeps existing contract tests green."
+      ],
+      "scope": {
+        "filesToModify": [],
+        "filesToCreate": [
+          "crates/ralph-core/tests/worktree.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p ralph-core --test worktree",
+          "cargo test"
+        ],
+        "assertions": [
+          "The worktree integration test passes.",
+          "Existing contract tests continue to pass in the workspace test run."
+        ]
+      },
+      "commitMessage": "test(core): add worktree regression coverage",
+      "priority": "critical",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-009"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-012",
+      "title": "Add scheduler merge regression coverage",
+      "description": "Add focused tests for scheduler merge behavior so queue composition remains stable during the refactor. The goal is to lock in merge semantics before any scheduling internals change.",
+      "acceptanceCriteria": [
+        "A new integration test file `crates/ralph-core/tests/scheduler_merge.rs` covers merging incoming scheduled work into an existing schedule without dropping already queued items.",
+        "The suite asserts deterministic merged output for overlapping scheduler inputs, and the full Rust test suite still keeps existing contract tests green."
+      ],
+      "scope": {
+        "filesToModify": [],
+        "filesToCreate": [
+          "crates/ralph-core/tests/scheduler_merge.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p ralph-core --test scheduler_merge",
+          "cargo test"
+        ],
+        "assertions": [
+          "Scheduler merge tests pass for both non-overlapping and overlapping merge cases.",
+          "Existing contract tests continue to pass in the workspace test run."
+        ]
+      },
+      "commitMessage": "test(core): cover scheduler merge behavior",
+      "priority": "critical",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 30,
+      "dependsOn": [
+        "S-010"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-013",
+      "title": "Model multiple worktrees in the loop engine",
+      "description": "Extend `crates/ralph-core` so loop state can represent multiple worktrees and per-worktree execution metadata while keeping the current single-workdir flow as the default case. This keeps worktree awareness inside the domain engine.",
+      "acceptanceCriteria": [
+        "Loop engine domain types can represent more than one worktree in a single session.",
+        "New worktree fields deserialize safely when absent, preserving backward compatibility for existing persisted data.",
+        "Unit tests cover both single-worktree and multi-worktree configurations."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/ralph-core/src/loop_engine/mod.rs",
+          "crates/ralph-core/src/lib.rs"
+        ],
+        "filesToCreate": [
+          "crates/ralph-core/src/loop_engine/worktree.rs",
+          "crates/ralph-core/tests/worktree_state.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/src/invoke.rs",
+          "src/features/monitor/Monitor.tsx"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p ralph-core"
+        ],
+        "assertions": [
+          "Deserializing persisted loop data without worktree fields yields a valid default state.",
+          "Multi-worktree state preserves distinct workdir identifiers."
+        ]
+      },
+      "commitMessage": "feat(core): add worktree domain primitives",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 75,
+      "dependsOn": [
+        "S-009"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-014",
+      "title": "Add a deterministic scheduler for parallel worktree completion",
+      "description": "Introduce scheduling primitives in `crates/ralph-core` that accept parallel worktree completions and serialize how shared state should merge. This prevents races on `prd.json`, `guardrails.md`, and session state before shell persistence executes.",
+      "acceptanceCriteria": [
+        "The coordinator exposes an API that orders concurrent worktree completions deterministically.",
+        "Shared updates are emitted as serialized merge actions instead of direct concurrent writes.",
+        "Unit tests cover conflicting completions and produce stable ordering across repeated runs."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/ralph-core/src/loop_engine/mod.rs",
+          "crates/ralph-core/src/lib.rs"
+        ],
+        "filesToCreate": [
+          "crates/ralph-core/src/loop_engine/scheduler.rs",
+          "crates/ralph-core/tests/worktree_scheduler.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/src/projects/wizard.rs"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p ralph-core"
+        ],
+        "assertions": [
+          "Scheduler tests prove deterministic merge ordering for the same input set.",
+          "The scheduler API does not introduce shell or Tauri types."
+        ]
+      },
+      "commitMessage": "feat(core): add parallel worktree scheduler",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 90,
+      "dependsOn": [
+        "S-010",
+        "S-013"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-015",
+      "title": "Provision per-story worktrees",
+      "description": "Add a runner that prepares a dedicated worktree for a scheduled story before handing execution to the existing worker loop. This makes worktree setup explicit while preserving sequential execution inside each worker.",
+      "acceptanceCriteria": [
+        "Starting a scheduled story creates a unique worktree location associated with that story before worker execution begins.",
+        "The new runner invokes the existing per-story loop as a single sequential worker and does not introduce intra-story parallel steps.",
+        "If worktree creation fails, the story does not start its worker loop."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/ralph-core/src/loop_engine.rs",
+          "crates/ralph-core/src/scheduler/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/ralph-core/src/scheduler/worktree_runner.rs",
+          "crates/ralph-core/tests/worktree_runner.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p ralph-core"
+        ],
+        "assertions": [
+          "Runner tests prove different stories receive different worktree paths.",
+          "A worker fixture confirms one story still executes through a sequential core loop."
+        ]
+      },
+      "commitMessage": "feat(core): provision per-story worktrees",
+      "priority": "high",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-009",
+        "S-010",
+        "S-013"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-016",
+      "title": "Serialize shared artifact updates",
+      "description": "Introduce a coordinator that owns writes to shared artifacts and accepts update requests from workers. This addresses the main phase-0 correctness risk before parallel execution is enabled.",
+      "acceptanceCriteria": [
+        "Workers submit shared artifact mutations through a coordinator interface instead of writing artifacts directly.",
+        "Concurrent update requests are applied one at a time, with a test proving serialized ordering and no interleaved writes."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/ralph-core/src/loop_engine.rs",
+          "crates/ralph-core/src/scheduler/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/ralph-core/src/scheduler/coordinator.rs",
+          "crates/ralph-core/tests/artifact_coordinator.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p ralph-core"
+        ],
+        "assertions": [
+          "Coordinator tests submit simultaneous write requests and observe serialized application.",
+          "No direct shared artifact write path remains reachable from worker tasks."
+        ]
+      },
+      "commitMessage": "feat(core): serialize shared artifact writes",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 50,
+      "dependsOn": [
+        "S-010"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-017",
+      "title": "Run ready stories in parallel",
+      "description": "Use the extracted scheduler to dispatch the full ready set concurrently, with one worktree and one worker per ready story. Keep each worker's internal loop sequential while routing all shared artifact writes through the coordinator.",
+      "acceptanceCriteria": [
+        "When multiple stories are ready, the engine starts one worker task per ready story and binds each task to a distinct worktree.",
+        "Parallel workers execute through the existing sequential per-story loop, and shared artifact writes remain serialized by the coordinator.",
+        "An integration test shows one ready story can begin execution without waiting for another ready story to finish."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/ralph-core/src/loop_engine.rs",
+          "crates/ralph-core/src/scheduler/mod.rs",
+          "crates/ralph-core/src/scheduler/worktree_runner.rs",
+          "crates/ralph-core/src/scheduler/coordinator.rs"
+        ],
+        "filesToCreate": [
+          "crates/ralph-core/tests/parallel_scheduler.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test -p ralph-core"
+        ],
+        "assertions": [
+          "Integration tests show two ready stories executing concurrently in separate worktrees.",
+          "Artifact state remains consistent when both workers request updates during the same run."
+        ]
+      },
+      "commitMessage": "feat(core): run ready stories in parallel",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 60,
+      "dependsOn": [
+        "S-014",
+        "S-015",
+        "S-016"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-018",
+      "title": "Serialize shell artifact writes through the worktree coordinator",
+      "description": "Apply the coordinator in the Tauri shell so shared artifact writes and DB-backed session updates flow through one ordered path. This protects the existing artifact contract while enabling parallel worktree execution.",
+      "acceptanceCriteria": [
+        "Loop manager write paths for `prd.json`, `guardrails.md`, and DB-backed session updates consume coordinator output instead of writing concurrently.",
+        "Artifact persistence in `documents.rs` and helper code still writes to the existing project contract paths.",
+        "Contract tests fail if serialized merge actions target the wrong files or execute out of order."
+      ],
+      "scope": {
+        "filesToModify": [
+          "src-tauri/src/loop_manager/helpers.rs",
+          "src-tauri/src/projects/documents.rs",
+          "src-tauri/src/contract_tests/artifacts.rs"
+        ],
+        "filesToCreate": [
+          "src-tauri/src/contract_tests/merge_coordinator.rs"
+        ],
+        "filesToAvoid": [
+          "src/features/monitor/Monitor.tsx",
+          "src/features/monitor/RawOutputTab.tsx"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test"
+        ],
+        "assertions": [
+          "A contract test exercises parallel completion inputs and verifies a single ordered write sequence.",
+          "Artifact filenames under `~/.config/loopforge/projects/<project-id>/` remain unchanged."
+        ]
+      },
+      "commitMessage": "refactor(tauri): serialize loop artifact merges",
+      "priority": "high",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 75,
+      "dependsOn": [
+        "S-014",
+        "S-016"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-019",
+      "title": "Extract monitor runtime services behind app-services adapters",
+      "description": "Move monitor and session orchestration behind adapters that implement the new app-services interfaces. This keeps `src-tauri/src/invoke.rs` thin and removes direct `AppHandle` and `State` coupling from reusable service logic.",
+      "acceptanceCriteria": [
+        "Adapter-independent monitor and session service code no longer accepts `AppHandle` or `State` in its public API.",
+        "`src-tauri/src/invoke.rs` delegates command handling to adapter-backed services instead of embedding orchestration logic.",
+        "Existing monitor and session commands keep their current observable behavior in tests."
+      ],
+      "scope": {
+        "filesToModify": [
+          "src-tauri/src/invoke.rs",
+          "src-tauri/src/loop_manager/helpers.rs",
+          "crates/app-services/src/monitor.rs",
+          "crates/app-services/src/session.rs"
+        ],
+        "filesToCreate": [
+          "src-tauri/src/services/mod.rs",
+          "src-tauri/src/services/monitor_adapter.rs",
+          "src-tauri/src/services/session_adapter.rs"
+        ],
+        "filesToAvoid": [
+          "src/features/monitor/Monitor.tsx",
+          "src/features/monitor/RawOutputTab.tsx"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "rg \"AppHandle|State<\" src-tauri/src/services src-tauri/src/invoke.rs"
+        ],
+        "assertions": [
+          "Reusable service modules do not depend on `AppHandle` or `State`.",
+          "`invoke.rs` contains translation code and service calls, not business orchestration."
+        ]
+      },
+      "commitMessage": "refactor(tauri): extract monitor services behind adapters",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 75,
+      "dependsOn": [
+        "S-004"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-020",
+      "title": "Adapt project lifecycle commands to app-core services",
+      "description": "Move project lifecycle behavior behind the new app-core seam and reduce Tauri command handlers to request/response adapters. This keeps project business rules in plain Rust while preserving the existing UI contract.",
+      "acceptanceCriteria": [
+        "Project lifecycle commands in `src-tauri/src/invoke.rs` delegate to functions in `crates/loopforge-app-core/src/projects.rs`.",
+        "The Tauri layer only maps inputs, dependencies, and results/errors for those commands and does not own project business rules.",
+        "Existing command names and response shapes remain compatible with current UI callers."
+      ],
+      "scope": {
+        "filesToModify": [
+          "src-tauri/src/invoke.rs",
+          "crates/loopforge-app-core/src/projects.rs"
+        ],
+        "filesToCreate": [],
+        "filesToAvoid": [
+          "src/"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "rg \"create_project|finalize_draft|discard_draft|list_projects|get_project_detail\" src-tauri/src/invoke.rs"
+        ],
+        "assertions": [
+          "Project business logic lives behind the app-core seam.",
+          "The Tauri command layer remains a thin adapter."
+        ]
+      },
+      "commitMessage": "refactor(tauri): route project commands through app core",
+      "priority": "high",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 90,
+      "dependsOn": [
+        "S-005"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-021",
+      "title": "Centralize plan session cleanup through the plan service",
+      "description": "Move plan session lifecycle handling behind app-core and give every exit path a shared cleanup routine. The cleanup path should kill the child process, flush any partial plan, remove the session entry, and be reused by explicit stop, window close, and restart recovery.",
+      "acceptanceCriteria": [
+        "`start_plan`, `write_to_plan`, and `stop_plan` in `src-tauri/src/invoke.rs` delegate to `crates/loopforge-app-core/src/plan.rs`.",
+        "A single cleanup path kills the plan child process, flushes partial plan state, and removes the session entry.",
+        "Window close handling and restart recovery call the same cleanup routine used by explicit stop."
+      ],
+      "scope": {
+        "filesToModify": [
+          "src-tauri/src/invoke.rs",
+          "src-tauri/src/plan_engine/start.rs",
+          "src-tauri/src/lib.rs",
+          "crates/loopforge-app-core/src/plan.rs"
+        ],
+        "filesToCreate": [],
+        "filesToAvoid": [
+          "src/"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "rg \"cleanup|stop_plan|write_to_plan|start_plan\" src-tauri/src/invoke.rs src-tauri/src/plan_engine/start.rs crates/loopforge-app-core/src/plan.rs"
+        ],
+        "assertions": [
+          "Only one cleanup implementation owns process teardown and partial-plan flushing.",
+          "All plan exit paths call the shared cleanup routine."
+        ]
+      },
+      "commitMessage": "fix(tauri): centralize plan session cleanup",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 90,
+      "dependsOn": [
+        "S-005",
+        "S-008"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-022",
+      "title": "Move atomizer orchestration behind app-core",
+      "description": "Shift atomizer sequencing and event payload construction into the plain Rust service crate. Tauri should only invoke the service and fan out already-structured progress events to the desktop shell.",
+      "acceptanceCriteria": [
+        "`run_atomizer` delegates stage sequencing and result assembly to `crates/loopforge-app-core/src/atomizer.rs`.",
+        "Atomization progress data is produced in app-core and emitted by Tauri as a thin adapter layer.",
+        "The app-core atomizer and event modules compile without Tauri imports."
+      ],
+      "scope": {
+        "filesToModify": [
+          "src-tauri/src/invoke.rs",
+          "crates/loopforge-app-core/src/atomizer.rs",
+          "crates/loopforge-app-core/src/events.rs"
+        ],
+        "filesToCreate": [],
+        "filesToAvoid": [
+          "src/"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "rg \"tauri|AppHandle\" crates/loopforge-app-core/src/atomizer.rs crates/loopforge-app-core/src/events.rs"
+        ],
+        "assertions": [
+          "`run_atomizer` no longer owns orchestration logic inline in the Tauri layer.",
+          "Event payload generation can be tested without a Tauri runtime."
+        ]
+      },
+      "commitMessage": "refactor(tauri): route atomizer orchestration through app core",
+      "priority": "high",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 75,
+      "dependsOn": [
+        "S-005"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-023",
+      "title": "Gate loop parallelism behind config in app-core",
+      "description": "Move loop/session management behind the app-core seam while preserving Phase 0 safety. Parallel execution must remain disabled by default and only activate when an explicit config flag enables it.",
+      "acceptanceCriteria": [
+        "`start_loop`, `stop_loop`, and `session_stats` delegate to `crates/loopforge-app-core/src/loop_session.rs`.",
+        "Parallel execution stays off unless an explicit config flag enables it, and the default behavior remains serial.",
+        "Automated tests cover both config states and prevent accidental parallel execution when the flag is unset."
+      ],
+      "scope": {
+        "filesToModify": [
+          "src-tauri/src/invoke.rs",
+          "crates/loopforge-app-core/src/loop_session.rs",
+          "crates/loopforge-app-core/src/lib.rs"
+        ],
+        "filesToCreate": [],
+        "filesToAvoid": [
+          "src/"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "rg \"parallel|start_loop|stop_loop|session_stats\" src-tauri/src/invoke.rs crates/loopforge-app-core/src/loop_session.rs"
+        ],
+        "assertions": [
+          "Execution remains deterministic with the flag unset.",
+          "The Tauri execution commands only adapt app-core results."
+        ]
+      },
+      "commitMessage": "refactor(core): gate loop parallelism behind config",
+      "priority": "high",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 75,
+      "dependsOn": [
+        "S-005",
+        "S-017",
+        "S-018"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-024",
+      "title": "Scaffold Floem workspace crates",
+      "description": "Expand the Rust workspace to add a Floem UI crate and a separate native app binary while leaving the existing Tauri manifest intact. This creates a safe entry point for a MonitorView POC without removing or destabilizing the current desktop app.",
+      "acceptanceCriteria": [
+        "The root `Cargo.toml` includes `crates/loopforge-ui` and `crates/loopforge-app` as workspace members.",
+        "`cargo check --manifest-path crates/loopforge-app/Cargo.toml` succeeds.",
+        "`cargo check --manifest-path src-tauri/Cargo.toml` still succeeds without requiring changes to the Tauri manifest.",
+        "Running the new native binary opens a Floem window with placeholder regions for sidebar, output, and diff."
+      ],
+      "scope": {
+        "filesToModify": [
+          "Cargo.toml"
+        ],
+        "filesToCreate": [
+          "crates/loopforge-ui/Cargo.toml",
+          "crates/loopforge-ui/src/lib.rs",
+          "crates/loopforge-app/Cargo.toml",
+          "crates/loopforge-app/src/main.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/Cargo.toml"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo check --manifest-path crates/loopforge-app/Cargo.toml",
+          "cargo check --manifest-path src-tauri/Cargo.toml"
+        ],
+        "assertions": [
+          "The Floem app starts without invoking any Tauri runtime code.",
+          "The existing Tauri crate remains independently buildable from its own manifest."
+        ]
+      },
+      "commitMessage": "feat(core): scaffold floem workspace crates",
+      "priority": "critical",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-001",
+        "S-002",
+        "S-003"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-025",
+      "title": "Add a shared unified diff service",
+      "description": "Create a small diff service in `ralph-core` that returns unified diff text from repository inputs through a stable Rust API. This removes shell-specific diff logic from UI callers and makes the same service usable from both Tauri and Floem.",
+      "acceptanceCriteria": [
+        "`ralph-core` exposes a diff API that returns unified diff text and typed errors.",
+        "The service implementation does not require callers to assemble shell commands.",
+        "Automated tests cover a no-change case and a changed-file case with unified patch output."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/ralph-core/Cargo.toml",
+          "crates/ralph-core/src/lib.rs"
+        ],
+        "filesToCreate": [
+          "crates/ralph-core/src/diff.rs",
+          "crates/ralph-core/tests/diff_service.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test --manifest-path crates/ralph-core/Cargo.toml"
+        ],
+        "assertions": [
+          "A caller can request a unified diff through Rust function arguments alone.",
+          "A changed fixture repository produces patch text with added, removed, and context lines."
+        ]
+      },
+      "commitMessage": "feat(core): add shared unified diff service",
+      "priority": "critical",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 60,
+      "dependsOn": [],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-026",
+      "title": "Port monitor tokens into a Rust theme",
+      "description": "Translate the monitor design tokens from `src/tokens.css` into a Rust theme module for the Floem UI. Preserve the existing OKLCH values, terminal palette, and a CRT overlay rendered with custom paint so the POC matches the current monitor look in both color modes.",
+      "acceptanceCriteria": [
+        "The Floem UI crate exposes named theme tokens for dark mode, light mode, and the terminal palette using the same OKLCH values as the web monitor.",
+        "Monitor views consume theme tokens rather than duplicating raw color literals in UI code.",
+        "The CRT overlay is implemented as custom paint and can be applied to the monitor surfaces without using a shader."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/loopforge-ui/src/lib.rs"
+        ],
+        "filesToCreate": [
+          "crates/loopforge-ui/src/theme.rs",
+          "crates/loopforge-ui/src/crt_overlay.rs"
+        ],
+        "filesToAvoid": [
+          "src/tokens.css"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo check --manifest-path crates/loopforge-app/Cargo.toml",
+          "cargo test --manifest-path crates/loopforge-ui/Cargo.toml"
+        ],
+        "assertions": [
+          "Theme setup supports both dark and light mode without changing token names in view code.",
+          "The output pane and diff pane can reference the same terminal palette constants from Rust."
+        ]
+      },
+      "commitMessage": "feat(tokens): port monitor tokens to Rust theme",
+      "priority": "high",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 50,
+      "dependsOn": [
+        "S-024"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-027",
+      "title": "Build the monitor shell and sidebar",
+      "description": "Create the Floem `MonitorView` shell with the three required native surfaces and a sidebar layout mapped directly from the existing React monitor structure. Use seeded monitor state that matches the current session and agent model so the layout and focus behavior can be validated before live data wiring.",
+      "acceptanceCriteria": [
+        "The Floem app renders a three-region monitor layout containing a sidebar, output pane, and diff pane.",
+        "The sidebar lists session and agent entries from seeded state and updates the active selection when the user changes rows.",
+        "Keyboard focus can move between sidebar, output pane, and diff pane without trapping or losing the active selection state."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/loopforge-ui/src/lib.rs",
+          "crates/loopforge-app/src/main.rs"
+        ],
+        "filesToCreate": [
+          "crates/loopforge-ui/src/monitor_view.rs",
+          "crates/loopforge-ui/src/monitor_state.rs",
+          "crates/loopforge-ui/src/sidebar.rs"
+        ],
+        "filesToAvoid": [
+          "src/features/monitor/Monitor.tsx",
+          "src/features/monitor/RawOutputTab.tsx"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo check --manifest-path crates/loopforge-app/Cargo.toml"
+        ],
+        "assertions": [
+          "Selecting a different sidebar row updates placeholder content in the other two panes.",
+          "Tab or defined keyboard shortcuts can repeatedly cycle focus across all three surfaces."
+        ]
+      },
+      "commitMessage": "feat(frontend): build floem monitor shell",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 75,
+      "dependsOn": [
+        "S-024",
+        "S-026"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-028",
+      "title": "Stream agent output into the terminal pane",
+      "description": "Implement log-backed rendering for `agent_output.log` in the Floem output pane, mapped from the behavior of `RawOutputTab.tsx` but without taking PTY ownership. The pane should append live updates, preserve scrollback, and support the first POC success criterion for live output rendering.",
+      "acceptanceCriteria": [
+        "The output pane tails `agent_output.log` and shows newly appended lines in the active monitor session without restarting the app.",
+        "The pane supports auto-follow when pinned to the bottom and preserves manual scrollback when the user scrolls away from the tail.",
+        "Rendering remains usable with a fixture log of at least 5,000 lines."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/loopforge-ui/src/monitor_view.rs",
+          "crates/loopforge-ui/src/monitor_state.rs"
+        ],
+        "filesToCreate": [
+          "crates/loopforge-ui/src/log_stream.rs",
+          "crates/loopforge-ui/src/output_pane.rs"
+        ],
+        "filesToAvoid": [
+          "src/features/monitor/RawOutputTab.tsx"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test --manifest-path crates/loopforge-ui/Cargo.toml",
+          "cargo check --manifest-path crates/loopforge-app/Cargo.toml"
+        ],
+        "assertions": [
+          "Appending lines to a fixture `agent_output.log` updates the pane within the same running session.",
+          "Manual scroll position is not forced back to the bottom until auto-follow is re-enabled."
+        ]
+      },
+      "commitMessage": "feat(frontend): stream monitor log output",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 90,
+      "dependsOn": [
+        "S-027"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-029",
+      "title": "Render unified diffs in the diff pane",
+      "description": "Wire the Floem diff pane to the shared `ralph-core` diff service and render unified patches for the active selection. This completes the first end-to-end success criterion by pairing live log output with native diff rendering in the POC.",
+      "acceptanceCriteria": [
+        "The diff pane requests unified patch text through the shared `ralph-core` API instead of shell-specific UI code.",
+        "Added, removed, and context lines render with the Floem theme in both dark and light modes.",
+        "Large patches remain scrollable and keep the UI responsive while the diff is loading or switching."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/loopforge-ui/src/monitor_view.rs",
+          "crates/loopforge-ui/src/monitor_state.rs"
+        ],
+        "filesToCreate": [
+          "crates/loopforge-ui/src/diff_pane.rs"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test --manifest-path crates/ralph-core/Cargo.toml",
+          "cargo test --manifest-path crates/loopforge-ui/Cargo.toml",
+          "cargo check --manifest-path crates/loopforge-app/Cargo.toml"
+        ],
+        "assertions": [
+          "Changing the active session or agent causes the diff pane to request a new unified diff through `ralph-core`.",
+          "A large fixture patch renders without blank rows, truncated hunks, or lost scroll position."
+        ]
+      },
+      "commitMessage": "feat(frontend): render shared monitor diffs",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 80,
+      "dependsOn": [
+        "S-025",
+        "S-027"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-030",
+      "title": "Harden the POC against Phase 1 gates",
+      "description": "Add the minimum background ingestion, stress fixtures, and repeatable checks needed to judge whether the Floem POC passes the Phase 1 hard gates. The outcome should make it clear whether Floem is viable for Phase 2 or whether the work should pivot to `iced`.",
+      "acceptanceCriteria": [
+        "Log ingestion and diff loading are processed off the UI thread so fixture playback does not visibly stall the window.",
+        "Repeatable checks exist for 5,000-line scroll performance, large-patch diff rendering, keyboard focus reliability, and dark/light parity.",
+        "A short decision record captures whether Floem passed every hard gate or should pivot to `iced` before Phase 2."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/loopforge-ui/src/log_stream.rs",
+          "crates/loopforge-ui/src/output_pane.rs",
+          "crates/loopforge-ui/src/diff_pane.rs",
+          "crates/loopforge-ui/src/monitor_view.rs"
+        ],
+        "filesToCreate": [
+          "crates/loopforge-ui/tests/monitor_poc.rs",
+          "docs/monitor-poc-hard-gates.md"
+        ],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test --manifest-path crates/loopforge-ui/Cargo.toml",
+          "cargo check --manifest-path crates/loopforge-app/Cargo.toml"
+        ],
+        "assertions": [
+          "Fixture playback for logs and diffs keeps the window interactive while data is being ingested.",
+          "The hard-gate document records a pass or fail result for every exit criterion in the phase plan."
+        ]
+      },
+      "commitMessage": "test(frontend): add phase one monitor hard-gate checks",
+      "priority": "high",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 90,
+      "dependsOn": [
+        "S-028",
+        "S-029"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-031",
+      "title": "Render the dashboard in the native shell",
+      "description": "Port the Home surface into the native shell as the default app screen so users can land on a native dashboard instead of the React/Tauri shell. Keep the first pass focused on parity for visible project and session summaries, not on secondary desktop integrations.",
+      "acceptanceCriteria": [
+        "Launching the native shell opens the dashboard as the default surface without loading the React router.",
+        "The dashboard displays active projects, recent session status, and primary project actions in a native shell view that matches the Home surface structure."
+      ],
+      "scope": {
+        "filesToModify": [
+          "Cargo.toml",
+          "crates/native-shell/src/app.rs",
+          "crates/native-shell/src/screens/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/screens/home.rs",
+          "crates/native-shell/src/view_models/home.rs"
+        ],
+        "filesToAvoid": [
+          "src/features/projects/Home.tsx",
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "The native shell starts on the dashboard screen.",
+          "No active startup path depends on the React router to render the dashboard."
+        ]
+      },
+      "commitMessage": "feat(frontend): port dashboard to native shell",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 90,
+      "dependsOn": [
+        "S-005",
+        "S-030"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-032",
+      "title": "Complete project wizard and lifecycle actions in the native shell",
+      "description": "Add native flows to create, resume, and archive projects so the dashboard is operational and not just informational. This closes the project management parity gate required before Tauri can be retired.",
+      "acceptanceCriteria": [
+        "Users can create a project through a native shell wizard and persist the draft and finalized project artifacts.",
+        "Users can resume an existing project and archive a project directly from native shell actions without using Tauri commands."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/app.rs",
+          "crates/native-shell/src/screens/home.rs",
+          "crates/native-shell/src/screens/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/screens/project_wizard.rs",
+          "crates/native-shell/src/services/projects.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Creating a project writes the expected project directory and artifacts.",
+          "Resume and archive actions update the dashboard state without the Tauri bridge."
+        ]
+      },
+      "commitMessage": "feat(frontend): add native project lifecycle actions",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 90,
+      "dependsOn": [
+        "S-007",
+        "S-020",
+        "S-031"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-033",
+      "title": "Run planning sessions from the native shell",
+      "description": "Implement native planning controls that start a planning session, stream activity, accept follow-up input, and stop the session. This removes reliance on the React/Tauri command bridge for plan generation.",
+      "acceptanceCriteria": [
+        "A user can start a planning session from a project in the native shell and see streaming plan activity in the shell UI.",
+        "A user can send additional input and stop the session, and the resulting plan artifact is persisted to the project directory."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/app.rs",
+          "crates/native-shell/src/screens/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/screens/planning.rs",
+          "crates/native-shell/src/services/planning.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Planning output is streamed into the native shell view.",
+          "Stopping a planning session leaves the shell in a consistent state and preserves written plan output."
+        ]
+      },
+      "commitMessage": "feat(frontend): add native planning flow",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 75,
+      "dependsOn": [
+        "S-021",
+        "S-032"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-034",
+      "title": "Run atomization from the native shell",
+      "description": "Add a native atomization flow that launches the four-stage pipeline and surfaces progress and outputs in the shell. This keeps users inside the native app between planning and execution.",
+      "acceptanceCriteria": [
+        "A user can start atomization from a project in the native shell and see stage-by-stage progress updates.",
+        "Successful atomization produces and exposes the generated PRD, prompt, and guardrails artifacts from the native shell."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/app.rs",
+          "crates/native-shell/src/screens/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/screens/atomization.rs",
+          "crates/native-shell/src/services/atomization.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Atomization progress is rendered as discrete stages in the native shell.",
+          "The shell can open the generated artifacts after a successful run."
+        ]
+      },
+      "commitMessage": "feat(frontend): add native atomization flow",
+      "priority": "critical",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 60,
+      "dependsOn": [
+        "S-022",
+        "S-033"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-035",
+      "title": "Launch loops and monitor sessions from the native shell",
+      "description": "Implement native loop controls and monitoring views so users can start, stop, and observe execution without the React/Tauri monitor. This is the final end-to-end parity gate for active session handling.",
+      "acceptanceCriteria": [
+        "A user can launch a loop from the native shell and stop it from the same shell without using Tauri commands.",
+        "The native monitor view shows iteration events, blocked states, rate-limit events, and session stats while a loop is running."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/app.rs",
+          "crates/native-shell/src/screens/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/screens/monitor.rs",
+          "crates/native-shell/src/services/loops.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Loop start and stop actions are available in the native shell.",
+          "Session events update the monitor view without the React/Tauri event bridge."
+        ]
+      },
+      "commitMessage": "feat(frontend): add native loop monitor",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 90,
+      "dependsOn": [
+        "S-019",
+        "S-023",
+        "S-030",
+        "S-034"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-036",
+      "title": "Restore persisted loop sessions after app restart",
+      "description": "Load persisted loop state during shell startup and reconnect the user to resumable or active sessions. This satisfies the app-restart recovery and persisted resume requirements that block Tauri decommissioning.",
+      "acceptanceCriteria": [
+        "Restarting the app while a loop is active or resumable restores the session into the native shell without manual refresh.",
+        "The restored session state matches the persisted loop metadata and exposes the correct resume or reattach action."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/app.rs",
+          "crates/native-shell/src/services/loops.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/services/recovery.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Shell startup detects persisted resumable sessions.",
+          "Recovered sessions are visible in the dashboard and monitor views after relaunch."
+        ]
+      },
+      "commitMessage": "feat(core): restore persisted loop sessions on restart",
+      "priority": "critical",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 60,
+      "dependsOn": [
+        "S-035"
+      ],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-037",
+      "title": "Clean up orphaned sessions during startup and shutdown",
+      "description": "Add deterministic cleanup for stale loop processes, locks, and unfinished session records on boot and exit. This keeps native shell recovery safe and prevents leaked sessions after crashes or hard exits.",
+      "acceptanceCriteria": [
+        "Startup marks orphaned sessions with a terminal cleanup state and releases any stale session locks.",
+        "Shell shutdown applies the configured detach or terminate behavior and persists the final session state for each active loop."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/app.rs",
+          "crates/native-shell/src/services/loops.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/services/session_cleanup.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Stale session records are not left in a running state after startup cleanup.",
+          "Shutdown does not leave unreconciled loop processes or locks behind."
+        ]
+      },
+      "commitMessage": "fix(core): clean up orphaned native sessions",
+      "priority": "high",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-036"
+      ],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-038",
+      "title": "Remove the React router and Tauri command bridge",
+      "description": "Switch the primary app startup path to the native shell and remove the React router and command bridge from active use. Keep the legacy Tauri code present only as a non-primary compatibility path until final decommission.",
+      "acceptanceCriteria": [
+        "The default application entry point launches the native shell directly and does not invoke the React router.",
+        "Active native shell flows no longer depend on the Tauri command bridge for dashboard, planning, atomization, or monitoring."
+      ],
+      "scope": {
+        "filesToModify": [
+          "Cargo.toml",
+          "package.json",
+          "src/main.tsx",
+          "src/router.tsx",
+          "src/lib/tauri.ts",
+          "crates/native-shell/src/main.rs"
+        ],
+        "filesToCreate": [],
+        "filesToAvoid": [
+          "src-tauri/src/commands/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo build",
+          "bun run typecheck"
+        ],
+        "assertions": [
+          "The primary app startup path no longer imports the React router.",
+          "Native shell screens call native services instead of the Tauri command bridge."
+        ]
+      },
+      "commitMessage": "refactor(tauri): remove active router and command bridge",
+      "priority": "critical",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 60,
+      "dependsOn": [
+        "S-035"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-039",
+      "title": "Replace dialog integration with native shell dialogs",
+      "description": "Port file pickers, confirmations, and blocking prompts from Tauri dialogs to native shell dialog APIs. This keeps project lifecycle actions fully native once the Tauri bridge is no longer active.",
+      "acceptanceCriteria": [
+        "Project creation and archive confirmations use native shell dialogs and complete successfully without Tauri dialog calls.",
+        "Any required file or folder picker in the native shell opens through native dialog APIs and returns usable paths to the shell flow."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/screens/home.rs",
+          "crates/native-shell/src/screens/project_wizard.rs",
+          "crates/native-shell/src/platform/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/platform/dialogs.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "No active native shell dialog flow calls into a Tauri dialog API.",
+          "Dialog-driven project actions still complete successfully."
+        ]
+      },
+      "commitMessage": "refactor(tauri): replace dialog integration in native shell",
+      "priority": "high",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-038"
+      ],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-040",
+      "title": "Replace clipboard integration with a native shell clipboard service",
+      "description": "Move copy actions to a native clipboard service so prompts, logs, and identifiers remain easy to copy after the Tauri bridge is removed. Keep the scope limited to currently exposed copy actions in the native shell.",
+      "acceptanceCriteria": [
+        "Copy actions available from the dashboard or monitor write the expected text to the system clipboard through native shell code.",
+        "No active native shell path imports or calls a Tauri clipboard API."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/screens/home.rs",
+          "crates/native-shell/src/screens/monitor.rs",
+          "crates/native-shell/src/platform/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/platform/clipboard.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Copying from native shell views updates the system clipboard.",
+          "The clipboard path is implemented without Tauri-specific imports."
+        ]
+      },
+      "commitMessage": "refactor(tauri): replace clipboard integration",
+      "priority": "medium",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 30,
+      "dependsOn": [
+        "S-038"
+      ],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-041",
+      "title": "Replace notification integration with native shell notifications",
+      "description": "Port runtime notifications to native shell APIs so the app can alert on completions, blocked stories, and rate limits without Tauri. Respect existing notification preferences while changing the delivery mechanism.",
+      "acceptanceCriteria": [
+        "Planning and loop lifecycle events can trigger native shell notifications without using Tauri notification APIs.",
+        "Notification preferences continue to suppress or allow events as configured by the user."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/services/planning.rs",
+          "crates/native-shell/src/services/loops.rs",
+          "crates/native-shell/src/platform/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/platform/notifications.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Completion and blocked-state notifications are emitted from native shell code.",
+          "Disabled notification preferences prevent native notifications from being sent."
+        ]
+      },
+      "commitMessage": "refactor(tauri): replace notification integration",
+      "priority": "medium",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-038"
+      ],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-042",
+      "title": "Replace tray integration with a native shell tray",
+      "description": "Implement a native tray with project and session shortcuts so background loop monitoring still works after Tauri removal. Keep the tray focused on high-value actions such as open, pause, resume, and quit.",
+      "acceptanceCriteria": [
+        "The app exposes a native shell tray that reflects current session presence and supports open and quit actions.",
+        "Tray actions can open the native shell and trigger session pause or resume behavior without Tauri tray APIs."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/app.rs",
+          "crates/native-shell/src/services/loops.rs",
+          "crates/native-shell/src/platform/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/platform/tray.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "The tray is initialized by the native shell runtime.",
+          "Tray commands manipulate the native shell instead of delegating to Tauri."
+        ]
+      },
+      "commitMessage": "refactor(tauri): replace tray integration",
+      "priority": "medium",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-037",
+        "S-041"
+      ],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-043",
+      "title": "Replace updater integration with a native shell updater",
+      "description": "Move update checks and update prompts to a native shell updater so release delivery no longer depends on Tauri plugins. Keep the first pass limited to a visible manual check and a background check hook.",
+      "acceptanceCriteria": [
+        "The native shell can perform an update check and surface the result without invoking Tauri updater APIs.",
+        "Update status is available from the native shell app menu or settings surface and does not regress normal startup."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/app.rs",
+          "crates/native-shell/src/platform/mod.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/platform/updater.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "The updater path is implemented entirely in native shell code.",
+          "The app can report both no-update and update-available states through the shell UI."
+        ]
+      },
+      "commitMessage": "refactor(tauri): replace updater integration",
+      "priority": "low",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-038"
+      ],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-044",
+      "title": "Add keyboard-first panel actions",
+      "description": "Introduce keyboard-driven actions for major shell panels after wizard and monitor parity is stable. This improves speed of use without changing the underlying workflow sequence.",
+      "acceptanceCriteria": [
+        "Dashboard, planning, atomization, and monitor panels expose documented keyboard shortcuts for their primary actions.",
+        "Focus can move between major panels and action targets without requiring pointer interaction."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/screens/home.rs",
+          "crates/native-shell/src/screens/planning.rs",
+          "crates/native-shell/src/screens/atomization.rs",
+          "crates/native-shell/src/screens/monitor.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/input/shortcuts.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Primary panel actions can be triggered from the keyboard.",
+          "Panel focus order is deterministic and does not trap focus."
+        ]
+      },
+      "commitMessage": "feat(frontend): add keyboard-first shell actions",
+      "priority": "medium",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-035",
+        "S-038"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-045",
+      "title": "Add split layouts to wizard and monitor surfaces",
+      "description": "Introduce native split layouts only after the project wizard and monitor are stable so users can inspect context and live state side by side. Keep the layout work scoped to the panels with the clearest productivity gain.",
+      "acceptanceCriteria": [
+        "The project wizard uses a split layout that keeps step context visible while the active step is edited.",
+        "The monitor uses a split layout that can show session details beside the live event stream without hiding either panel."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/screens/project_wizard.rs",
+          "crates/native-shell/src/screens/monitor.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/layout/split.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Wizard and monitor screens render as multi-panel layouts in the native shell.",
+          "The split layout preserves state correctly when resizing or switching panes."
+        ]
+      },
+      "commitMessage": "feat(frontend): add split layouts to native shell",
+      "priority": "medium",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 60,
+      "dependsOn": [
+        "S-035"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-046",
+      "title": "Add native shell theming",
+      "description": "Add a native theming layer after workflow parity is stable so the shell can support a coherent visual system independent of React/Tailwind. Keep the implementation focused on theme selection and consistent application across the main shell surfaces.",
+      "acceptanceCriteria": [
+        "The native shell supports at least two named themes and applies the selected theme consistently across dashboard, wizard, and monitor views.",
+        "The selected theme persists across app restarts and does not require the React styling pipeline."
+      ],
+      "scope": {
+        "filesToModify": [
+          "crates/native-shell/src/app.rs",
+          "crates/native-shell/src/screens/home.rs",
+          "crates/native-shell/src/screens/project_wizard.rs",
+          "crates/native-shell/src/screens/monitor.rs"
+        ],
+        "filesToCreate": [
+          "crates/native-shell/src/theme/mod.rs",
+          "crates/native-shell/src/theme/palette.rs"
+        ],
+        "filesToAvoid": [
+          "src-tauri/**",
+          "src/tokens.css"
+        ]
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "Theme selection updates all major native shell surfaces.",
+          "The selected theme remains active after a full app restart."
+        ]
+      },
+      "commitMessage": "feat(tokens): add native shell theming",
+      "priority": "low",
+      "estimatedComplexity": "small",
+      "estimatedMinutes": 45,
+      "dependsOn": [
+        "S-045"
+      ],
+      "passes": true,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    },
+    {
+      "id": "S-047",
+      "title": "Decommission Tauri and React from the workspace",
+      "description": "Remove the Tauri app and React shell only after the native shell supports project lifecycle, planning, atomization, loops, monitoring, restart recovery, and session cleanup end to end. This finalizes Phase 3 by making the native shell the only supported desktop runtime.",
+      "acceptanceCriteria": [
+        "The workspace builds and tests successfully without `src-tauri` or the React/Tauri runtime as active application targets.",
+        "The native shell can create, resume, and archive projects; run planning; atomize; launch loops; monitor sessions; recover after restart; and clean up sessions without falling back to Tauri."
+      ],
+      "scope": {
+        "filesToModify": [
+          "Cargo.toml",
+          "package.json",
+          "bunfig.toml"
+        ],
+        "filesToCreate": [],
+        "filesToAvoid": []
+      },
+      "verification": {
+        "commands": [
+          "cargo test",
+          "cargo build"
+        ],
+        "assertions": [
+          "No active workspace target depends on Tauri or the React shell to run the desktop app.",
+          "An end-to-end native shell flow covers project creation through loop monitoring and restart recovery."
+        ]
+      },
+      "commitMessage": "refactor(tauri): decommission tauri and react shell",
+      "priority": "critical",
+      "estimatedComplexity": "medium",
+      "estimatedMinutes": 90,
+      "dependsOn": [
+        "S-036",
+        "S-037",
+        "S-038",
+        "S-039",
+        "S-040",
+        "S-041",
+        "S-042",
+        "S-043",
+        "S-044",
+        "S-046"
+      ],
+      "passes": false,
+      "blocked": false,
+      "attempts": 0,
+      "notes": null
+    }
+  ],
+  "generatedAt": "2026-04-10T23:33:17.370Z"
+}

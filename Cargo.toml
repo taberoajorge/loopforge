@@ -5,4 +5,13 @@ members = [
     "crates/ralph-core",
     "src-tauri",
 ]
+default-members = [
+    "crates/app-services",
+    "crates/loopforge-app-core",
+    "crates/ralph-core",
+]
 resolver = "2"
+
+[workspace.metadata.loopforge]
+primary_runtime = "native-shell"
+legacy_runtime = "react-router-tauri-bridge"

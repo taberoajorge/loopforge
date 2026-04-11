@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --mode native-shell",
+    "dev:legacy": "vite --mode legacy-router",
     "dev:tauri": "node dev-tauri.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",

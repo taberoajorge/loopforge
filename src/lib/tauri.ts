@@ -46,6 +46,17 @@ export {
   onPromptBuilt, onStorySkipped,
 } from "./ipc/loop";
 
+export const tauriBridgeMode = "legacy-compatibility";
+
+export function isTauriBridgeCompatibilityEnabled(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const isLegacyMode = import.meta.env.MODE === "legacy-router";
+  const hasLegacyQuery = new URLSearchParams(window.location.search).has("legacy-router");
+  return isLegacyMode || hasLegacyQuery;
+}
+
 export interface ConnectionRepo {
   repoPath: string;
   displayName: string | null;
