@@ -18,6 +18,10 @@ pub enum SharedArtifactUpdate {
         error_message: String,
         iteration: u32,
     },
+    AppendGuardrailContent {
+        story_id: String,
+        content: String,
+    },
     BlockStoryAndAddGuardrail {
         story_id: String,
         error_message: String,
@@ -85,6 +89,9 @@ fn apply_update(
             error_message,
             iteration,
         } => append_guardrail(config, &story_id, &error_message, iteration),
+        SharedArtifactUpdate::AppendGuardrailContent { story_id, content } => {
+            append_guardrail_content(config, &story_id, &content)
+        }
         SharedArtifactUpdate::BlockStoryAndAddGuardrail {
             story_id,
             error_message,
@@ -124,6 +131,31 @@ fn append_guardrail(
         iteration,
     )
     .map_err(|err| CoordinatorError::apply(err.to_string()))
+}
+
+fn append_guardrail_content(
+    config: &RalphConfig,
+    story_id: &str,
+    content: &str,
+) -> Result<(), CoordinatorError> {
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&config.paths.guardrails_file)
+        .map_err(|err| CoordinatorError::apply(err.to_string()))?;
+    let mut payload = content.trim_start_matches('\n').to_string();
+    if payload.is_empty() {
+        return Ok(());
+    }
+    if !payload.starts_with("### Sign:") {
+        payload = format!("\n### Sign: Error in {story_id}\n{payload}");
+    }
+    if !payload.ends_with('\n') {
+        payload.push('\n');
+    }
+    use std::io::Write;
+    file.write_all(payload.as_bytes())
+        .map_err(|err| CoordinatorError::apply(err.to_string()))
 }
 
 fn load_or_restore_prd(config: &RalphConfig) -> Result<Prd, CoordinatorError> {
