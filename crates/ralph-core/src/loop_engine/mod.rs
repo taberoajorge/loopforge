@@ -15,6 +15,7 @@ use crate::health;
 use crate::logger;
 use crate::prompt::PromptBuilder;
 use crate::providers::Provider;
+use crate::scheduler;
 use crate::state;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -65,7 +66,7 @@ pub async fn run<P: Provider>(
             break;
         }
 
-        let next_story = match prd.next_actionable_story() {
+        let next_story = match scheduler::ready_stories(&prd).into_iter().next() {
             Some(story) => story.clone(),
             None => {
                 logger::log_success("No more actionable stories. Done.");
