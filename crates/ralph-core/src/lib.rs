@@ -12,6 +12,7 @@ pub mod ports;
 pub mod prd;
 pub mod prompt;
 pub mod providers;
+pub mod scheduler;
 pub mod state;
 pub mod verification;
 pub mod worktree;
