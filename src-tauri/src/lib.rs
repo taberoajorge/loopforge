@@ -5,6 +5,8 @@ mod agent_runtime_env;
 mod agents;
 mod ask_engine;
 mod atomizer;
+#[path = "../../crates/loopforge-app-core/src/plan.rs"]
+mod app_core_plan;
 mod commands;
 mod db;
 mod events;
@@ -15,7 +17,10 @@ mod loop_manager;
 mod models;
 mod plan_engine;
 mod projects;
+mod services;
 mod storage;
+#[cfg(test)]
+mod test_env_lock;
 mod test_support;
 mod tray;
 
@@ -49,6 +54,36 @@ mod tests;
 use db::DbState;
 use tauri::{Manager, RunEvent, WindowEvent};
 
+fn cleanup_plan_session(
+    state: &plan_engine::PlanSessionsState,
+    project_id: &str,
+    reason: app_core_plan::PlanCleanupReason,
+) -> Result<bool, String> {
+    app_core_plan::cleanup_session(
+        project_id,
+        reason,
+        |project_id| {
+            let mut sessions = state.0.lock().map_err(|_| "lock poisoned".to_string())?;
+            Ok(sessions.sessions.remove(project_id))
+        },
+        |entry| entry.handle.kill(),
+    )
+}
+
+fn cleanup_all_plan_sessions(
+    state: &plan_engine::PlanSessionsState,
+    reason: app_core_plan::PlanCleanupReason,
+) {
+    let project_ids = state
+        .0
+        .lock()
+        .map(|sessions| sessions.sessions.keys().cloned().collect::<Vec<_>>())
+        .unwrap_or_default();
+    let _ = app_core_plan::cleanup_sessions(project_ids, reason, |project_id, reason| {
+        cleanup_plan_session(state, project_id, reason)
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     agent_runtime_env::ensure_full_path_env();
@@ -66,14 +101,7 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 let plan_state = window.state::<plan_engine::PlanSessionsState>();
-                if let Ok(mut sessions) = plan_state.0.lock() {
-                    let ids: Vec<String> = sessions.sessions.keys().cloned().collect();
-                    for plan_id in ids {
-                        if let Some(entry) = sessions.sessions.remove(&plan_id) {
-                            let _ = entry.handle.kill();
-                        }
-                    }
-                }
+                cleanup_all_plan_sessions(&plan_state, app_core_plan::PlanCleanupReason::WindowClose);
 
                 let ask_state = window.state::<ask_engine::AskSessionsState>();
                 ask_state.kill_all();
@@ -135,12 +163,14 @@ pub fn run() {
         if let RunEvent::ExitRequested { .. } = event {
             let db = app_handle.state::<DbState>();
             let loop_state = app_handle.state::<loop_manager::LoopManagerState>();
+            let plan_state = app_handle.state::<plan_engine::PlanSessionsState>();
             if let Ok(handles) = loop_state.0.lock() {
                 for handle in handles.values() {
                     let args_json = serde_json::to_string(&handle.args).unwrap_or_default();
                     let _ = db.save_loop_state(&handle.args.project_id, &args_json);
                 }
             }
+            cleanup_all_plan_sessions(&plan_state, app_core_plan::PlanCleanupReason::RestartRecovery);
             loop_state.shutdown_all();
         }
     });

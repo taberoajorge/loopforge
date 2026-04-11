@@ -6,8 +6,11 @@ mod app_core_projects;
 #[cfg(not(test))]
 pub fn attach_app(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
     services::attach_runtime_aliases(builder, {
-        let fallback: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![agents::detect_agents, agents::refresh_agents, agents::get_agent_capabilities, commands::planning::start_plan, commands::planning::write_to_plan, commands::planning::stop_plan, commands::planning::query_plan_status, commands::projects_artifacts::load_existing_plan, commands::projects_artifacts::load_existing_prd, commands::projects_artifacts::load_output_log, commands::projects_artifacts::save_plan, commands::projects_artifacts::save_prd, commands::projects_artifacts::save_config, commands::projects_artifacts::load_config, commands::atomization::run_atomizer, commands::projects_wizard::save_wizard_state, commands::projects_wizard::resume_wizard, commands::projects_wizard::save_draft, commands::projects_wizard::load_draft, commands::projects_lifecycle::pause_project, commands::projects_lifecycle::resume_project, commands::projects_lifecycle::archive_project, commands::projects_lifecycle::get_project_stories, commands::projects_lifecycle::get_guardrails, commands::projects_lifecycle::get_project_config, commands::projects::get_project_snapshot, commands::projects_listing::list_projects_enriched, commands::projects_lifecycle::get_notification_prefs, commands::projects_lifecycle::save_notification_prefs, commands::execution::start_loop, commands::execution::stop_loop, commands::ask::ask_question, commands::ask::ask_history, commands::ask::stop_ask, commands::ask::copy_ask_message, commands::ask::truncate_ask_from, commands::ask::retry_ask, ephemeral_query::ephemeral_query, connections::list_connections, connections::build_connection_workspace];
+        let fallback: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![agents::detect_agents, agents::refresh_agents, agents::get_agent_capabilities, commands::planning::query_plan_status, commands::projects_artifacts::load_existing_plan, commands::projects_artifacts::load_existing_prd, commands::projects_artifacts::load_output_log, commands::projects_artifacts::save_plan, commands::projects_artifacts::save_prd, commands::projects_artifacts::save_config, commands::projects_artifacts::load_config, commands::atomization::run_atomizer, commands::projects_wizard::save_wizard_state, commands::projects_wizard::resume_wizard, commands::projects_wizard::save_draft, commands::projects_wizard::load_draft, commands::projects_lifecycle::pause_project, commands::projects_lifecycle::resume_project, commands::projects_lifecycle::archive_project, commands::projects_lifecycle::get_project_stories, commands::projects_lifecycle::get_guardrails, commands::projects_lifecycle::get_project_config, commands::projects::get_project_snapshot, commands::projects_listing::list_projects_enriched, commands::projects_lifecycle::get_notification_prefs, commands::projects_lifecycle::save_notification_prefs, commands::execution::start_loop, commands::execution::stop_loop, commands::ask::ask_question, commands::ask::ask_history, commands::ask::stop_ask, commands::ask::copy_ask_message, commands::ask::truncate_ask_from, commands::ask::retry_ask, ephemeral_query::ephemeral_query, connections::list_connections, connections::build_connection_workspace];
         move |invoke: tauri::ipc::Invoke<tauri::Wry>| match invoke.message.command() {
+            "start_plan" => commands::planning::__cmd__start_plan!(plan_commands::start_plan, invoke),
+            "write_to_plan" => commands::planning::__cmd__write_to_plan!(plan_commands::write_to_plan, invoke),
+            "stop_plan" => commands::planning::__cmd__stop_plan!(plan_commands::stop_plan, invoke),
             "create_project" => commands::projects_lifecycle::__cmd__create_project!(project_commands::create_project, invoke),
             "finalize_draft" => commands::projects_wizard::__cmd__finalize_draft!(project_commands::finalize_draft, invoke),
             "discard_draft" => commands::projects_wizard::__cmd__discard_draft!(project_commands::discard_draft, invoke),
@@ -20,12 +23,125 @@ pub fn attach_app(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::
 
 #[cfg(test)]
 pub fn attach_app(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
-    services::attach_runtime_aliases(builder, tauri::generate_handler![agents::detect_agents, agents::refresh_agents, agents::get_agent_capabilities, crate::invoke_contract::start_plan, commands::planning::write_to_plan, commands::planning::stop_plan, crate::invoke_contract::query_plan_status, crate::invoke_contract::load_existing_plan, commands::projects_artifacts::load_existing_prd, commands::projects_artifacts::load_output_log, crate::invoke_contract::save_plan, commands::projects_artifacts::save_prd, crate::invoke_contract::save_config, commands::projects_artifacts::load_config, crate::invoke_contract::run_atomizer, crate::invoke_contract::create_project, crate::invoke_contract::finalize_draft, commands::projects_wizard::discard_draft, commands::projects_wizard::save_wizard_state, commands::projects_wizard::resume_wizard, crate::invoke_contract::save_draft, crate::invoke_contract::load_draft, commands::projects_lifecycle::list_projects, commands::projects_lifecycle::pause_project, commands::projects_lifecycle::resume_project, commands::projects_lifecycle::archive_project, crate::invoke_contract::get_project_detail, commands::projects_lifecycle::get_project_stories, commands::projects_lifecycle::get_guardrails, commands::projects_lifecycle::get_project_config, commands::projects::get_project_snapshot, commands::projects_listing::list_projects_enriched, commands::projects_lifecycle::get_notification_prefs, commands::projects_lifecycle::save_notification_prefs, crate::invoke_contract::start_loop, commands::execution::stop_loop, commands::ask::ask_question, commands::ask::ask_history, commands::ask::stop_ask, commands::ask::copy_ask_message, commands::ask::truncate_ask_from, commands::ask::retry_ask, ephemeral_query::ephemeral_query, connections::list_connections, connections::build_connection_workspace])
+    services::attach_runtime_aliases(builder, {
+        let fallback: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![agents::detect_agents, agents::refresh_agents, agents::get_agent_capabilities, crate::invoke_contract::query_plan_status, crate::invoke_contract::load_existing_plan, commands::projects_artifacts::load_existing_prd, commands::projects_artifacts::load_output_log, crate::invoke_contract::save_plan, commands::projects_artifacts::save_prd, crate::invoke_contract::save_config, commands::projects_artifacts::load_config, crate::invoke_contract::run_atomizer, crate::invoke_contract::create_project, crate::invoke_contract::finalize_draft, commands::projects_wizard::discard_draft, commands::projects_wizard::save_wizard_state, commands::projects_wizard::resume_wizard, crate::invoke_contract::save_draft, crate::invoke_contract::load_draft, commands::projects_lifecycle::list_projects, commands::projects_lifecycle::pause_project, commands::projects_lifecycle::resume_project, commands::projects_lifecycle::archive_project, crate::invoke_contract::get_project_detail, commands::projects_lifecycle::get_project_stories, commands::projects_lifecycle::get_guardrails, commands::projects_lifecycle::get_project_config, commands::projects::get_project_snapshot, commands::projects_listing::list_projects_enriched, commands::projects_lifecycle::get_notification_prefs, commands::projects_lifecycle::save_notification_prefs, crate::invoke_contract::start_loop, commands::execution::stop_loop, commands::ask::ask_question, commands::ask::ask_history, commands::ask::stop_ask, commands::ask::copy_ask_message, commands::ask::truncate_ask_from, commands::ask::retry_ask, ephemeral_query::ephemeral_query, connections::list_connections, connections::build_connection_workspace];
+        move |invoke: tauri::ipc::Invoke<tauri::Wry>| match invoke.message.command() {
+            "start_plan" => crate::invoke_contract::__cmd__start_plan!(plan_commands::start_plan, invoke),
+            "write_to_plan" => commands::planning::__cmd__write_to_plan!(plan_commands::write_to_plan, invoke),
+            "stop_plan" => commands::planning::__cmd__stop_plan!(plan_commands::stop_plan, invoke),
+            _ => fallback(invoke),
+        }
+    })
 }
 
 #[cfg(test)]
 pub fn attach_contract<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
-    services::attach_runtime_aliases(builder, tauri::generate_handler![crate::invoke_contract::create_project, crate::invoke_contract::save_draft, crate::invoke_contract::load_draft, crate::invoke_contract::finalize_draft, crate::invoke_contract::start_plan, commands::planning::write_to_plan, commands::planning::stop_plan, crate::invoke_contract::query_plan_status, crate::invoke_contract::load_existing_plan, crate::invoke_contract::save_plan, crate::invoke_contract::save_config, crate::invoke_contract::run_atomizer, crate::invoke_contract::start_loop, crate::invoke_contract::get_project_detail, commands::projects_lifecycle::archive_project])
+    services::attach_runtime_aliases(builder, {
+        let fallback: fn(tauri::ipc::Invoke<R>) -> bool = tauri::generate_handler![crate::invoke_contract::create_project, crate::invoke_contract::save_draft, crate::invoke_contract::load_draft, crate::invoke_contract::finalize_draft, crate::invoke_contract::query_plan_status, crate::invoke_contract::load_existing_plan, crate::invoke_contract::save_plan, crate::invoke_contract::save_config, crate::invoke_contract::run_atomizer, crate::invoke_contract::start_loop, crate::invoke_contract::get_project_detail, commands::projects_lifecycle::archive_project];
+        move |invoke: tauri::ipc::Invoke<R>| match invoke.message.command() {
+            "start_plan" => crate::invoke_contract::__cmd__start_plan!(plan_commands::start_plan, invoke),
+            "write_to_plan" => commands::planning::__cmd__write_to_plan!(plan_commands::write_to_plan, invoke),
+            "stop_plan" => commands::planning::__cmd__stop_plan!(plan_commands::stop_plan, invoke),
+            _ => fallback(invoke),
+        }
+    })
+}
+
+mod plan_commands {
+    use crate::app_core_plan;
+    use crate::plan_engine::{PlanEngineError, PlanSessionsState, StartPlanArgs};
+    use std::time::Instant;
+    use tauri::{AppHandle, Runtime, State};
+
+    pub async fn start_plan<R: Runtime>(
+        app: AppHandle<R>,
+        state: State<'_, PlanSessionsState>,
+        args: StartPlanArgs,
+    ) -> Result<(), PlanEngineError> {
+        let args = StartPlanArgs {
+            project_id: required(args.project_id, "project_id").map_err(PlanEngineError::Path)?,
+            project_dir: args.project_dir,
+            agent: required(args.agent, "agent").map_err(PlanEngineError::Path)?,
+            model: optional(args.model),
+            effort: optional(args.effort),
+            initial_prompt: required(args.initial_prompt, "initial_prompt")
+                .map_err(PlanEngineError::Path)?,
+        };
+        app_core_plan::start_plan(args.project_id.clone(), |_| {
+            crate::plan_engine::start_plan(app, state, args)
+        })
+        .await
+    }
+
+    pub async fn write_to_plan(
+        state: State<'_, PlanSessionsState>,
+        project_id: String,
+        input: String,
+    ) -> Result<(), PlanEngineError> {
+        let project_id = required(project_id, "project_id").map_err(PlanEngineError::Path)?;
+        let activity_at = std::sync::Arc::new(std::sync::Mutex::new(None::<Instant>));
+        let touch_project_id = project_id.clone();
+        app_core_plan::write_to_plan(
+            project_id,
+            input,
+            |project_id, payload| {
+                let mut sessions = state.0.lock().map_err(|_| PlanEngineError::LockPoisoned)?;
+                let entry = sessions
+                    .sessions
+                    .get_mut(&project_id)
+                    .ok_or_else(|| PlanEngineError::NoSession(project_id.clone()))?;
+                entry.handle.write(&payload).map_err(PlanEngineError::Shell)?;
+                if let Ok(mut activity) = activity_at.lock() {
+                    *activity = Some(Instant::now());
+                }
+                Ok(())
+            },
+            || {
+                if let Some(timestamp) = activity_at.lock().ok().and_then(|guard| *guard) {
+                    if let Ok(mut sessions) = state.0.lock() {
+                        if let Some(entry) = sessions.sessions.get_mut(&touch_project_id) {
+                            if let Ok(mut last_activity) = entry.last_activity_at.lock() {
+                                *last_activity = timestamp;
+                            }
+                        }
+                    }
+                }
+            },
+        )
+    }
+
+    pub async fn stop_plan(
+        state: State<'_, PlanSessionsState>,
+        project_id: String,
+    ) -> Result<(), PlanEngineError> {
+        let project_id = required(project_id, "project_id").map_err(PlanEngineError::Path)?;
+        app_core_plan::stop_plan(project_id, |project_id, reason| {
+            app_core_plan::cleanup_session(
+                &project_id,
+                reason,
+                |project_id| {
+                    let mut sessions = state.0.lock().map_err(|_| PlanEngineError::LockPoisoned)?;
+                    Ok(sessions.sessions.remove(project_id))
+                },
+                |entry| entry.handle.kill().map_err(PlanEngineError::Shell),
+            )
+            .map(|_| ())
+        })
+    }
+
+    fn required(value: String, field_name: &str) -> Result<String, String> {
+        let normalized = value.trim();
+        if normalized.is_empty() {
+            return Err(format!("Missing required field: {field_name}"));
+        }
+        Ok(normalized.to_string())
+    }
+
+    fn optional(value: Option<String>) -> Option<String> {
+        value
+            .map(|content| content.trim().to_string())
+            .filter(|content| !content.is_empty())
+    }
 }
 
 #[cfg(not(test))]
