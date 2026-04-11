@@ -1,5 +1,11 @@
 use crate::platform::{NativeUpdater, UpdateCheckOutcome, UpdateStatus};
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum UpdateMenuAction {
+    CheckForUpdates,
+    ViewUpdateStatus,
+}
+
 #[derive(Debug)]
 pub struct NativeShellApp {
     updater: NativeUpdater,
@@ -22,6 +28,20 @@ impl NativeShellApp {
     pub fn run_manual_update_check(&mut self) {
         self.update_status = UpdateStatus::Checking;
         self.update_status = self.updater.manual_check();
+    }
+
+    pub fn run_startup_hooks(&mut self) {
+        self.run_background_update_check();
+    }
+
+    pub fn handle_update_menu_action(&mut self, action: UpdateMenuAction) -> String {
+        match action {
+            UpdateMenuAction::CheckForUpdates => {
+                self.run_manual_update_check();
+                self.update_status_label()
+            }
+            UpdateMenuAction::ViewUpdateStatus => self.update_status_label(),
+        }
     }
 
     pub fn update_status(&self) -> &UpdateStatus {
@@ -49,25 +69,27 @@ impl Default for NativeShellApp {
 
 #[cfg(test)]
 mod tests {
-    use super::{NativeShellApp, NativeUpdater, UpdateCheckOutcome, UpdateStatus};
+    use super::{
+        NativeShellApp, NativeUpdater, UpdateCheckOutcome, UpdateMenuAction, UpdateStatus,
+    };
 
     #[test]
-    fn background_check_reports_no_update() {
+    fn startup_hook_runs_background_check() {
         let updater = NativeUpdater::new(UpdateCheckOutcome::NoUpdate);
         let mut app = NativeShellApp::new(updater);
-        app.run_background_update_check();
+        app.run_startup_hooks();
         assert_eq!(app.update_status(), &UpdateStatus::NoUpdate);
         assert_eq!(app.update_status_label(), "You are up to date".to_string());
     }
 
     #[test]
-    fn manual_check_reports_update_available() {
+    fn manual_menu_action_reports_update_available() {
         let updater = NativeUpdater::new(UpdateCheckOutcome::UpdateAvailable {
             version: "3.0.0".to_string(),
             notes: Some("Native shell updater migration".to_string()),
         });
         let mut app = NativeShellApp::new(updater);
-        app.run_manual_update_check();
+        let status_label = app.handle_update_menu_action(UpdateMenuAction::CheckForUpdates);
         assert_eq!(
             app.update_status(),
             &UpdateStatus::UpdateAvailable {
@@ -76,8 +98,19 @@ mod tests {
             }
         );
         assert_eq!(
-            app.update_status_label(),
+            status_label,
             "Update available: 3.0.0".to_string()
+        );
+    }
+
+    #[test]
+    fn menu_can_display_status_without_triggering_manual_check() {
+        let updater = NativeUpdater::new(UpdateCheckOutcome::NoUpdate);
+        let mut app = NativeShellApp::new(updater);
+        app.run_startup_hooks();
+        assert_eq!(
+            app.handle_update_menu_action(UpdateMenuAction::ViewUpdateStatus),
+            "You are up to date".to_string()
         );
     }
 }

@@ -10,6 +10,12 @@ pub enum UpdateStatus {
     Failed(String),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UpdateCheckTrigger {
+    Manual,
+    Background,
+}
+
 #[derive(Clone, Debug)]
 pub enum UpdateCheckOutcome {
     NoUpdate,
@@ -40,14 +46,21 @@ impl NativeUpdater {
     }
 
     pub fn manual_check(&self) -> UpdateStatus {
-        Self::map_outcome(self.manual_outcome.clone())
+        self.check(UpdateCheckTrigger::Manual)
     }
 
     pub fn background_check(&self) -> UpdateStatus {
-        let resolved_outcome = self
-            .background_outcome
-            .clone()
-            .unwrap_or_else(|| self.manual_outcome.clone());
+        self.check(UpdateCheckTrigger::Background)
+    }
+
+    pub fn check(&self, trigger: UpdateCheckTrigger) -> UpdateStatus {
+        let resolved_outcome = match trigger {
+            UpdateCheckTrigger::Manual => self.manual_outcome.clone(),
+            UpdateCheckTrigger::Background => self
+                .background_outcome
+                .clone()
+                .unwrap_or_else(|| self.manual_outcome.clone()),
+        };
         Self::map_outcome(resolved_outcome)
     }
 
@@ -64,7 +77,7 @@ impl NativeUpdater {
 
 #[cfg(test)]
 mod tests {
-    use super::{NativeUpdater, UpdateCheckOutcome, UpdateStatus};
+    use super::{NativeUpdater, UpdateCheckOutcome, UpdateCheckTrigger, UpdateStatus};
 
     #[test]
     fn manual_check_reports_no_update() {
@@ -99,6 +112,21 @@ mod tests {
             updater.background_check(),
             UpdateStatus::UpdateAvailable {
                 version: "2.2.0".to_string(),
+                notes: None
+            }
+        );
+    }
+
+    #[test]
+    fn check_uses_manual_trigger_path() {
+        let updater = NativeUpdater::new(UpdateCheckOutcome::UpdateAvailable {
+            version: "4.1.0".to_string(),
+            notes: None,
+        });
+        assert_eq!(
+            updater.check(UpdateCheckTrigger::Manual),
+            UpdateStatus::UpdateAvailable {
+                version: "4.1.0".to_string(),
                 notes: None
             }
         );
