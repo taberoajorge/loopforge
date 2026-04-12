@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useNavigate, useParams } from "react-router";
-import { detectAgents, getAgentCapabilities, saveConfig, saveDraft } from "../../lib/tauri";
+import { advanceWizardStep, detectAgents, getAgentCapabilities, getDefaultConfig, saveConfig, saveWizardDraft, validateProjectConfig } from "../../lib/tauri";
 import type { AgentCapabilities } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agentStore";
 import { useWizardStore } from "../../stores/wizardStore";
-import { buildDraftPayload } from "../../lib/draft-payload";
-import { validateConfig, type ConfigureErrors } from "./configureValidation";
+import type { ConfigureErrors } from "./configureValidation";
 import { ConfigureForm } from "./components/ConfigureForm";
-
-const KNOWN_AGENTS = ["claude", "codex", "gemini", "opencode", "cursor"];
 
 export function Configure() {
   const { id } = useParams<{ id: string }>();
@@ -17,8 +14,9 @@ export function Configure() {
   const setAgents = useAgentStore((state) => state.setAgents);
   const setDetecting = useAgentStore((state) => state.setDetecting);
   const config = useWizardStore((state) => state.config);
+  const configLoaded = useWizardStore((state) => state.configLoaded);
   const setConfig = useWizardStore((state) => state.setConfig);
-  const advanceStep = useWizardStore((state) => state.advanceStep);
+  const setFullConfig = useWizardStore((state) => state.setFullConfig);
   const [executeAgent, setExecuteAgent] = useState(config.executeAgent);
   const [executeModel, setExecuteModel] = useState<string | null>(config.executeModel ?? null);
   const [executeEffort, setExecuteEffort] = useState<string | null>(config.executeEffort ?? null);
@@ -35,9 +33,33 @@ export function Configure() {
   const [errors, setErrors] = useState<ConfigureErrors>({});
   const [newAgent, setNewAgent] = useState("");
   const dragIndexRef = useRef<number | null>(null);
-  const availableAgentNames = agents.filter((agent) => agent.installed).map((agent) => agent.name);
-  const selectableAgentNames = availableAgentNames.length ? availableAgentNames : KNOWN_AGENTS;
-  const agentsNotInChain = selectableAgentNames.filter((agentName) => !fallbackChain.includes(agentName));
+  const allAgentNames = agents.map((agent) => agent.name);
+  const agentsNotInChain = allAgentNames.filter((agentName) => !fallbackChain.includes(agentName));
+
+  useEffect(() => {
+    if (configLoaded) return;
+    let cancelled = false;
+    getDefaultConfig()
+      .then((response) => {
+        if (cancelled) return;
+        const defaults = response.config;
+        setFullConfig(defaults as import("../../types/wizard").WizardConfig);
+        setExecuteAgent(defaults.executeAgent);
+        setExecuteModel(defaults.executeModel ?? null);
+        setExecuteEffort(defaults.executeEffort ?? null);
+        setFallbackChain(defaults.fallbackChain);
+        setGutterThreshold(defaults.gutterThreshold);
+        setMaxIterations(defaults.maxIterations);
+        setCooldownSeconds(defaults.cooldownSeconds);
+        setTestCommand(defaults.testCommand);
+        setMaxVerificationRetries(defaults.maxVerificationRetries);
+        setScmProvider(defaults.scmProvider as typeof config.scmProvider);
+        setReviewPollingInterval(defaults.reviewPollingInterval);
+        setReviewTimeout(defaults.reviewTimeout);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [configLoaded, setFullConfig]);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,20 +126,6 @@ export function Configure() {
   }
   async function handleNext() {
     if (!id) return;
-    const nextErrors = validateConfig({
-      executeAgent,
-      gutterThreshold,
-      maxIterations,
-      cooldownSeconds,
-      maxVerificationRetries,
-      reviewPollingInterval,
-      reviewTimeout,
-    });
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
-      return;
-    }
-    setErrors({});
     const sanitizedFallbackChain = fallbackChain.filter((agentName) => agentName !== executeAgent);
     const configPayload = {
       schemaVersion: 1,
@@ -134,6 +142,16 @@ export function Configure() {
       reviewPollingInterval,
       reviewTimeout,
     };
+    try {
+      const validationResult = await validateProjectConfig(JSON.stringify(configPayload));
+      if (Object.keys(validationResult.errors).length > 0) {
+        setErrors(validationResult.errors as ConfigureErrors);
+        return;
+      }
+    } catch {
+      return;
+    }
+    setErrors({});
     await saveConfig(id, JSON.stringify(configPayload, null, 2)).catch(() => {});
     setConfig({
       executeAgent,
@@ -149,8 +167,8 @@ export function Configure() {
       reviewPollingInterval,
       reviewTimeout,
     });
-    await saveDraft(id, buildDraftPayload(id, "launch")).catch(() => {});
-    advanceStep(5);
+    await saveWizardDraft(id, "launch").catch(() => {});
+    await advanceWizardStep(5).catch(() => {});
     navigate(`/new/launch/${id}`);
   }
 
@@ -161,7 +179,7 @@ export function Configure() {
       executeEffort={executeEffort}
       capabilities={capabilities}
       errors={errors}
-      selectableAgentNames={selectableAgentNames}
+      selectableAgentNames={allAgentNames}
       fallbackChain={fallbackChain}
       agentsNotInChain={agentsNotInChain}
       newAgent={newAgent}

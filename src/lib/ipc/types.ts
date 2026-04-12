@@ -193,6 +193,7 @@ export interface PlanActivityPayload {
 export interface PlanTerminalPayload {
   projectId: string;
   detail: string;
+  finalContent?: string;
 }
 
 export interface PlanActivityBatchPayload {

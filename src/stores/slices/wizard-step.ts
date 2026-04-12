@@ -17,7 +17,7 @@ export interface WizardStepSlice {
   projectId: string | null;
   projectData: WizardProjectData;
   setStep: (step: number) => void;
-  advanceStep: (step: number) => void;
+  setHighestStep: (step: number) => void;
   markStale: (fromStep: number) => void;
   clearStale: () => void;
   setProjectId: (id: string) => void;
@@ -40,10 +40,8 @@ export const createStepSlice: StateCreator<
 > = (set) => ({
   ...STEP_DEFAULTS,
   setStep: (step) => set({ currentStep: step }),
-  advanceStep: (step) => set((state) => ({
-    currentStep: step,
+  setHighestStep: (step) => set((state) => ({
     highestStep: Math.max(state.highestStep, step),
-    staleFromStep: null,
   })),
   markStale: (fromStep) => set({ staleFromStep: fromStep }),
   clearStale: () => set({ staleFromStep: null }),

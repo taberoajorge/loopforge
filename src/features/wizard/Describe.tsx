@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { createProject, detectAgents, discardDraft, getAgentCapabilities, listConnections, saveDraft } from "../../lib/tauri";
+import { advanceWizardStep, createProject, detectAgents, discardDraft, getAgentCapabilities, listConnections, markWizardStale, saveWizardDraft, validateDescribeInput } from "../../lib/tauri";
 import type { AgentCapabilities, Connection } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agentStore";
 import { useWizardStore } from "../../stores/wizardStore";
@@ -12,7 +12,7 @@ export function Describe() {
   const agents = useAgentStore((state) => state.agents);
   const setAgents = useAgentStore((state) => state.setAgents);
   const setDetecting = useAgentStore((state) => state.setDetecting);
-  const { projectData, projectId: existingProjectId, setProjectData, setProjectId, advanceStep, markStale, planContent, reset } = useWizardStore();
+  const { projectData, projectId: existingProjectId, setProjectData, setProjectId, planContent, reset } = useWizardStore();
   const [name, setName] = useState(projectData.name);
   const [description, setDescription] = useState(projectData.description);
   const [workingDirectory, setWorkingDirectory] = useState(projectData.workingDirectory);
@@ -78,22 +78,24 @@ export function Describe() {
     return () => { cancelled = true; };
   }, [planAgent]);
 
-  function validate() {
+  async function validate(): Promise<Record<string, string>> {
     const nextErrors: Record<string, string> = {};
-    if (!name.trim()) nextErrors.name = "Project name is required";
-    if (!description.trim()) nextErrors.description = "Feature description is required";
-    if (workspaceMode === "single" && !workingDirectory.trim()) {
-      nextErrors.workingDirectory = "Working directory is required";
-    }
     if (workspaceMode === "connection" && !selectedConnectionId) {
       nextErrors.workingDirectory = "Select a connection";
+      return nextErrors;
     }
-    if (availableAgents.length === 0) {
-      nextErrors.submit = "No supported agent was detected. Install Claude, Codex, Gemini, or OpenCode.";
-    } else if (!availableAgents.some((agent) => agent.name === planAgent)) {
-      nextErrors.submit = "Selected plan agent is not available in this environment.";
+    try {
+      const input = JSON.stringify({
+        name: name.trim(),
+        description: description.trim(),
+        workingDirectory: workspaceMode === "single" ? workingDirectory.trim() : "placeholder",
+        planAgent: planAgent,
+      });
+      const result = await validateDescribeInput(input);
+      return result.errors;
+    } catch {
+      return nextErrors;
     }
-    return nextErrors;
   }
 
   async function handleCancelProcess() {
@@ -111,7 +113,7 @@ export function Describe() {
   }
 
   async function handleNext() {
-    const validationErrors = validate();
+    const validationErrors = await validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -125,19 +127,16 @@ export function Describe() {
       }
       const updatedData = { name: name.trim(), description: description.trim(), workingDirectory: effectiveDirectory, planAgent, planModel, planEffort };
       setProjectData(updatedData);
-      const store = useWizardStore.getState();
       if (existingProjectId) {
-        const draft = { version: 1, projectId: existingProjectId, currentStep: "plan", describe: updatedData, plan: { completed: store.planComplete }, atomize: { storiesCount: store.stories.length }, configure: store.config };
-        await saveDraft(existingProjectId, JSON.stringify(draft, null, 2)).catch(() => {});
-        advanceStep(2);
+        await saveWizardDraft(existingProjectId, "plan").catch(() => {});
+        await advanceWizardStep(2).catch(() => {});
         navigate(`/new/plan/${existingProjectId}`);
         return;
       }
       const project = await createProject(updatedData.name, updatedData.description, effectiveDirectory, "describe");
       setProjectId(project.id);
-      const draft = { version: 1, projectId: project.id, currentStep: "plan", describe: updatedData, plan: { completed: store.planComplete }, atomize: { storiesCount: store.stories.length }, configure: store.config };
-      await saveDraft(project.id, JSON.stringify(draft, null, 2)).catch(() => {});
-      advanceStep(2);
+      await saveWizardDraft(project.id, "plan").catch(() => {});
+      await advanceWizardStep(2).catch(() => {});
       navigate(`/new/plan/${project.id}`);
     } catch (caughtError: unknown) {
       const errorMessage = caughtError instanceof Error ? caughtError.message : String(caughtError);
@@ -164,7 +163,7 @@ export function Describe() {
         availableAgentsCount={availableAgents.length}
         submitting={submitting}
         onNameChange={(value) => { setName(value); setErrors((previousErrors) => ({ ...previousErrors, name: "" })); }}
-        onDescriptionChange={(value) => { setDescription(value); setErrors((previousErrors) => ({ ...previousErrors, description: "" })); if (planContent) markStale(2); }}
+        onDescriptionChange={(value) => { setDescription(value); setErrors((previousErrors) => ({ ...previousErrors, description: "" })); if (planContent && existingProjectId) { void markWizardStale(existingProjectId, 2); } }}
         onWorkingDirectoryChange={(value) => { setWorkingDirectory(value); setErrors((previousErrors) => ({ ...previousErrors, workingDirectory: "" })); }}
         onWorkspaceModeChange={setWorkspaceMode}
         onConnectionChange={(value) => { setSelectedConnectionId(value); setErrors((previousErrors) => ({ ...previousErrors, workingDirectory: "" })); }}

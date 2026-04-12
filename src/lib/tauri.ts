@@ -50,6 +50,19 @@ export {
   onPromptBuilt, onStorySkipped,
 } from "./ipc/loop";
 
+export type {
+  AdvanceWizardResult, ConfigDefaultsResponse, ConfigLimits,
+  ValidationErrors, LaunchReadiness, StoriesResponse,
+} from "./ipc/wizard-logic";
+
+export {
+  advanceWizardStep, getDefaultConfig, validateProjectConfig,
+  validateDescribeInput, validateLaunchReadiness,
+  addStory, updateStoryBackend, removeStoryBackend,
+  reorderStoriesBackend, getStories, saveWizardDraft,
+  replan, markWizardStale,
+} from "./ipc/wizard-logic";
+
 export interface ConnectionRepo {
   repoPath: string;
   displayName: string | null;

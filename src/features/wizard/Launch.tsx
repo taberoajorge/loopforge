@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { useWizardStore } from "../../stores/wizardStore";
-import { startLoop, finalizeDraft } from "../../lib/tauri";
+import { startLoop, finalizeDraft, validateLaunchReadiness } from "../../lib/tauri";
 import { LaunchActions } from "./components/LaunchActions";
 
 function SummaryRow({ label, value }: { label: string; value: string | number }) {
@@ -23,15 +23,18 @@ export function Launch() {
 
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
+  const [readinessIssues, setReadinessIssues] = useState<string[]>([]);
 
   const totalMinutes = stories.reduce((sum, story) => sum + story.estimatedMinutes, 0);
   const totalHours = (totalMinutes / 60).toFixed(1);
-  const readinessIssues = [
-    projectData.name.trim() ? null : "Project name is missing.",
-    projectData.workingDirectory.trim() ? null : "Working directory is missing.",
-    stories.length > 0 ? null : "Add at least one story before launching.",
-    config.executeAgent.trim() ? null : "Execution agent is missing.",
-  ].filter((issue): issue is string => Boolean(issue));
+
+  useEffect(() => {
+    if (!id) return;
+    validateLaunchReadiness(id)
+      .then((result) => setReadinessIssues(result.issues))
+      .catch(() => {});
+  }, [id]);
+
   const launchDisabled = readinessIssues.length > 0;
 
   async function handleLaunch() {

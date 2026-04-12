@@ -54,12 +54,17 @@ pub(super) fn flush_event_buffer<R: Runtime>(
         .map(|evt| evt.content.as_str())
         .collect::<Vec<_>>()
         .join("\n");
+    let raw_batch = PlanActivityBatchPayload {
+        project_id: project_id.to_string(),
+        events,
+        plan_content_delta,
+    };
+    let filtered_batch = crate::plan_engine::filters::filter_plan_batch(raw_batch);
+    if filtered_batch.events.is_empty() && filtered_batch.plan_content_delta.is_empty() {
+        return;
+    }
     let _ = app.emit(
         crate::events::EVENT_PLAN_ACTIVITY_BATCH,
-        PlanActivityBatchPayload {
-            project_id: project_id.to_string(),
-            events,
-            plan_content_delta,
-        },
+        filtered_batch,
     );
 }

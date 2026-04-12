@@ -2,30 +2,26 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useWizardStore } from "../stores/wizardStore";
 import {
-  loadExistingPlan, queryPlanStatus, saveDraft,
-  savePlan, startPlan, stopPlan, writeToPlan,
+  advanceWizardStep, loadExistingPlan, queryPlanStatus, saveWizardDraft,
+  savePlan, startPlan, stopPlan, writeToPlan, replan,
 } from "../lib/tauri";
-import { buildDraftPayload } from "../lib/draft-payload";
 
 export function usePlanOrchestration(projectId: string | undefined) {
   const navigate = useNavigate();
   const projectData = useWizardStore((state) => state.projectData);
-  const advanceStep = useWizardStore((state) => state.advanceStep);
 
   const [userInput, setUserInput] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editedPlan, setEditedPlan] = useState("");
   const [initDone, setInitDone] = useState(false);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const feedbackPromptRef = useRef<string | null>(null);
+  const launchingRef = useRef(false);
 
   async function launchPlan() {
     const storeRunning = useWizardStore.getState().planRunning;
-    if (!projectId || !projectData.name || storeRunning) return;
+    if (!projectId || !projectData.name || storeRunning || launchingRef.current) return;
+    launchingRef.current = true;
     useWizardStore.getState().setPlanRunning(true);
-
-    const effectivePrompt = feedbackPromptRef.current ?? projectData.description;
-    feedbackPromptRef.current = null;
 
     try {
       await startPlan({
@@ -34,10 +30,12 @@ export function usePlanOrchestration(projectId: string | undefined) {
         agent: projectData.planAgent,
         model: projectData.planModel,
         effort: projectData.planEffort,
-        initialPrompt: effectivePrompt,
+        initialPrompt: projectData.description,
       });
     } catch {
       useWizardStore.getState().setPlanRunning(false);
+    } finally {
+      launchingRef.current = false;
     }
   }
 
@@ -85,17 +83,16 @@ export function usePlanOrchestration(projectId: string | undefined) {
 
   async function handleSendInput() {
     if (!userInput.trim() || !projectId) return;
-    const { planComplete, planContent } = useWizardStore.getState();
+    const { planComplete } = useWizardStore.getState();
     if (planComplete) {
       const feedback = userInput.trim();
       setUserInput("");
-      feedbackPromptRef.current =
-        `${projectData.description}\n\nPrevious plan:\n${planContent}\n\nUser feedback:\n${feedback}`;
-      await stopPlan(projectId).catch(() => {});
-      useWizardStore.getState().setPlanRunning(false);
+      useWizardStore.getState().setPlanRunning(true);
       useWizardStore.getState().setPlanComplete(false);
       useWizardStore.setState({ planEvents: [], planContent: "", stories: [] });
-      void launchPlan();
+      await replan(projectId, feedback).catch(() => {
+        useWizardStore.getState().setPlanRunning(false);
+      });
       return;
     }
     await writeToPlan(projectId, userInput.trim()).catch(() => {});
@@ -119,7 +116,6 @@ export function usePlanOrchestration(projectId: string | undefined) {
     useWizardStore.getState().setPlanComplete(false);
     setIsEditing(false);
     setEditedPlan("");
-    feedbackPromptRef.current = null;
     useWizardStore.setState({ planEvents: [], planContent: "", stories: [] });
     void launchPlan();
   }
@@ -129,8 +125,8 @@ export function usePlanOrchestration(projectId: string | undefined) {
     const { planContent } = useWizardStore.getState();
     const contentToSave = isEditing ? editedPlan : planContent;
     if (contentToSave) await savePlan(projectId, contentToSave).catch(() => {});
-    await saveDraft(projectId, buildDraftPayload(projectId, "atomize")).catch(() => {});
-    advanceStep(3);
+    await saveWizardDraft(projectId, "atomize").catch(() => {});
+    await advanceWizardStep(3).catch(() => {});
     navigate(`/new/atomize/${projectId}`);
   }
 

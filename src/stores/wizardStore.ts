@@ -21,7 +21,7 @@ export const useWizardStore = create<WizardState>()((...args) => ({
       ...STEP_DEFAULTS,
       ...PLAN_DEFAULTS,
       ...STORIES_DEFAULTS,
-      config: CONFIG_DEFAULTS.config,
+      ...CONFIG_DEFAULTS,
     });
   },
 }));

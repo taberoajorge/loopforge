@@ -3,26 +3,30 @@ import type { WizardConfig } from "../../types/wizard";
 
 export interface WizardConfigSlice {
   config: WizardConfig;
+  configLoaded: boolean;
   setConfig: (config: Partial<WizardConfig>) => void;
+  setFullConfig: (config: WizardConfig) => void;
+  setConfigLoaded: (loaded: boolean) => void;
 }
 
-export const DEFAULT_CONFIG: WizardConfig = {
-  executeAgent: "cursor",
+const PLACEHOLDER_CONFIG: WizardConfig = {
+  executeAgent: "",
   executeModel: null,
   executeEffort: null,
-  fallbackChain: ["claude"],
-  gutterThreshold: 3,
-  maxIterations: 50,
-  cooldownSeconds: 5,
+  fallbackChain: [],
+  gutterThreshold: 0,
+  maxIterations: 0,
+  cooldownSeconds: 0,
   testCommand: "",
-  maxVerificationRetries: 3,
+  maxVerificationRetries: 0,
   scmProvider: "auto",
-  reviewPollingInterval: 60,
-  reviewTimeout: 600,
+  reviewPollingInterval: 0,
+  reviewTimeout: 0,
 };
 
 export const CONFIG_DEFAULTS = {
-  config: DEFAULT_CONFIG,
+  config: PLACEHOLDER_CONFIG,
+  configLoaded: false,
 };
 
 export const createConfigSlice: StateCreator<
@@ -34,4 +38,6 @@ export const createConfigSlice: StateCreator<
   ...CONFIG_DEFAULTS,
   setConfig: (config) =>
     set((state) => ({ config: { ...state.config, ...config } })),
+  setFullConfig: (config) => set({ config, configLoaded: true }),
+  setConfigLoaded: (loaded) => set({ configLoaded: loaded }),
 });

@@ -8,3 +8,4 @@ pub mod projects_lifecycle;
 pub mod projects_listing;
 pub mod projects_wizard;
 mod validation;
+pub mod wizard_logic;

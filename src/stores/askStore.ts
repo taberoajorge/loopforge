@@ -9,6 +9,7 @@ interface AskState {
   isAsking: boolean;
   selectedAgent: string;
   selectedModel: string | null;
+  editPrefill: string;
   switchProject: (projectId: string) => void;
   setMessages: (messages: AskMessage[]) => void;
   addMessage: (message: AskMessage) => void;
@@ -18,30 +19,27 @@ interface AskState {
   setIsAsking: (asking: boolean) => void;
   setSelectedAgent: (agent: string) => void;
   setSelectedModel: (model: string | null) => void;
-  editPrefill: string;
   setEditPrefill: (value: string) => void;
   finalize: (message: AskMessage) => void;
   reset: () => void;
 }
 
-export const useAskStore = create<AskState>()((set, get) => ({
-  activeProjectId: null,
-  messages: [],
+const INITIAL_STATE = {
+  activeProjectId: null as string | null,
+  messages: [] as AskMessage[],
   streamingContent: "",
-  streamingMessageId: null,
+  streamingMessageId: null as string | null,
   isAsking: false,
   selectedAgent: "claude",
-  selectedModel: null,
+  selectedModel: null as string | null,
   editPrefill: "",
+};
+
+export const useAskStore = create<AskState>()((set, get) => ({
+  ...INITIAL_STATE,
   switchProject: (projectId) => {
     if (get().activeProjectId === projectId) return;
-    set({
-      activeProjectId: projectId,
-      messages: [],
-      streamingContent: "",
-      streamingMessageId: null,
-      isAsking: false,
-    });
+    set({ ...INITIAL_STATE, activeProjectId: projectId, selectedAgent: get().selectedAgent });
   },
   setMessages: (messages) => set({ messages }),
   addMessage: (message) =>
@@ -61,12 +59,5 @@ export const useAskStore = create<AskState>()((set, get) => ({
       streamingMessageId: null,
       isAsking: false,
     })),
-  reset: () =>
-    set({
-      activeProjectId: null,
-      messages: [],
-      streamingContent: "",
-      streamingMessageId: null,
-      isAsking: false,
-    }),
+  reset: () => set(INITIAL_STATE),
 }));

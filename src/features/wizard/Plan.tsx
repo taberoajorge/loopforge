@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef } from "react";
+import { useDeferredValue, useEffect, useRef } from "react";
 import { useParams } from "react-router";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -10,7 +10,6 @@ import { MarkdownPreview } from "../../components/MarkdownPreview";
 import { useWizardStore } from "../../stores/wizardStore";
 import { usePlanEvents } from "../../hooks/usePlanEvents";
 import { usePlanOrchestration } from "../../hooks/usePlanOrchestration";
-import { shouldRenderPlanEvent } from "../../lib/plan-stream-filters";
 import {
   PlanStreamPanel,
 } from "./components/PlanStreamPanel";
@@ -27,11 +26,7 @@ export function Plan() {
   const { planError } = usePlanEvents(id);
   const orchestration = usePlanOrchestration(id);
 
-  const deferredEvents = useDeferredValue(planEvents);
-  const visiblePlanEvents = useMemo(
-    () => deferredEvents.filter(shouldRenderPlanEvent),
-    [deferredEvents],
-  );
+  const visiblePlanEvents = useDeferredValue(planEvents);
 
   useEffect(() => {
     activityEndRef.current?.scrollIntoView({ behavior: "auto" });

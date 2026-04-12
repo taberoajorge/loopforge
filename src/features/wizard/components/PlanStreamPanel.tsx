@@ -7,7 +7,6 @@ import { Input } from "../../../components/ui/input";
 import { ScrollArea, ScrollContent, ScrollViewport } from "../../../components/ui/scroll-area";
 import { Separator } from "../../../components/ui/separator";
 import type { PlanEvent, PlanEventKind } from "../../../types/wizard";
-export { shouldRenderPlanEvent } from "../../../lib/plan-stream-filters";
 
 const MAX_VISIBLE_EVENTS = 200;
 
