@@ -24,6 +24,7 @@ export function createAtomizeProgress(
     stageName: "Chunk",
     message: "Chunking plan",
     projectId: "project-001",
+    elapsedMs: 0,
   }, overrides);
 }
 

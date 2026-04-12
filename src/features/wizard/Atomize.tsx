@@ -6,10 +6,13 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { ScrollArea, ScrollContent, ScrollViewport } from "../../components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { useWizardStore, type UserStory } from "../../stores/wizardStore";
 import { useAtomizerPipeline, STAGE_BADGE, STAGE_LABEL } from "../../hooks/useAtomizerPipeline";
+import { useAtomizerActivity } from "../../hooks/useAtomizerActivity";
 import { buildDraftPayload } from "../../lib/draft-payload";
 import { AtomizeConfirmationDialog } from "./components/AtomizeConfirmationDialog";
+import { AtomizeStreamPanel } from "./components/AtomizeStreamPanel";
 import { AtomizeStoryList } from "./components/AtomizeStoryList";
 
 function makeBlankStory(existingCount: number): UserStory {
@@ -46,6 +49,7 @@ export function Atomize() {
   const [storyToRemove, setStoryToRemove] = useState<UserStory | null>(null);
 
   const pipeline = useAtomizerPipeline(id);
+  const activityEvents = useAtomizerActivity(id);
   const totalMinutes = stories.reduce((sum, story) => sum + story.estimatedMinutes, 0);
   const totalHours = (totalMinutes / 60).toFixed(1);
   const addStoryDisabled = !pipeline.atomizeStarted || pipeline.isRunning;
@@ -94,14 +98,51 @@ export function Atomize() {
 
   return (
     <div className="flex h-full min-h-0 gap-4 p-4">
-      <Card className="w-72 shrink-0">
-        <CardHeader><CardTitle>Queue Sequence</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <Progress value={pipeline.pipelinePercent} label="System Health" valueLabel={`${pipeline.pipelinePercent}%`} />
-          <ScrollArea className="max-h-48"><ScrollViewport className="h-full"><ScrollContent className="space-y-2">{pipeline.stages.map((stage) => <div key={stage.number} className="flex items-center justify-between"><span className="text-xs text-text-muted">{stage.label}</span><Badge variant={STAGE_BADGE[stage.status]} className={`min-w-[4rem] justify-center text-center${stage.status === "running" ? " animate-pulse" : ""}`}>{STAGE_LABEL[stage.status]}</Badge></div>)}</ScrollContent></ScrollViewport></ScrollArea>
-          {pipeline.stageMessage ? <p className="text-xs text-text-muted">{pipeline.stageMessage}{pipeline.isRunning ? ` · ${pipeline.formatElapsed(pipeline.elapsedSeconds)}` : ""}</p> : null}
-          {pipeline.atomizeError ? <p className="text-xs text-blocked">{pipeline.atomizeError}</p> : null}
-        </CardContent>
+      <Card className="flex w-80 shrink-0 flex-col overflow-hidden">
+        <Tabs defaultValue="queue" className="flex min-h-0 flex-1 flex-col">
+          <CardHeader className="pb-2">
+            <TabsList className="w-full">
+              <TabsTrigger value="queue" className="flex-1">Queue</TabsTrigger>
+              <TabsTrigger value="activity" className="flex-1">
+                Activity{activityEvents.length > 0 ? ` (${activityEvents.length})` : ""}
+              </TabsTrigger>
+            </TabsList>
+          </CardHeader>
+          <TabsContent value="queue" className="flex flex-col px-4 pb-4">
+            <div className="space-y-4">
+              <Progress value={pipeline.pipelinePercent} label="System Health" valueLabel={`${pipeline.pipelinePercent}%`} />
+              <ScrollArea className="max-h-48">
+                <ScrollViewport className="h-full">
+                  <ScrollContent className="space-y-2">
+                    {pipeline.stages.map((stage) => (
+                      <div key={stage.number} className="flex items-center justify-between">
+                        <span className="text-xs text-text-muted">{stage.label}</span>
+                        <Badge variant={STAGE_BADGE[stage.status]} className={`min-w-[4rem] justify-center text-center${stage.status === "running" ? " animate-pulse" : ""}`}>
+                          {STAGE_LABEL[stage.status]}
+                        </Badge>
+                      </div>
+                    ))}
+                  </ScrollContent>
+                </ScrollViewport>
+              </ScrollArea>
+              {pipeline.stageMessage ? (
+                <p className="text-xs text-text-muted">
+                  {pipeline.stageMessage}
+                  {pipeline.isRunning ? ` · ${pipeline.formatElapsed(pipeline.elapsedSeconds)}` : ""}
+                </p>
+              ) : null}
+              {pipeline.atomizeError ? <p className="text-xs text-blocked">{pipeline.atomizeError}</p> : null}
+            </div>
+          </TabsContent>
+          <TabsContent value="activity" className="min-h-0 flex-1">
+            <AtomizeStreamPanel
+              events={activityEvents}
+              isRunning={pipeline.isRunning}
+              isDone={pipeline.isDone}
+              hasError={Boolean(pipeline.atomizeError)}
+            />
+          </TabsContent>
+        </Tabs>
       </Card>
       <Card className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <CardHeader className="flex-row items-center justify-between gap-3">

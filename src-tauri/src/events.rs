@@ -21,6 +21,8 @@ pub const EVENT_PLAN_COMPLETE: &str = "plan:complete";
 pub const EVENT_PLAN_ERROR: &str = "plan:error";
 pub const EVENT_PLAN_HEARTBEAT: &str = "plan:heartbeat";
 
+pub const EVENT_ATOMIZATION_ACTIVITY: &str = "atomization:activity";
+
 #[allow(dead_code)]
 pub const LOOP_EVENT_CATALOG: [&str; 13] = [
     EVENT_AGENT_OUTPUT_STREAM,

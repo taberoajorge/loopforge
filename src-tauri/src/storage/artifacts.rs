@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 
-pub fn project_artifact_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, String> {
+pub fn project_artifact_dir<R: Runtime>(app: &AppHandle<R>, project_id: &str) -> Result<PathBuf, String> {
     app.path()
         .app_data_dir()
         .map(|data_dir| data_dir.join("projects").join(project_id))

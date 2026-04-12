@@ -1,6 +1,6 @@
 use crate::projects::artifacts::artifact_dir;
 use crate::projects::{ProjectConfig, ProjectError};
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 
 fn sanitize_config(mut config: ProjectConfig) -> ProjectConfig {
     let default_config = ProjectConfig::default();
@@ -116,8 +116,8 @@ fn legacy_config_from_loop_args(content: &str) -> Result<ProjectConfig, ProjectE
     }))
 }
 
-pub fn save_project_config(
-    app: &AppHandle,
+pub fn save_project_config<R: Runtime>(
+    app: &AppHandle<R>,
     project_id: &str,
     config: &ProjectConfig,
 ) -> Result<(), ProjectError> {

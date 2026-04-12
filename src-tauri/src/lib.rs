@@ -98,6 +98,8 @@ pub fn run() {
         .manage(plan_engine::PlanSessionsState::default())
         .manage(loop_manager::LoopManagerState::default())
         .manage(ask_engine::AskSessionsState::default())
+        .manage(atomizer::ActivityLogState::default())
+        .manage(atomizer::PipelineRegistryState::default())
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 let plan_state = window.state::<plan_engine::PlanSessionsState>();

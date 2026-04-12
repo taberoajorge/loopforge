@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { onAtomizationProgress, runAtomizer, type AtomizeProgress, type Prd } from "../lib/tauri";
+import {
+  getAtomizerPipelineState,
+  onAtomizationProgress,
+  runAtomizer,
+  type AtomizeProgress,
+  type Prd,
+  type StageStatus,
+} from "../lib/tauri";
 import { useWizardStore } from "../stores/wizardStore";
 
-type StageStatus = "pending" | "running" | "done" | "error";
 export type PipelineStage = { number: number; label: string; status: StageStatus };
 
 const INITIAL_STAGES: PipelineStage[] = [
@@ -30,11 +36,11 @@ const atomizerPromiseByProject = new Map<string, Promise<Prd>>();
 
 export function useAtomizerPipeline(projectId: string | undefined) {
   const startedRef = useRef(false);
-  const [stages, setStages] = useState(INITIAL_STAGES);
+  const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
   const [atomizeStarted, setAtomizeStarted] = useState(false);
   const [atomizeError, setAtomizeError] = useState<string | null>(null);
   const [stageMessage, setStageMessage] = useState("");
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
 
   useEffect(() => {
     if (!projectId) return;
@@ -47,6 +53,19 @@ export function useAtomizerPipeline(projectId: string | undefined) {
       setStageMessage("Loaded existing stories.");
       return;
     }
+
+    getAtomizerPipelineState(projectId).then((snapshot) => {
+      if (!snapshot) return;
+      setAtomizeStarted(true);
+      setStages(snapshot.stages.map((stage) => ({
+        number: stage.number,
+        label: stage.label,
+        status: stage.status,
+      })));
+      setElapsedMs(snapshot.elapsedMs);
+      if (snapshot.error) setAtomizeError(snapshot.error);
+    });
+
     startedRef.current = true;
     setAtomizeStarted(true);
     setStageMessage("Summarizing plan...");
@@ -55,6 +74,7 @@ export function useAtomizerPipeline(projectId: string | undefined) {
     const unlistenPromise = onAtomizationProgress((progress: AtomizeProgress) => {
       if (progress.projectId !== projectId) return;
       setStageMessage(progress.message);
+      setElapsedMs(progress.elapsedMs);
       setStages((previous) => previous.map((stage) =>
         stage.number === progress.stage
           ? { ...stage, status: "running" }
@@ -108,12 +128,7 @@ export function useAtomizerPipeline(projectId: string | undefined) {
   const isDone = stages.every((stage) => stage.status === "done");
   const isRunning = atomizeStarted && !isDone && !atomizeError;
 
-  useEffect(() => {
-    if (!isRunning) return;
-    setElapsedSeconds(0);
-    const timer = setInterval(() => setElapsedSeconds((prev) => prev + 1), 1000);
-    return () => clearInterval(timer);
-  }, [isRunning]);
+  const elapsedSeconds = Math.floor(elapsedMs / 1000);
 
   const formatElapsed = (secs: number) =>
     secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${secs % 60}s`;
