@@ -10,8 +10,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Separator } from "../../components/ui/separator";
 import { useWizardStore } from "../../stores/wizardStore";
-import { stopPlan, saveDraft } from "../../lib/tauri";
-import { buildDraftPayload } from "../../lib/draft-payload";
+import { stopPlan, saveWizardDraft } from "../../lib/tauri";
 import { useWizardHydration } from "../../hooks/useWizardHydration";
 import { WizardExitDialog } from "./components/WizardExitDialog";
 import { WizardStepRail } from "./components/WizardStepRail";
@@ -54,7 +53,7 @@ export function WizardLayout() {
         await stopPlan(projectId).catch(() => {});
       }
       const stepSlug = WIZARD_STEPS.find((step) => step.number === currentStep)?.slug ?? "describe";
-      await saveDraft(projectId, buildDraftPayload(projectId, stepSlug)).catch(() => {});
+      await saveWizardDraft(projectId, stepSlug).catch(() => {});
     }
     navigate("/");
   }

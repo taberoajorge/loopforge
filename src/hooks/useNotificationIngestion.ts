@@ -16,46 +16,42 @@ interface EventPayload {
   sessionId?: string;
 }
 
-const EVENT_MAP: Array<{
+interface NotificationEntry {
   event: string;
   type: NotificationType;
-  title: (p: EventPayload) => string;
-  message: (p: EventPayload) => string;
-  filter?: (p: EventPayload) => boolean;
-}> = [
+  title: (payload: EventPayload) => string;
+  message: (payload: EventPayload) => string;
+}
+
+const EVENT_MAP: NotificationEntry[] = [
   {
     event: "loop:iteration-completed",
     type: "story_completed",
     title: () => "Story completed",
-    message: (p) => `Story ${p.storyId ?? "unknown"} passed verification.`,
-    filter: (p) => {
-      const r = p as Record<string, unknown>;
-      return r.result === "success" || r.outcome === "passed";
-    },
+    message: (payload) => `Story ${payload.storyId ?? "unknown"} passed verification.`,
   },
   {
     event: "loop:story-skipped",
     type: "story_blocked",
     title: () => "Story skipped",
-    message: (p) =>
-      `${p.storyId ?? "Story"}: ${p.reason ?? "exceeded failure threshold"}`,
+    message: (payload) =>
+      `${payload.storyId ?? "Story"}: ${payload.reason ?? "exceeded failure threshold"}`,
   },
   {
     event: "loop:verification-failed",
     type: "loop_error",
-    title: (p) =>
-      p.circuitBreaker ? "Circuit breaker triggered" : "Verification failed",
-    message: (p) =>
-      p.circuitBreaker
-        ? `${p.storyId ?? "Story"}: same error repeated — skipping`
-        : `${p.storyId ?? "Story"}: attempt ${p.attempt ?? "?"} failed (${p.errorCount ?? 0} errors)`,
-    filter: (p) => p.circuitBreaker === true || (p.attempt ?? 0) >= 3,
+    title: (payload) =>
+      payload.circuitBreaker ? "Circuit breaker triggered" : "Verification failed",
+    message: (payload) =>
+      payload.circuitBreaker
+        ? `${payload.storyId ?? "Story"}: same error repeated`
+        : `${payload.storyId ?? "Story"}: attempt ${payload.attempt ?? "?"} failed (${payload.errorCount ?? 0} errors)`,
   },
   {
     event: "loop:rate-limit-detected",
     type: "rate_limited",
     title: () => "Rate limited",
-    message: (p) => `Agent ${p.agent ?? ""} hit rate limit — switching.`,
+    message: (payload) => `Agent ${payload.agent ?? ""} hit rate limit.`,
   },
   {
     event: "loop:session-ended",
@@ -66,7 +62,7 @@ const EVENT_MAP: Array<{
 ];
 
 export function useNotificationIngestion() {
-  const addNotification = useNotificationStore((s) => s.addNotification);
+  const addNotification = useNotificationStore((state) => state.addNotification);
 
   useEffect(() => {
     const unlisteners: Array<Promise<() => void>> = [];
@@ -76,7 +72,6 @@ export function useNotificationIngestion() {
         listen<EventPayload>(entry.event, (event) => {
           const payload = event.payload;
           if (!payload?.projectId) return;
-          if (entry.filter && !entry.filter(payload)) return;
 
           addNotification({
             projectId: payload.projectId,

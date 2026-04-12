@@ -15,28 +15,28 @@ use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 use tokio::task::AbortHandle;
 
-fn flush_partial_plan<R: Runtime>(buffer: &Arc<Mutex<Vec<PlanActivityPayload>>>, classifier: &Arc<Mutex<ActivityClassifier>>, plan_path: &PathBuf, app: &AppHandle<R>, project_id: &str) -> usize {
+fn flush_partial_plan<R: Runtime>(buffer: &Arc<Mutex<Vec<PlanActivityPayload>>>, classifier: &Arc<Mutex<ActivityClassifier>>, plan_path: &PathBuf, app: &AppHandle<R>, project_id: &str) -> (usize, String) {
     output::flush_event_buffer(buffer, app, project_id);
     let plan_content = classifier.lock().map(|guard| guard.accumulated_plan()).unwrap_or_default();
-    if plan_content.is_empty() { return 0; }
+    if plan_content.is_empty() { return (0, String::new()); }
     let plan_bytes = plan_content.len();
     let _ = std::fs::write(plan_path, &plan_content);
-    plan_bytes
+    (plan_bytes, plan_content)
 }
 
-fn emit_terminal<R: Runtime>(app: &AppHandle<R>, project_id: &str, exit_code: i32, plan_bytes: usize, tracer: &Option<SessionTracer>) {
+fn emit_terminal<R: Runtime>(app: &AppHandle<R>, project_id: &str, exit_code: i32, plan_bytes: usize, plan_content: Option<String>, tracer: &Option<SessionTracer>) {
     if exit_code != 0 {
         if let Some(tracer) = tracer { tracer.log(TraceEvent::ErrorEmitted { detail: format!("exit_code={exit_code}") }); }
-        let _ = app.emit(crate::events::EVENT_PLAN_ERROR, PlanTerminalPayload { project_id: project_id.to_string(), detail: format!("exit_code={exit_code}") });
+        let _ = app.emit(crate::events::EVENT_PLAN_ERROR, PlanTerminalPayload { project_id: project_id.to_string(), detail: format!("exit_code={exit_code}"), final_content: None });
         return;
     }
     if plan_bytes == 0 {
         if let Some(tracer) = tracer { tracer.log(TraceEvent::ErrorEmitted { detail: "empty_output".to_string() }); }
-        let _ = app.emit(crate::events::EVENT_PLAN_ERROR, PlanTerminalPayload { project_id: project_id.to_string(), detail: "empty_output".to_string() });
+        let _ = app.emit(crate::events::EVENT_PLAN_ERROR, PlanTerminalPayload { project_id: project_id.to_string(), detail: "empty_output".to_string(), final_content: None });
         return;
     }
     if let Some(tracer) = tracer { tracer.log(TraceEvent::PlanComplete { plan_bytes }); }
-    let _ = app.emit(crate::events::EVENT_PLAN_COMPLETE, PlanTerminalPayload { project_id: project_id.to_string(), detail: String::new() });
+    let _ = app.emit(crate::events::EVENT_PLAN_COMPLETE, PlanTerminalPayload { project_id: project_id.to_string(), detail: String::new(), final_content: plan_content });
 }
 
 fn cleanup_hook<R: Runtime>(app: AppHandle<R>, project_id: String, buffer: Arc<Mutex<Vec<PlanActivityPayload>>>, classifier: Arc<Mutex<ActivityClassifier>>, plan_path: PathBuf, tracer: Option<SessionTracer>, plan_abort: AbortHandle, batch_abort: AbortHandle, heartbeat_abort: AbortHandle) -> Arc<dyn Fn(PlanCleanupReason) + Send + Sync> {
@@ -44,12 +44,13 @@ fn cleanup_hook<R: Runtime>(app: AppHandle<R>, project_id: String, buffer: Arc<M
         batch_abort.abort();
         plan_abort.abort();
         heartbeat_abort.abort();
-        let plan_bytes = flush_partial_plan(&buffer, &classifier, &plan_path, &app, &project_id);
+        let (plan_bytes, plan_content) = flush_partial_plan(&buffer, &classifier, &plan_path, &app, &project_id);
         if let PlanCleanupReason::ProcessExit { exit_code } = reason {
             if let Some(ref tracer) = tracer {
                 tracer.log(TraceEvent::ProcessTerminated { exit_code, has_plan_content: plan_bytes != 0 });
             }
-            emit_terminal(&app, &project_id, exit_code, plan_bytes, &tracer);
+            let content_opt = if plan_content.is_empty() { None } else { Some(plan_content) };
+            emit_terminal(&app, &project_id, exit_code, plan_bytes, content_opt, &tracer);
         }
     })
 }

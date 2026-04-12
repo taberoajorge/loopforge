@@ -11,13 +11,6 @@ import { useWizardStore } from "../stores/wizardStore";
 
 export type PipelineStage = { number: number; label: string; status: StageStatus };
 
-const INITIAL_STAGES: PipelineStage[] = [
-  { number: 1, label: "Summarize", status: "pending" },
-  { number: 2, label: "Chunk", status: "pending" },
-  { number: 3, label: "Atomize", status: "pending" },
-  { number: 4, label: "Merge", status: "pending" },
-];
-
 export const STAGE_BADGE: Record<StageStatus, "neutral" | "info" | "success" | "danger"> = {
   pending: "neutral",
   running: "info",
@@ -32,11 +25,16 @@ export const STAGE_LABEL: Record<StageStatus, string> = {
   error: "Error",
 };
 
-const atomizerPromiseByProject = new Map<string, Promise<Prd>>();
+const PLACEHOLDER_STAGES: PipelineStage[] = [
+  { number: 1, label: "Summarize", status: "pending" },
+  { number: 2, label: "Chunk", status: "pending" },
+  { number: 3, label: "Atomize", status: "pending" },
+  { number: 4, label: "Merge", status: "pending" },
+];
 
 export function useAtomizerPipeline(projectId: string | undefined) {
   const startedRef = useRef(false);
-  const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
+  const [stages, setStages] = useState<PipelineStage[]>(PLACEHOLDER_STAGES);
   const [atomizeStarted, setAtomizeStarted] = useState(false);
   const [atomizeError, setAtomizeError] = useState<string | null>(null);
   const [stageMessage, setStageMessage] = useState("");
@@ -46,77 +44,89 @@ export function useAtomizerPipeline(projectId: string | undefined) {
     if (!projectId) return;
     const snap = useWizardStore.getState();
     if (!snap.projectData.name) return;
-    if (snap.stories.length > 0 && snap.projectId === projectId) {
+
+    let disposed = false;
+
+    getAtomizerPipelineState(projectId)
+      .then((snapshot) => {
+        if (disposed) return;
+
+        if (snapshot && snapshot.stages.length > 0) {
+          const backendStages = snapshot.stages.map((stage) => ({
+            number: stage.number,
+            label: stage.label,
+            status: stage.status,
+          }));
+          const allDone = backendStages.every((stage) => stage.status === "done");
+          setAtomizeStarted(true);
+          setStages(backendStages);
+          setElapsedMs(snapshot.elapsedMs);
+          if (snapshot.error) setAtomizeError(snapshot.error);
+          if (allDone) {
+            startedRef.current = true;
+            setStageMessage("Loaded existing pipeline state.");
+            return;
+          }
+        }
+
+        launchAtomizer(snap, disposed);
+      })
+      .catch(() => {
+        if (!disposed) launchAtomizer(snap, disposed);
+      });
+
+    function launchAtomizer(wizardSnap: typeof snap, alreadyDisposed: boolean) {
+      if (alreadyDisposed || startedRef.current || !projectId) return;
+      const resolvedProjectId = projectId;
       startedRef.current = true;
       setAtomizeStarted(true);
-      setStages(INITIAL_STAGES.map((stage) => ({ ...stage, status: "done" })));
-      setStageMessage("Loaded existing stories.");
-      return;
+      setStageMessage("Summarizing plan...");
+      setStages(PLACEHOLDER_STAGES.map((stage) => ({ ...stage, status: stage.number === 1 ? "running" : "pending" })));
+
+      const unlistenPromise = onAtomizationProgress((progress: AtomizeProgress) => {
+        if (progress.projectId !== resolvedProjectId) return;
+        setStageMessage(progress.message);
+        setElapsedMs(progress.elapsedMs);
+        setStages((previous) => previous.map((stage) =>
+          stage.number === progress.stage
+            ? { ...stage, status: "running" }
+            : stage.number < progress.stage
+              ? { ...stage, status: "done" }
+              : stage,
+        ));
+      });
+
+      runAtomizer({
+        projectId: resolvedProjectId,
+        projectName: wizardSnap.projectData.name,
+        projectDir: wizardSnap.projectData.workingDirectory,
+        agent: wizardSnap.projectData.planAgent,
+        model: wizardSnap.projectData.planModel,
+        effort: wizardSnap.projectData.planEffort,
+      }).then((prd: Prd) => {
+        if (disposed) return;
+        useWizardStore.getState().setStories(prd.stories);
+        setStages((previous) => previous.map((stage) => ({ ...stage, status: "done" })));
+        setStageMessage(`Done. ${prd.stories.length} stories generated.`);
+      }).catch((error: unknown) => {
+        if (disposed) return;
+        setAtomizeError(error instanceof Error ? error.message : String(error));
+        setStages((previous) => previous.map((stage) =>
+          stage.status === "running" ? { ...stage, status: "error" } : stage,
+        ));
+      });
+
+      cleanupRef.current = () => {
+        unlistenPromise.then((unlisten) => unlisten());
+      };
     }
 
-    getAtomizerPipelineState(projectId).then((snapshot) => {
-      if (!snapshot) return;
-      setAtomizeStarted(true);
-      setStages(snapshot.stages.map((stage) => ({
-        number: stage.number,
-        label: stage.label,
-        status: stage.status,
-      })));
-      setElapsedMs(snapshot.elapsedMs);
-      if (snapshot.error) setAtomizeError(snapshot.error);
-    });
+    const cleanupRef = { current: () => {} };
 
-    startedRef.current = true;
-    setAtomizeStarted(true);
-    setStageMessage("Summarizing plan...");
-    setStages(INITIAL_STAGES.map((stage) => ({ ...stage, status: stage.number === 1 ? "running" : "pending" })));
-    let disposed = false;
-    const unlistenPromise = onAtomizationProgress((progress: AtomizeProgress) => {
-      if (progress.projectId !== projectId) return;
-      setStageMessage(progress.message);
-      setElapsedMs(progress.elapsedMs);
-      setStages((previous) => previous.map((stage) =>
-        stage.number === progress.stage
-          ? { ...stage, status: "running" }
-          : stage.number < progress.stage
-            ? { ...stage, status: "done" }
-            : stage,
-      ));
-    });
-    const releaseListener = () => {
-      unlistenPromise.then((unlisten) => unlisten());
-    };
-    const inFlightPromise = atomizerPromiseByProject.get(projectId) ?? runAtomizer({
-      projectId,
-      projectName: snap.projectData.name,
-      projectDir: snap.projectData.workingDirectory,
-      agent: snap.projectData.planAgent,
-      model: snap.projectData.planModel,
-      effort: snap.projectData.planEffort,
-    });
-    if (!atomizerPromiseByProject.has(projectId)) {
-      atomizerPromiseByProject.set(projectId, inFlightPromise);
-    }
-    inFlightPromise.then((prd) => {
-      if (disposed) return;
-      useWizardStore.getState().setStories(prd.stories);
-      setStages(INITIAL_STAGES.map((stage) => ({ ...stage, status: "done" })));
-      setStageMessage(`Done. ${prd.stories.length} stories generated.`);
-    }).catch((error: unknown) => {
-      if (disposed) return;
-      setAtomizeError(error instanceof Error ? error.message : String(error));
-      setStages((previous) => previous.map((stage) =>
-        stage.status === "running" ? { ...stage, status: "error" } : stage,
-      ));
-    }).finally(() => {
-      if (atomizerPromiseByProject.get(projectId) === inFlightPromise) {
-        atomizerPromiseByProject.delete(projectId);
-      }
-    });
     return () => {
       disposed = true;
       startedRef.current = false;
-      releaseListener();
+      cleanupRef.current();
     };
   }, [projectId]);
 

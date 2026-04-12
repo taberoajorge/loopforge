@@ -1,6 +1,6 @@
 import { useRef, useState, type DragEvent } from "react";
 import { useNavigate, useParams } from "react-router";
-import { discardDraft, saveDraft, savePrd, type Prd } from "../../lib/tauri";
+import { addStory, advanceWizardStep, discardDraft, removeStoryBackend, reorderStoriesBackend, saveWizardDraft, updateStoryBackend } from "../../lib/tauri";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
@@ -10,40 +10,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/ta
 import { useWizardStore, type UserStory } from "../../stores/wizardStore";
 import { useAtomizerPipeline, STAGE_BADGE, STAGE_LABEL } from "../../hooks/useAtomizerPipeline";
 import { useAtomizerActivity } from "../../hooks/useAtomizerActivity";
-import { buildDraftPayload } from "../../lib/draft-payload";
 import { AtomizeConfirmationDialog } from "./components/AtomizeConfirmationDialog";
 import { AtomizeStreamPanel } from "./components/AtomizeStreamPanel";
 import { AtomizeStoryList } from "./components/AtomizeStoryList";
-
-function makeBlankStory(existingCount: number): UserStory {
-  const paddedId = String(existingCount + 1).padStart(3, "0");
-  return {
-    id: `S-${paddedId}`,
-    title: "New story",
-    description: "",
-    acceptanceCriteria: [],
-    scope: { filesToModify: [], filesToCreate: [], filesToAvoid: [] },
-    verification: { commands: [], assertions: [] },
-    priority: "medium",
-    estimatedComplexity: "medium",
-    estimatedMinutes: 30,
-    dependsOn: [],
-    passes: false,
-    blocked: false,
-    attempts: 0,
-    notes: null,
-  };
-}
 
 export function Atomize() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const stories = useWizardStore((state) => state.stories);
-  const reorderStories = useWizardStore((state) => state.reorderStories);
-  const addStory = useWizardStore((state) => state.addStory);
-  const updateStory = useWizardStore((state) => state.updateStory);
-  const removeStory = useWizardStore((state) => state.removeStory);
-  const advanceStep = useWizardStore((state) => state.advanceStep);
+  const setStories = useWizardStore((state) => state.setStories);
+  
   const dragIndexRef = useRef<number | null>(null);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [storyToRemove, setStoryToRemove] = useState<UserStory | null>(null);
@@ -65,28 +41,39 @@ export function Atomize() {
   const handleDragStart = (index: number) => { dragIndexRef.current = index; };
   const handleDragOver = (event: DragEvent) => { event.preventDefault(); };
   const handleDrop = (toIndex: number) => {
-    if (dragIndexRef.current === null || dragIndexRef.current === toIndex) return;
-    reorderStories(dragIndexRef.current, toIndex);
+    if (dragIndexRef.current === null || dragIndexRef.current === toIndex || !id) return;
+    const fromIndex = dragIndexRef.current;
     dragIndexRef.current = null;
+    reorderStoriesBackend(id, fromIndex, toIndex)
+      .then((result) => setStories(result.stories))
+      .catch(() => {});
   };
 
-  async function persistStoriesToDisk() {
-    const snap = useWizardStore.getState();
-    if (!id || snap.stories.length === 0) return;
-    const prd: Prd = {
-      projectName: snap.projectData.name,
-      generatedAt: new Date().toISOString(),
-      totalEstimatedMinutes: totalMinutes,
-      stories: snap.stories,
-    };
-    await savePrd(id, JSON.stringify(prd, null, 2)).catch(() => {});
+  function handleUpdateStory(storyId: string, patch: Partial<UserStory>) {
+    if (!id) return;
+    updateStoryBackend(id, storyId, JSON.stringify(patch))
+      .then((result) => setStories(result.stories))
+      .catch(() => {});
+  }
+
+  function handleAddStory() {
+    if (!id) return;
+    addStory(id)
+      .then((result) => setStories(result.stories))
+      .catch(() => {});
+  }
+
+  function handleRemoveStory(storyId: string) {
+    if (!id) return;
+    removeStoryBackend(id, storyId)
+      .then((result) => setStories(result.stories))
+      .catch(() => {});
   }
 
   async function handleNext() {
     if (!id) return;
-    await persistStoriesToDisk();
-    await saveDraft(id, buildDraftPayload(id, "configure")).catch(() => {});
-    advanceStep(4);
+    await saveWizardDraft(id, "configure").catch(() => {});
+    await advanceWizardStep(4).catch(() => {});
     navigate(`/new/configure/${id}`);
   }
 
@@ -150,7 +137,7 @@ export function Atomize() {
           <div className="flex items-center gap-2">
             <Badge variant="neutral">{stories.length} stories</Badge>
             <Badge variant="neutral">{totalHours}h est</Badge>
-            <Button variant="outline" size="sm" disabled={addStoryDisabled} onClick={() => addStory(makeBlankStory(stories.length))}>Add story</Button>
+            <Button variant="outline" size="sm" disabled={addStoryDisabled} onClick={handleAddStory}>Add story</Button>
           </div>
         </CardHeader>
         <CardContent className="min-h-0 flex-1 p-0">
@@ -159,7 +146,7 @@ export function Atomize() {
             atomizeStarted={pipeline.atomizeStarted}
             isDone={pipeline.isDone}
             atomizeError={pipeline.atomizeError}
-            onUpdateStory={updateStory}
+            onUpdateStory={handleUpdateStory}
             onRequestRemoveStory={setStoryToRemove}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
@@ -179,7 +166,7 @@ export function Atomize() {
         title="Remove story?"
         description={storyToRemove ? `${storyToRemove.id} will be removed from the atomization list.` : "This story will be removed from the atomization list."}
         confirmLabel="Remove story"
-        onConfirm={() => { if (!storyToRemove) return; removeStory(storyToRemove.id); setStoryToRemove(null); }}
+        onConfirm={() => { if (!storyToRemove) return; handleRemoveStory(storyToRemove.id); setStoryToRemove(null); }}
       />
     </div>
   );

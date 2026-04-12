@@ -28,4 +28,6 @@ pub struct PlanActivityBatchPayload {
 pub struct PlanTerminalPayload {
     pub project_id: String,
     pub detail: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub final_content: Option<String>,
 }

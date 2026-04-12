@@ -94,7 +94,11 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
 
   const handleSubmit = useCallback(
     async (question: string) => {
-      const userMessage: AskMessage = {
+      const store = useAskStore.getState();
+      store.setIsAsking(true);
+      store.setStreamingContent("");
+      store.setEditPrefill("");
+      store.addMessage({
         id: crypto.randomUUID(),
         conversationId: "",
         role: "user",
@@ -102,12 +106,7 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
         agent: null,
         model: null,
         createdAt: new Date().toISOString(),
-      };
-      const store = useAskStore.getState();
-      store.addMessage(userMessage);
-      store.setIsAsking(true);
-      store.setStreamingContent("");
-      store.setEditPrefill("");
+      });
       try {
         const messageId = await askQuestion(projectId, question, selectedAgent, selectedModel);
         useAskStore.getState().setStreamingMessageId(messageId);
@@ -120,10 +119,7 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
 
   const handleStop = useCallback(() => {
     void stopAsk(projectId);
-    const store = useAskStore.getState();
-    store.setIsAsking(false);
-    store.setStreamingContent("");
-    store.setStreamingMessageId(null);
+    useAskStore.getState().setIsAsking(false);
   }, [projectId]);
 
   const handleCopy = useCallback((messageId: string) => {
@@ -139,9 +135,8 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
   }, [projectId]);
 
   const handleRetry = useCallback((messageId: string) => {
-    const store = useAskStore.getState();
-    store.setIsAsking(true);
-    store.setStreamingContent("");
+    useAskStore.getState().setIsAsking(true);
+    useAskStore.getState().setStreamingContent("");
     void retryAsk(projectId, messageId, selectedAgent, selectedModel).then((newId) => {
       askHistory(projectId).then((history) => useAskStore.getState().setMessages(history));
       useAskStore.getState().setStreamingMessageId(newId);
@@ -149,10 +144,9 @@ export function AskTab({ projectId, disabled }: AskTabProps) {
   }, [projectId, selectedAgent, selectedModel]);
 
   const handleRetryWith = useCallback((messageId: string, agent: string) => {
-    const store = useAskStore.getState();
-    store.setSelectedAgent(agent);
-    store.setIsAsking(true);
-    store.setStreamingContent("");
+    useAskStore.getState().setSelectedAgent(agent);
+    useAskStore.getState().setIsAsking(true);
+    useAskStore.getState().setStreamingContent("");
     void retryAsk(projectId, messageId, agent, null).then((newId) => {
       askHistory(projectId).then((history) => useAskStore.getState().setMessages(history));
       useAskStore.getState().setStreamingMessageId(newId);

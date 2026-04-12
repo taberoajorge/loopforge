@@ -1,5 +1,6 @@
 mod args;
 mod errors;
+pub mod filters;
 mod fixture;
 mod helpers;
 mod monitor;
