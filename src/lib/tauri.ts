@@ -4,6 +4,7 @@ export type {
   SnapshotStatus, ArtifactPaths, SessionInfo, ProgressInfo,
   ProjectSnapshot, IterationStory, WizardResumeState,
   Prd, StartLoopArgs, AtomizeArgs, AtomizeProgress,
+  AtomizeActivityPayload, PipelineSnapshot, StageSnapshot, StageStatus,
   IterationRow, EphemeralAnswer,
   PlanActivityPayload, PlanTerminalPayload, PlanActivityBatchPayload,
   PlanSessionStatus, PlanSessionInfo,
@@ -30,7 +31,10 @@ export {
   onPlanActivityBatch, onPlanComplete, onPlanError, onPlanHeartbeat,
 } from "./ipc/plan";
 
-export { runAtomizer, loadOutputLog, onAtomizationProgress } from "./ipc/atomizer";
+export {
+  runAtomizer, loadOutputLog, onAtomizationProgress, onAtomizationActivity,
+  getAtomizerActivityLog, getAtomizerPipelineState,
+} from "./ipc/atomizer";
 
 export {
   askQuestion, askHistory, stopAsk, copyAskMessage,

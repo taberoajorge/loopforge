@@ -2,6 +2,13 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::process::Command;
 
+pub fn ensure_full_path_env() {
+    let full_path = probe_path_env();
+    if !full_path.is_empty() {
+        std::env::set_var("PATH", &full_path);
+    }
+}
+
 pub fn run_version_probe(binary_path: &str, path_env: &str, version_flag: &str) -> Option<String> {
     let output = Command::new(binary_path)
         .arg(version_flag)

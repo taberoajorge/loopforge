@@ -1,4 +1,4 @@
-import type { PlanEventKind, UserStory } from "../../types/wizard";
+import type { AtomizeActivityKind, PlanEventKind, UserStory } from "../../types/wizard";
 
 export interface AgentInfo {
   name: string;
@@ -143,6 +143,30 @@ export interface AtomizeProgress {
   stageName: string;
   message: string;
   projectId: string;
+  elapsedMs: number;
+}
+
+export interface AtomizeActivityPayload {
+  projectId: string;
+  kind: AtomizeActivityKind;
+  content: string;
+  timestamp: string;
+}
+
+export type StageStatus = "pending" | "running" | "done" | "error";
+
+export interface StageSnapshot {
+  number: number;
+  label: string;
+  status: StageStatus;
+}
+
+export interface PipelineSnapshot {
+  stages: StageSnapshot[];
+  error: string | null;
+  startedAt: string | null;
+  elapsedMs: number;
+  done: boolean;
 }
 
 export interface IterationRow {

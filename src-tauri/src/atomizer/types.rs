@@ -48,6 +48,80 @@ pub struct AtomizeProgress {
     pub stage_name: String,
     pub message: String,
     pub project_id: String,
+    #[serde(default)]
+    pub elapsed_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AtomizeActivityKind {
+    PlanLoaded,
+    TemplateRender,
+    AgentStart,
+    AgentComplete,
+    ChunkDetected,
+    SectionProcess,
+    StoryExtracted,
+    Retry,
+    Validation,
+    ArtifactSaved,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtomizeActivity {
+    pub project_id: String,
+    pub kind: AtomizeActivityKind,
+    pub content: String,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum StageStatus {
+    Pending,
+    Running,
+    Done,
+    Error,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StageSnapshot {
+    pub number: u8,
+    pub label: String,
+    pub status: StageStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PipelineSnapshot {
+    pub stages: Vec<StageSnapshot>,
+    pub error: Option<String>,
+    pub started_at: Option<String>,
+    pub elapsed_ms: u64,
+    pub done: bool,
+}
+
+impl PipelineSnapshot {
+    pub fn initial() -> Self {
+        let labels = ["Summarize", "Chunk", "Atomize", "Merge"];
+        Self {
+            stages: labels
+                .iter()
+                .enumerate()
+                .map(|(idx, label)| StageSnapshot {
+                    number: (idx + 1) as u8,
+                    label: label.to_string(),
+                    status: StageStatus::Pending,
+                })
+                .collect(),
+            error: None,
+            started_at: None,
+            elapsed_ms: 0,
+            done: false,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
