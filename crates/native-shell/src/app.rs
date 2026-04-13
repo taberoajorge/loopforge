@@ -22,6 +22,13 @@ use planning_service::PlanningService;
 use projects_service::{ProjectLifecycle, ProjectsService};
 use screens::{AtomizationArtifact, AtomizationScreen, AtomizationStageUpdate, AtomizationState, HomeScreen, MonitorScreen, MonitorState, PlanningScreen, PlanningState, ProjectWizardScreen, ProjectWizardState};
 use theme::{ThemeName, ThemeStore};
+#[derive(Debug, Clone)] struct BackendAdapter { projects_root: Option<PathBuf> }
+impl BackendAdapter {
+    fn new(projects_root: Option<PathBuf>) -> Self { Self { projects_root } }
+    fn projects_service(&self) -> ProjectsService { ProjectsService::new(self.projects_root.clone()) }
+    fn planning_service(&self, projects: &ProjectsService) -> PlanningService { PlanningService::new(projects.root().to_path_buf()) }
+    fn atomization_service(&self, projects: &ProjectsService) -> AtomizationService { AtomizationService::new(projects.root().to_path_buf()) }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScreenId { Dashboard, Wizard, Planning, Atomization, Monitor }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,9 +58,10 @@ impl NativeShellApp {
     pub fn boot(theme_path: Option<PathBuf>) -> io::Result<Self> { Self::boot_with_paths(theme_path, None) }
     pub fn boot_with_paths(theme_path: Option<PathBuf>, projects_root: Option<PathBuf>) -> io::Result<Self> {
         let theme_store = ThemeStore::new(theme_path.unwrap_or_else(ThemeStore::default_path));
-        let projects = ProjectsService::new(projects_root);
-        let planning_service = PlanningService::new(projects.root().to_path_buf());
-        let atomization_service = AtomizationService::new(projects.root().to_path_buf());
+        let backend_adapter = BackendAdapter::new(projects_root);
+        let projects = backend_adapter.projects_service();
+        let planning_service = backend_adapter.planning_service(&projects);
+        let atomization_service = backend_adapter.atomization_service(&projects);
         let loop_service = LoopService::new(projects.root().to_path_buf());
         let mut app = Self {
             active_screen: ScreenId::Dashboard,
