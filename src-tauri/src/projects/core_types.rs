@@ -72,8 +72,13 @@ pub struct ProjectDetail {
 pub struct WizardResumeState {
     pub project: Project,
     pub wizard_step: String,
+    #[serde(default)]
+    pub wizard_session: Option<crate::projects::wizard_state::CanonicalWizardSession>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wizard_state_json: Option<String>,
+    #[serde(default)]
     pub has_plan: bool,
+    #[serde(default)]
     pub has_prd: bool,
 }
 
@@ -106,8 +111,11 @@ pub struct WizardHydrationResult {
     #[serde(default)]
     pub highest_step: u32,
     pub project_data: WizardProjectData,
+    #[serde(default)]
     pub plan_complete: bool,
+    #[serde(default)]
     pub stories: Vec<ralph_core::prd::UserStory>,
+    #[serde(default)]
     pub config: Option<super::config_types::ProjectConfig>,
 }
 
