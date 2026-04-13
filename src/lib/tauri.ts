@@ -122,7 +122,6 @@ export type {
   AgentEffortOption,
   AgentInfo,
   AgentModelOption,
-  SystemReadiness,
   ArtifactPaths,
   AskCompletePayload,
   AskErrorPayload,
@@ -152,6 +151,7 @@ export type {
   StageSnapshot,
   StageStatus,
   StartLoopArgs,
+  SystemReadiness,
   WizardResumeState,
 } from "./ipc/types";
 
