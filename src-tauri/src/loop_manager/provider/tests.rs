@@ -4,7 +4,7 @@ use std::path::Path;
 
 #[test]
 fn resolve_agent_binary_path_finds_available_binary() {
-    let path = resolve_agent_binary_path("zsh");
+    let path = resolve_agent_binary_path("bash");
     assert!(path.is_some());
 }
 
