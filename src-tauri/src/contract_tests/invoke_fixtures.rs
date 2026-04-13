@@ -1,7 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
-
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use std::sync::MutexGuard;
 
 const ENV_KEYS: [&str; 6] = [
     "HOME",
@@ -24,7 +22,9 @@ pub struct FixtureGuard {
 
 impl FixtureGuard {
     pub fn new(fixture_set: Option<&str>) -> Self {
-        let lock = ENV_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let lock = crate::test_env_lock::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
         let root_dir =
             std::env::temp_dir().join(format!("loopforge-invoke-{}", uuid::Uuid::new_v4()));
         let home_dir = root_dir.join("home");

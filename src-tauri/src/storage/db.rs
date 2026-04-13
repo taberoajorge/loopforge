@@ -42,6 +42,18 @@ impl DbState {
             );",
         )?;
 
+        conn.busy_timeout(std::time::Duration::from_secs(5))?;
+        conn.execute_batch("BEGIN EXCLUSIVE;")?;
+        let result = Self::apply_pending_migrations(conn);
+        if result.is_err() {
+            let _ = conn.execute_batch("ROLLBACK;");
+        } else {
+            conn.execute_batch("COMMIT;")?;
+        }
+        result
+    }
+
+    fn apply_pending_migrations(conn: &Connection) -> Result<(), DbError> {
         let current_version: i64 = conn
             .query_row(
                 "SELECT COALESCE(MAX(version), 0) FROM _migrations",
@@ -92,7 +104,7 @@ impl DbState {
                     loop_status TEXT NOT NULL DEFAULT 'interrupted',
                     saved_at TEXT NOT NULL DEFAULT (datetime('now'))
                 );
-                INSERT INTO _migrations (version) VALUES (1);",
+                INSERT OR IGNORE INTO _migrations (version) VALUES (1);",
             )?;
         }
 
@@ -100,7 +112,7 @@ impl DbState {
             conn.execute_batch(
                 "ALTER TABLE projects ADD COLUMN wizard_step TEXT DEFAULT NULL;
                 ALTER TABLE projects ADD COLUMN wizard_state_json TEXT DEFAULT NULL;
-                INSERT INTO _migrations (version) VALUES (2);",
+                INSERT OR IGNORE INTO _migrations (version) VALUES (2);",
             )?;
         }
 
@@ -117,14 +129,14 @@ impl DbState {
                     display_name TEXT,
                     PRIMARY KEY (connection_id, repo_path)
                 );
-                INSERT INTO _migrations (version) VALUES (3);",
+                INSERT OR IGNORE INTO _migrations (version) VALUES (3);",
             )?;
         }
 
         if current_version < 4 {
             conn.execute_batch(
                 "ALTER TABLE projects ADD COLUMN notification_prefs TEXT DEFAULT NULL;
-                INSERT INTO _migrations (version) VALUES (4);",
+                INSERT OR IGNORE INTO _migrations (version) VALUES (4);",
             )?;
         }
 
@@ -137,7 +149,7 @@ impl DbState {
                     config_json TEXT NOT NULL DEFAULT '{}',
                     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
                 );
-                INSERT INTO _migrations (version) VALUES (5);",
+                INSERT OR IGNORE INTO _migrations (version) VALUES (5);",
             )?;
         }
 
@@ -159,7 +171,7 @@ impl DbState {
                 );
                 CREATE INDEX IF NOT EXISTS idx_ask_messages_conv
                     ON ask_messages(conversation_id, created_at);
-                INSERT INTO _migrations (version) VALUES (6);",
+                INSERT OR IGNORE INTO _migrations (version) VALUES (6);",
             )?;
         }
 
@@ -177,7 +189,7 @@ impl DbState {
                 );
                 CREATE INDEX IF NOT EXISTS idx_notifications_project
                     ON notifications(project_id, timestamp DESC);
-                INSERT INTO _migrations (version) VALUES (7);",
+                INSERT OR IGNORE INTO _migrations (version) VALUES (7);",
             )?;
         }
 

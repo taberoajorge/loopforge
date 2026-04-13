@@ -3,7 +3,7 @@ use crate::events::{EVENT_ASK_COMPLETE, EVENT_ASK_STREAM};
 use crate::test_support::runtime::{FixtureSet, TestRuntime};
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 static ASK_CALL_COUNT: AtomicU32 = AtomicU32::new(0);
 
@@ -35,6 +35,8 @@ pub async fn spawn_fixture_ask<R: tauri::Runtime>(
 
     persist_interaction(runtime.data_dir(), idx, question, &response);
 
+    let saved_message = save_fixture_message(&app, &project_id, &response);
+
     let _ = app.emit(
         EVENT_ASK_COMPLETE,
         AskCompletePayload {
@@ -43,7 +45,7 @@ pub async fn spawn_fixture_ask<R: tauri::Runtime>(
             full_content: response.clone(),
             agent: "fixture".to_string(),
             model: Some("deterministic".to_string()),
-            message: AskMessage {
+            message: saved_message.unwrap_or(AskMessage {
                 id: message_id,
                 conversation_id: String::new(),
                 role: "assistant".to_string(),
@@ -51,9 +53,29 @@ pub async fn spawn_fixture_ask<R: tauri::Runtime>(
                 agent: Some("fixture".to_string()),
                 model: Some("deterministic".to_string()),
                 created_at: chrono::Utc::now().to_rfc3339(),
-            },
+            }),
         },
     );
+}
+
+fn save_fixture_message<R: tauri::Runtime>(
+    app: &AppHandle<R>,
+    project_id: &str,
+    content: &str,
+) -> Option<AskMessage> {
+    let db = app.try_state::<crate::db::DbState>()?;
+    let conn = db.0.lock().ok()?;
+    let conversation =
+        crate::ask_engine::storage::get_or_create_conversation(&conn, project_id).ok()?;
+    crate::ask_engine::storage::insert_message(
+        &conn,
+        &conversation.id,
+        "assistant",
+        content,
+        Some("fixture"),
+        Some("deterministic"),
+    )
+    .ok()
 }
 
 fn load_fixture_response(

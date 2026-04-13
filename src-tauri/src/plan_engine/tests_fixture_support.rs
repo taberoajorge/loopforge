@@ -1,10 +1,8 @@
 use super::PlanSessionsState;
 use std::path::PathBuf;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::MutexGuard;
 use tauri::test::{mock_builder, mock_context, noop_assets, MockRuntime};
 use tauri::App;
-
-static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 pub(super) struct EnvGuard {
     _lock: MutexGuard<'static, ()>,
@@ -14,7 +12,9 @@ pub(super) struct EnvGuard {
 
 impl EnvGuard {
     pub(super) fn new(fixture_set: &str) -> Self {
-        let lock = ENV_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let lock = crate::test_env_lock::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
         let root_dir =
             std::env::temp_dir().join(format!("loopforge-plan-fixture-{}", uuid::Uuid::new_v4()));
         let home_dir = root_dir.join("home");

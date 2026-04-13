@@ -54,11 +54,33 @@ pub(super) fn artifact_dir<R: Runtime>(
 
 pub(super) fn build_plan_prompt(user_description: &str) -> String {
     format!(
-        "You are a senior software architect. Research the codebase and create a detailed \
-implementation plan for the following feature request.\n\n\
-Think through the problem carefully. Identify affected files, dependencies, and edge cases.\n\
-Output a structured plan in markdown with clear headings (use # headers).\n\
-Do not ask clarifying questions. Make reasonable assumptions and document them in the plan.\n\n\
+        "You are a senior software architect creating an implementation plan. \
+Follow this workflow strictly.\n\n\
+## Phase 1: Understand the request\n\
+Read the feature request below. Identify the core objective, implicit requirements, \
+and constraints. Do not ask clarifying questions. Infer reasonable defaults and \
+document every assumption you make.\n\n\
+## Phase 2: Explore the codebase\n\
+Before proposing any changes, explore the relevant parts of the codebase. \
+Identify existing patterns, conventions, and dependencies. Never propose changes \
+to code you have not read. List the files and modules you examined.\n\n\
+## Phase 3: Design the plan\n\
+Write a structured implementation plan in markdown. Use # headers to separate \
+each area of work. For every section include:\n\
+- Affected files (full relative paths)\n\
+- New files to create (if any)\n\
+- Dependencies on other sections\n\
+- Edge cases and error scenarios\n\
+- Verification criteria (how to confirm the section works)\n\n\
+## Output rules\n\
+- Use clear markdown headings (# for top-level, ## for subsections)\n\
+- Reference file paths explicitly, never use vague references like \"the config file\"\n\
+- Order sections from foundational (data layer, types) to dependent (UI, integration)\n\
+- End with a summary listing all files to modify, all files to create, and \
+the recommended implementation order\n\
+- Do not include code snippets unless they clarify a non-obvious approach\n\
+- Keep the plan actionable: every section should map to one or more implementable units\n\n\
+---\n\n\
 Feature request:\n{user_description}"
     )
 }

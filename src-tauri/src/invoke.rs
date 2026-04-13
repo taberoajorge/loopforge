@@ -215,7 +215,8 @@ pub fn attach_contract<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::
             crate::invoke_contract::run_atomizer,
             crate::invoke_contract::start_loop,
             crate::invoke_contract::get_project_detail,
-            commands::projects_lifecycle::archive_project
+            commands::projects_lifecycle::archive_project,
+            commands::execution::get_iteration_history
         ];
         move |invoke: tauri::ipc::Invoke<R>| match invoke.message.command() {
             "start_plan" => {

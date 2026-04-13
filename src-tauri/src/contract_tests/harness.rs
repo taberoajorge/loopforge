@@ -3,11 +3,9 @@ use crate::commands;
 use crate::db::DbState;
 use crate::loop_manager::{LoopManagerState, StartLoopArgs};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::MutexGuard;
 use tauri::test::{mock_builder, mock_context, noop_assets, MockRuntime};
 use tauri::{App, Manager};
-
-static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 pub struct TestHarness {
     _lock: MutexGuard<'static, ()>,
@@ -24,7 +22,9 @@ struct EnvGuard {
 
 impl TestHarness {
     pub fn new() -> Self {
-        let lock = ENV_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let lock = crate::test_env_lock::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
         let root_dir =
             std::env::temp_dir().join(format!("loopforge-contract-{}", uuid::Uuid::new_v4()));
         let home_dir = root_dir.join("home");
