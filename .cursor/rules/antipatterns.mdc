@@ -1,0 +1,20 @@
+---
+description: Common LoopForge mistakes to avoid during edits
+alwaysApply: false
+---
+
+# LoopForge Antipatterns
+
+Avoid these mistakes:
+
+- Editing plan or story data only in Zustand without persisting to artifact files
+- Saving empty wizard snapshots like `"{}"` instead of full draft state
+- Passing partial configure inputs that never reach `build_ralph_config`
+- Leaving process cleanup stubs without child termination and flush behavior
+- Creating oversized mixed concern modules instead of splitting commands, services, and storage
+
+Preferred patterns:
+
+- Persist `plan.md`, `prd.json`, `config.json`, and `draft.json` through backend commands
+- Keep command handlers thin and move logic into services
+- Validate artifact reads and writes with tests when changing flow contracts

@@ -8,12 +8,13 @@ globs: "src/**/*.{ts,tsx}"
 ## Components
 - Functional components with named exports
 - PascalCase for component names and files
-- Props as inline type parameters, not separate interface files
+- Keep components focused and extract early before large mixed concern files form
 
 ## State
 - Zustand stores in `src/stores/`
 - One store per domain: projectStore, agentStore, loopStore, wizardStore
 - Use selectors to minimize re-renders
+- Never treat Zustand as source of truth for `plan.md`, `prd.json`, `config.json`, or `draft.json`
 
 ## Styling
 - Tailwind CSS 4 utility classes exclusively
@@ -32,3 +33,14 @@ globs: "src/**/*.{ts,tsx}"
 - Bindings in `src/lib/tauri.ts`
 - Use `@tauri-apps/api/core` for invoke
 - Use `@tauri-apps/api/event` for listen
+- Persist user edits through backend commands before advancing workflow stages
+
+## Data Contracts
+- Plan step edits must land in `plan.md`
+- Atomize edits must land in `prd.json`
+- Configure edits must land in `config.json`
+- Wizard resume data must land in `draft.json`
+
+## Testing Expectations
+- Run `bun run typecheck` after TypeScript edits
+- For flow changes, verify frontend action reaches backend command and artifact update
