@@ -3,7 +3,29 @@ use crate::projects::ProjectError;
 use ralph_core::prd::Prd;
 pub use ralph_core::prd::UserStory;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use tauri::{AppHandle, Runtime};
+
+pub(crate) fn load_prd_from_paths(
+    artifacts: &Path,
+    working_directory: &Path,
+) -> Result<Option<Prd>, ProjectError> {
+    let artifact_path = artifacts.join("prd.json");
+    if artifact_path.exists() {
+        return Prd::load(&artifact_path)
+            .map(Some)
+            .map_err(|err| ProjectError::Path(err.to_string()));
+    }
+
+    let legacy_path = working_directory.join("prd.json");
+    if legacy_path.exists() {
+        return Prd::load(&legacy_path)
+            .map(Some)
+            .map_err(|err| ProjectError::Path(err.to_string()));
+    }
+
+    Ok(None)
+}
 
 fn load_prd<R: Runtime>(app: &AppHandle<R>, project_id: &str) -> Result<Prd, ProjectError> {
     let dir = artifact_dir(app, project_id)?;
