@@ -1,4 +1,5 @@
 use crate::db::DbState;
+use crate::models::ProjectStatus;
 use crate::projects::artifacts::{artifact_dir, init_artifacts};
 use crate::projects::repository::{group_projects_by_status, row_to_project, PROJECT_COLUMNS};
 use crate::projects::{Project, ProjectDetail, ProjectError, ProjectsByStatus};
@@ -80,7 +81,7 @@ pub async fn get_project_detail<R: Runtime>(
     db: State<'_, DbState>,
     project_id: String,
 ) -> Result<ProjectDetail, ProjectError> {
-    let project = {
+    let mut project = {
         let conn =
             db.0.lock()
                 .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
@@ -100,6 +101,12 @@ pub async fn get_project_detail<R: Runtime>(
     } else {
         Vec::new()
     };
+    let has_prd = prd_path.exists();
+    let has_config = dir.join("config.json").exists();
+
+    let status = ProjectStatus::resolve_canonical(&project.status, has_prd, has_config, false)
+        .as_project_status();
+    project.status = status.to_string();
 
     let total_stories = stories.len();
     let passed_count = stories.iter().filter(|story| story.passes).count();
