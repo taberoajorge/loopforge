@@ -3,11 +3,11 @@ use crate::projects::artifacts::{artifact_dir, init_artifacts};
 use crate::projects::repository::{group_projects_by_status, row_to_project, PROJECT_COLUMNS};
 use crate::projects::{Project, ProjectDetail, ProjectError, ProjectsByStatus};
 use ralph_core::prd::Prd;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Runtime, State};
 use uuid::Uuid;
 
-pub async fn create_project(
-    app: AppHandle,
+pub async fn create_project<R: Runtime>(
+    app: AppHandle<R>,
     db: State<'_, DbState>,
     name: String,
     description: String,
@@ -75,8 +75,8 @@ pub async fn archive_project(
     Ok(())
 }
 
-pub async fn get_project_detail(
-    app: AppHandle,
+pub async fn get_project_detail<R: Runtime>(
+    app: AppHandle<R>,
     db: State<'_, DbState>,
     project_id: String,
 ) -> Result<ProjectDetail, ProjectError> {

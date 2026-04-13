@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { EmptyState } from "../../components/EmptyState";
 import { SectionHeader } from "../../components/SectionHeader";
 import { reportError } from "../../lib/reportError";
-import { discardDraft } from "../../lib/tauri";
+import { checkSystemReadiness, discardDraft, type SystemReadiness } from "../../lib/tauri";
 import { useProjectStore } from "../../stores/projectStore";
 import { ActiveLoopCard } from "./components/ActiveLoopCard";
 import { CompletedLoopCard } from "./components/CompletedLoopCard";
 import { DraftCard } from "./components/DraftCard";
+import { SystemReadinessPanel } from "./components/SystemReadinessPanel";
 import { SystemStatusCard } from "./components/SystemStatusCard";
+
+const READINESS_DISMISSED_KEY = "loopforge.readiness.dismissed";
 
 function useTypewriter(text: string, speed: number = 80): string {
   const [displayed, setDisplayed] = useState("");
@@ -35,10 +38,38 @@ export function Home() {
   const loading = useProjectStore((state) => state.loading);
   const fetchProjects = useProjectStore((state) => state.fetchProjects);
   const heading = useTypewriter("INITIALIZE SEQUENCE", 60);
+  const [systemReadiness, setSystemReadiness] = useState<SystemReadiness | null>(null);
+  const [readinessVisible, setReadinessVisible] = useState(false);
+  const [readinessLoading, setReadinessLoading] = useState(false);
+
+  const refreshSystemReadiness = useCallback(async () => {
+    setReadinessLoading(true);
+    try {
+      const readiness = await checkSystemReadiness();
+      const hasBlockingIssue =
+        !readiness.gitAvailable ||
+        !readiness.shellAvailable ||
+        readiness.agents.every((agent) => !agent.available);
+      setSystemReadiness(readiness);
+      setReadinessVisible(hasBlockingIssue);
+    } catch (caughtError) {
+      reportError("Home.checkSystemReadiness", caughtError);
+      setReadinessVisible(false);
+    } finally {
+      setReadinessLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  useEffect(() => {
+    if (window.localStorage.getItem(READINESS_DISMISSED_KEY) === "1") {
+      return;
+    }
+    refreshSystemReadiness();
+  }, [refreshSystemReadiness]);
 
   const {
     active: activeProjects,
@@ -52,6 +83,11 @@ export function Home() {
       reportError("Home.discardDraft", caughtError);
     });
     fetchProjects();
+  }
+
+  function dismissReadiness() {
+    window.localStorage.setItem(READINESS_DISMISSED_KEY, "1");
+    setReadinessVisible(false);
   }
 
   return (
@@ -78,6 +114,14 @@ export function Home() {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-2">
         <div className="space-y-6">
+          {readinessVisible && systemReadiness ? (
+            <SystemReadinessPanel
+              readiness={systemReadiness}
+              refreshing={readinessLoading}
+              onRefresh={refreshSystemReadiness}
+              onDismiss={dismissReadiness}
+            />
+          ) : null}
           {draftProjects.length > 0 ? (
             <section>
               <SectionHeader title="DRAFTS" compact className="mb-2" />

@@ -9,7 +9,7 @@ mod tests;
 use crate::db::DbState;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 use uuid::Uuid;
 
 #[derive(Clone, Serialize)]
@@ -21,8 +21,8 @@ pub(super) struct AgentOutputLine {
     pub(super) stream: String,
 }
 
-pub(super) struct ShellProvider {
-    pub(super) app: AppHandle,
+pub(super) struct ShellProvider<R: Runtime> {
+    pub(super) app: AppHandle<R>,
     pub(super) agent_name: Arc<Mutex<String>>,
     pub(super) primary_agent: String,
     pub(super) selected_model: Option<String>,
@@ -35,7 +35,7 @@ pub(super) struct ShellProvider {
     pub(super) iteration_counter: Arc<Mutex<u32>>,
 }
 
-impl ShellProvider {
+impl<R: Runtime> ShellProvider<R> {
     pub(super) fn current_agent(&self) -> String {
         self.agent_name
             .lock()

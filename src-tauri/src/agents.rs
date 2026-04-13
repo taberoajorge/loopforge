@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use std::sync::Mutex;
 use tauri::{AppHandle, State};
 use thiserror::Error;
@@ -10,6 +11,15 @@ pub struct AgentInfo {
     pub binary: String,
     pub version: Option<String>,
     pub available: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemReadiness {
+    pub agents: Vec<AgentInfo>,
+    pub git_available: bool,
+    pub shell_available: bool,
+    pub platform: String,
 }
 
 #[derive(Debug, Default)]
@@ -84,6 +94,19 @@ async fn probe_agent(app: &AppHandle, binary: &str) -> (bool, Option<String>) {
         return (true, Some(version));
     }
     (true, None)
+}
+
+fn has_binary(path_env: &str, binary: &str) -> bool {
+    crate::agent_runtime_env::resolve_binary_path(binary, path_env).is_some()
+}
+
+fn has_shell(path_env: &str) -> bool {
+    let (shell_program, _) = crate::shell_resolve::resolve_shell();
+    if shell_program.contains('/') || shell_program.contains('\\') {
+        Path::new(&shell_program).exists()
+    } else {
+        has_binary(path_env, &shell_program)
+    }
 }
 
 #[cfg(test)]
@@ -241,4 +264,19 @@ pub async fn refresh_agents(
     state: State<'_, AgentRegistryState>,
 ) -> Result<Vec<AgentInfo>, AgentError> {
     detect_agents(app, state).await
+}
+
+#[tauri::command]
+pub async fn check_system_readiness(
+    app: AppHandle,
+    state: State<'_, AgentRegistryState>,
+) -> Result<SystemReadiness, AgentError> {
+    let detected_agents = detect_agents(app, state).await?;
+    let path_env = crate::agent_runtime_env::probe_path_env();
+    Ok(SystemReadiness {
+        agents: detected_agents,
+        git_available: has_binary(&path_env, "git"),
+        shell_available: has_shell(&path_env),
+        platform: std::env::consts::OS.to_string(),
+    })
 }

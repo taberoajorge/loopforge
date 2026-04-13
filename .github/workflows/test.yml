@@ -90,12 +90,8 @@ jobs:
         run: bun install
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tauriScript: bunx tauri
-          args: ${{ matrix.args }}
+        shell: bash
+        run: bunx tauri build ${{ matrix.args }} --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
   rust-tests:
     runs-on: ubuntu-22.04

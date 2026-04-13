@@ -1,5 +1,6 @@
 export type { ResolvedAgentSelection } from "./ipc/agents";
 export {
+  checkSystemReadiness,
   detectAgents,
   getAgentCapabilities,
   getKnownAgents,
@@ -121,6 +122,7 @@ export type {
   AgentEffortOption,
   AgentInfo,
   AgentModelOption,
+  SystemReadiness,
   ArtifactPaths,
   AskCompletePayload,
   AskErrorPayload,

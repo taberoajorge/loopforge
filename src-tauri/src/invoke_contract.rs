@@ -153,6 +153,9 @@ pub async fn start_loop<R: Runtime>(
         cooldown_seconds: args.cooldown_seconds,
         test_command: optional(args.test_command),
         max_verification_retries: args.max_verification_retries,
+        scm_provider: args.scm_provider,
+        review_polling_interval: args.review_polling_interval,
+        review_timeout: args.review_timeout,
     };
     crate::loop_manager::start_loop(app, args).await
 }

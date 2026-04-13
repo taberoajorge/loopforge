@@ -9,9 +9,12 @@ use ralph_core::loop_engine;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-pub async fn start_loop(app: AppHandle, args: StartLoopArgs) -> Result<String, LoopError> {
+pub async fn start_loop<R: Runtime>(
+    app: AppHandle<R>,
+    args: StartLoopArgs,
+) -> Result<String, LoopError> {
     let db = app.state::<DbState>();
     let loop_state = app.state::<LoopManagerState>();
     let resolved = resolve_start_loop(&app, &db, &args).await?;
@@ -47,8 +50,8 @@ pub async fn start_loop(app: AppHandle, args: StartLoopArgs) -> Result<String, L
     }
 }
 
-async fn do_start_loop(
-    app: &AppHandle,
+async fn do_start_loop<R: Runtime>(
+    app: &AppHandle<R>,
     db: &DbState,
     _loop_state: &LoopManagerState,
     resolved: ResolvedStartLoop,

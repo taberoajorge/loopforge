@@ -34,8 +34,7 @@ impl ActivityClassifier {
             return Some(PlanEventKind::Thinking);
         }
 
-        if trimmed == "exec" || trimmed.starts_with("exec ") || trimmed.starts_with("/bin/zsh -lc")
-        {
+        if crate::shell_resolve::is_shell_exec_line(trimmed) {
             self.in_tool_output = true;
             self.in_plan_markdown = false;
             self.saw_agent_response = true;

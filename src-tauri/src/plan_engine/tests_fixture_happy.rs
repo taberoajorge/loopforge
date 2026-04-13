@@ -16,7 +16,7 @@ async fn happy_path_fixture_emits_deterministic_plan_batches() {
 
     app.listen_any(crate::events::EVENT_PLAN_ACTIVITY_BATCH, {
         let batches = Arc::clone(&batches);
-        move |event| {
+        move |event: tauri::Event| {
             batches
                 .lock()
                 .unwrap()
@@ -25,7 +25,7 @@ async fn happy_path_fixture_emits_deterministic_plan_batches() {
     });
     app.listen_any(crate::events::EVENT_PLAN_COMPLETE, {
         let completes = Arc::clone(&completes);
-        move |event| {
+        move |event: tauri::Event| {
             completes
                 .lock()
                 .unwrap()
@@ -34,7 +34,7 @@ async fn happy_path_fixture_emits_deterministic_plan_batches() {
     });
     app.listen_any(crate::events::EVENT_PLAN_ERROR, {
         let errors = Arc::clone(&errors);
-        move |event| {
+        move |event: tauri::Event| {
             errors
                 .lock()
                 .unwrap()
@@ -128,7 +128,7 @@ async fn stop_plan_cancels_fixture_session_before_terminal_event() {
 
     app.listen_any(crate::events::EVENT_PLAN_COMPLETE, {
         let completes = Arc::clone(&completes);
-        move |event| {
+        move |event: tauri::Event| {
             completes
                 .lock()
                 .unwrap()
@@ -137,7 +137,7 @@ async fn stop_plan_cancels_fixture_session_before_terminal_event() {
     });
     app.listen_any(crate::events::EVENT_PLAN_ERROR, {
         let errors = Arc::clone(&errors);
-        move |event| {
+        move |event: tauri::Event| {
             errors
                 .lock()
                 .unwrap()

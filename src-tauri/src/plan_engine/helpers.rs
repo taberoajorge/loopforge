@@ -15,11 +15,11 @@ pub(super) async fn resolve_agent_binary<R: Runtime>(
         )));
     }
 
-    let lookup = format!("command -v {binary}");
+    let (shell_program, shell_args) = crate::shell_resolve::resolve_binary_via_shell(binary);
     let output = app
         .shell()
-        .command("/bin/zsh")
-        .args(["-lc", &lookup])
+        .command(&shell_program)
+        .args(shell_args)
         .output()
         .await
         .map_err(|err| PlanEngineError::Shell(err.to_string()))?;

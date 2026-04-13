@@ -126,8 +126,8 @@ pub fn save_project_config<R: Runtime>(
     Ok(())
 }
 
-pub async fn get_project_config(
-    app: AppHandle,
+pub async fn get_project_config<R: Runtime>(
+    app: AppHandle<R>,
     project_id: String,
 ) -> Result<Option<ProjectConfig>, ProjectError> {
     let dir = artifact_dir(&app, &project_id)?;

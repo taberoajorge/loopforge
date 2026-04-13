@@ -125,20 +125,3 @@ pub(super) fn is_safe_binary_name(name: &str) -> bool {
 pub(super) fn needs_null_stdin(agent: &str) -> bool {
     matches!(agent, "codex" | "gemini" | "opencode")
 }
-
-fn shell_quote(value: &str) -> String {
-    if value.is_empty() {
-        "''".to_string()
-    } else {
-        format!("'{}'", value.replace('\'', "'\"'\"'"))
-    }
-}
-
-pub(super) fn build_null_stdin_command(binary: &str, args: &[String]) -> String {
-    let mut parts = Vec::with_capacity(args.len() + 1);
-    parts.push(shell_quote(binary));
-    for arg in args {
-        parts.push(shell_quote(arg));
-    }
-    format!("{} < /dev/null", parts.join(" "))
-}

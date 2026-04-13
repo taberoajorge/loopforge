@@ -8,6 +8,7 @@ pub mod guardrails;
 pub mod health;
 pub mod logger;
 pub mod loop_engine;
+pub mod platform;
 pub mod ports;
 pub mod prd;
 pub mod prompt;

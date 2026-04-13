@@ -49,7 +49,7 @@ pub fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
     Ok(())
 }
 
-pub fn update_tooltip(app: &AppHandle, active_loops: usize) {
+pub fn update_tooltip<R: tauri::Runtime>(app: &AppHandle<R>, active_loops: usize) {
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         let tooltip = if active_loops == 0 {
             "LoopForge".to_string()

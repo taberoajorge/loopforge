@@ -5,10 +5,10 @@ use ralph_core::detection::failure_memory::FailureMemory;
 use ralph_core::prd::Prd;
 use std::collections::HashSet;
 use std::path::Path;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 
-pub fn reconcile_project_prd(
-    app: &AppHandle,
+pub fn reconcile_project_prd<R: Runtime>(
+    app: &AppHandle<R>,
     project_id: &str,
     gutter_threshold: u32,
 ) -> Result<bool, ProjectError> {
@@ -34,8 +34,8 @@ pub fn reconcile_project_prd(
     Ok(changed)
 }
 
-fn load_successful_story_ids(
-    app: &AppHandle,
+fn load_successful_story_ids<R: Runtime>(
+    app: &AppHandle<R>,
     project_id: &str,
 ) -> Result<HashSet<String>, ProjectError> {
     let db = app.state::<DbState>();

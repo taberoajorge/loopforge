@@ -18,6 +18,7 @@ mod models;
 mod plan_engine;
 mod projects;
 mod services;
+mod shell_resolve;
 mod storage;
 #[cfg(test)]
 mod test_env_lock;

@@ -8,7 +8,7 @@ use crate::projects::{ProjectConfig, ProjectError};
 use crate::storage;
 use crate::storage::db::DbState;
 use rusqlite::OptionalExtension;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, Runtime, State};
 
 fn to_snapshot_config(config: ProjectConfig) -> SnapshotConfig {
     SnapshotConfig {
@@ -52,8 +52,8 @@ fn build_duration_label(started_at: Option<&str>, ended_at: Option<&str>) -> Str
 }
 
 #[tauri::command]
-pub async fn get_project_snapshot(
-    app: AppHandle,
+pub async fn get_project_snapshot<R: Runtime>(
+    app: AppHandle<R>,
     db: State<'_, DbState>,
     loop_state: State<'_, LoopManagerState>,
     project_id: String,

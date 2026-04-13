@@ -127,10 +127,21 @@ pub(super) fn build_agent_args(
 }
 
 pub(super) fn shell_quote(value: &str) -> String {
-    if value.is_empty() {
-        "''".to_string()
-    } else {
-        format!("'{}'", value.replace('\'', "'\"'\"'"))
+    #[cfg(windows)]
+    {
+        if value.is_empty() {
+            "\"\"".to_string()
+        } else {
+            format!("\"{}\"", value.replace('"', "\"\""))
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        if value.is_empty() {
+            "''".to_string()
+        } else {
+            format!("'{}'", value.replace('\'', "'\"'\"'"))
+        }
     }
 }
 
@@ -140,5 +151,12 @@ pub(super) fn build_null_stdin_shell_command(agent_binary: &str, args: &[String]
     for value in args {
         command_parts.push(shell_quote(value));
     }
-    format!("{} < /dev/null", command_parts.join(" "))
+    #[cfg(windows)]
+    {
+        format!("{} < NUL", command_parts.join(" "))
+    }
+    #[cfg(not(windows))]
+    {
+        format!("{} < /dev/null", command_parts.join(" "))
+    }
 }

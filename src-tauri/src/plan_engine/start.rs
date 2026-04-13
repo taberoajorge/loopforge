@@ -1,8 +1,6 @@
 use crate::activity::ActivityClassifier;
 use crate::app_core_plan::{self, PlanCleanupReason};
-use crate::plan_engine::args::{
-    agent_env_vars, build_null_stdin_command, build_plan_args, needs_null_stdin,
-};
+use crate::plan_engine::args::{agent_env_vars, build_plan_args, needs_null_stdin};
 use crate::plan_engine::fixture;
 use crate::plan_engine::helpers::{artifact_dir, build_plan_prompt, resolve_agent_binary};
 use crate::plan_engine::payloads::{PlanActivityPayload, PlanTerminalPayload};
@@ -207,10 +205,11 @@ pub async fn start_plan<R: Runtime>(
         });
     }
     let (mut event_rx, child) = if use_null_stdin {
-        let wrapped = build_null_stdin_command(&agent_binary, &agent_args);
+        let (shell_program, shell_args) =
+            crate::shell_resolve::build_null_stdin_command(&agent_binary, &agent_args);
         app.shell()
-            .command("/bin/zsh")
-            .args(["-lc", &wrapped])
+            .command(&shell_program)
+            .args(shell_args)
             .envs(env_vars)
             .current_dir(&args.project_dir)
             .spawn()

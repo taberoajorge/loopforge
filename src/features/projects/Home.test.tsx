@@ -24,6 +24,12 @@ describe("Home", () => {
 
   it("loads the empty home state and starts a new project", async () => {
     const user = userEvent.setup();
+    mockTauriCommand("check_system_readiness", {
+      agents: [{ name: "codex", binary: "codex", version: "0.1.0", available: true }],
+      gitAvailable: true,
+      shellAvailable: true,
+      platform: "test",
+    });
     mockTauriCommand("list_projects_enriched", []);
 
     renderRoute(
@@ -46,6 +52,12 @@ describe("Home", () => {
 
   it("renders draft projects from mocked IPC data and resumes the selected draft", async () => {
     const user = userEvent.setup();
+    mockTauriCommand("check_system_readiness", {
+      agents: [{ name: "codex", binary: "codex", version: "0.1.0", available: true }],
+      gitAvailable: true,
+      shellAvailable: true,
+      platform: "test",
+    });
     const draftProject = createProject({
       id: "draft-007",
       name: "Resume flow",

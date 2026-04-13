@@ -57,7 +57,7 @@ async fn db_snapshot_matches_canonical_draft_json() {
         conn.query_row(
             "SELECT wizard_state_json FROM projects WHERE id = ?1",
             rusqlite::params![project.id.clone()],
-            |row| row.get(0),
+            |row: &rusqlite::Row| row.get(0),
         )
         .expect("wizard state json")
     };

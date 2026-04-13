@@ -1,6 +1,4 @@
-use crate::atomizer::agent_args::{
-    agent_env_vars, build_agent_args, build_null_stdin_shell_command, is_safe_binary_name,
-};
+use crate::atomizer::agent_args::{agent_env_vars, build_agent_args, is_safe_binary_name};
 use crate::atomizer::progress::emit_progress;
 use crate::atomizer::AtomizerError;
 use std::path::Path;
@@ -20,11 +18,11 @@ async fn resolve_agent_binary<R: Runtime>(
         )));
     }
 
-    let lookup = format!("command -v {binary}");
+    let (shell_program, shell_args) = crate::shell_resolve::resolve_binary_via_shell(binary);
     let output = app
         .shell()
-        .command("/bin/zsh")
-        .args(["-lc", &lookup])
+        .command(&shell_program)
+        .args(shell_args)
         .output()
         .await
         .map_err(|err| AtomizerError::AgentFailed(err.to_string()))?;
@@ -129,10 +127,11 @@ async fn invoke_inner<R: Runtime>(
     project_dir: &Path,
 ) -> Result<String, AtomizerError> {
     let output = if needs_null_stdin(agent) {
-        let shell_command = build_null_stdin_shell_command(agent_binary, args);
+        let (shell_program, shell_args) =
+            crate::shell_resolve::build_null_stdin_command(agent_binary, args);
         app.shell()
-            .command("/bin/zsh")
-            .args(["-lc", &shell_command])
+            .command(&shell_program)
+            .args(shell_args)
             .envs(env_vars.to_vec())
             .current_dir(project_dir)
             .output()
