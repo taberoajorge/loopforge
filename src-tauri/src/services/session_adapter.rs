@@ -10,6 +10,54 @@ use tauri::Manager;
 use crate::commands::execution::IterationRow;
 use crate::loop_manager::LoopError;
 
+#[path = "project_query_adapter.rs"]
+pub mod project_query_adapter;
+
+pub struct ProjectQueryAdapter<'a, R: tauri::Runtime> {
+    app: &'a tauri::AppHandle<R>,
+}
+
+impl<'a, R: tauri::Runtime> ProjectQueryAdapter<'a, R> {
+    pub fn new(app: &'a tauri::AppHandle<R>) -> Self {
+        Self { app }
+    }
+
+    pub fn home_listings(&self) -> Result<project_query_adapter::HomeListingGroups, ServiceError> {
+        let loop_state = self.app.state::<crate::loop_manager::LoopManagerState>();
+        let active = loop_state
+            .0
+            .lock()
+            .map(|handles| handles.keys().cloned().collect())
+            .map_err(|_| ServiceError::Internal("loop state lock poisoned".into()))?;
+        let db = self.app.state::<crate::db::DbState>();
+        let conn =
+            db.0.lock()
+                .map_err(|_| ServiceError::Internal("database lock poisoned".into()))?;
+        project_query_adapter::home_listings(&conn, &active, |id| {
+            crate::storage::artifacts::project_artifact_dir(self.app, id)
+        })
+    }
+
+    pub fn monitor_snapshot(
+        &self,
+        project_id: &str,
+    ) -> Result<project_query_adapter::MonitorSnapshot, ServiceError> {
+        let loop_state = self.app.state::<crate::loop_manager::LoopManagerState>();
+        let active = loop_state
+            .0
+            .lock()
+            .map(|handles| handles.contains_key(project_id))
+            .map_err(|_| ServiceError::Internal("loop state lock poisoned".into()))?;
+        let db = self.app.state::<crate::db::DbState>();
+        let conn =
+            db.0.lock()
+                .map_err(|_| ServiceError::Internal("database lock poisoned".into()))?;
+        let dir = crate::storage::artifacts::project_artifact_dir(self.app, project_id)
+            .map_err(ServiceError::Internal)?;
+        project_query_adapter::monitor_snapshot(&conn, &dir, project_id, active)
+    }
+}
+
 fn format_duration_label(duration_secs: i64) -> String {
     if duration_secs <= 0 {
         return "0s".to_string();
