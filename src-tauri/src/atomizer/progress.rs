@@ -52,6 +52,11 @@ pub(super) fn mark_pipeline_done<R: Runtime>(app: &AppHandle<R>, project_id: &st
     if let Ok(mut registry) = app.state::<PipelineRegistryState>().0.lock() {
         if let Some(entry) = registry.entries.get_mut(project_id) {
             entry.snapshot.done = true;
+            for stage in &mut entry.snapshot.stages {
+                if stage.status != StageStatus::Error {
+                    stage.status = StageStatus::Done;
+                }
+            }
             entry.snapshot.elapsed_ms = entry.started_instant.elapsed().as_millis() as u64;
         }
     }

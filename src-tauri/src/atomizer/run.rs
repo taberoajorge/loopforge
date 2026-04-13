@@ -23,7 +23,6 @@ pub async fn run_atomizer<R: Runtime>(
 
     match &result {
         Ok(prd) => {
-            mark_pipeline_done(&app, &pid);
             emit_progress(
                 &app,
                 &pid,
@@ -31,6 +30,7 @@ pub async fn run_atomizer<R: Runtime>(
                 "merge",
                 &format!("Done — {} stories", prd.stories.len()),
             );
+            mark_pipeline_done(&app, &pid);
         }
         Err(err) => mark_pipeline_error(&app, &pid, &err.to_string()),
     }
