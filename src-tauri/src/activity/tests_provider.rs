@@ -73,6 +73,9 @@ fn codex_plan_content_only_after_tool_output_ends() {
     classifier.classify("line 1 of file");
     classifier.classify("line 2 of file");
     classifier.classify("codex I've reviewed the file.");
+    for idx in 0..30 {
+        classifier.classify(&format!("codex filler line {idx}"));
+    }
     let plan_line = classifier.classify("## Implementation Plan");
     assert_eq!(plan_line.kind, PlanEventKind::PlanContent);
     assert!(classifier
@@ -112,6 +115,9 @@ fn codex_no_tool_output_leak_into_plan_buffer() {
     classifier.classify("main.rs");
     classifier.classify("lib.rs");
     classifier.classify("codex Found the source files.");
+    for idx in 0..30 {
+        classifier.classify(&format!("codex padding {idx}"));
+    }
     classifier.classify("## My Plan");
     classifier.classify("Step 1: Do the thing");
     let plan = classifier.accumulated_plan();

@@ -3,29 +3,49 @@ You are a senior engineer decomposing a plan section into atomic user stories.
 Project: {{ project_name }}
 Section: {{ section_title }}
 
-CONSTRAINTS:
-- Work ONLY with the section content provided below. Do NOT request file access, permissions, or additional context.
-- Do NOT ask clarifying questions. Infer reasonable defaults from the plan text.
-- Your entire response must be a single valid JSON array. No prose, no markdown fences, no explanation before or after.
+## Thinking process
+
+Before writing any JSON, reason through these steps internally:
+1. What are the distinct units of work in this section?
+2. What are the dependencies between those units?
+3. Can each unit be implemented and verified independently?
+4. Are there files that multiple units need to touch? If so, order the units to avoid conflicts.
+
+## Story quality rules
 
 Each story must be:
-- Independently implementable (no hidden dependencies within the story)
-- Verifiable via specific acceptance criteria
-- Small enough to complete in one focused coding session
+- Independently implementable without knowledge of other stories in this batch
+- Verifiable through concrete commands or assertions that produce a pass/fail result
+- Small enough to complete in one focused coding session (under 60 minutes for a competent engineer)
+- Scoped to a single logical change (one concern, one commit)
 
-Story object schema:
+Each acceptance criterion must be testable with a single command or a single assertion check. Vague criteria like "works correctly" or "handles edge cases" are not acceptable. Write criteria like "POST /api/users returns 201 with valid payload" or "cargo test --lib auth passes".
+
+Each verification command must be runnable from the project root without manual setup. Prefer existing test commands, linters, and type checkers. If no test exists, specify what file to check or what output to expect.
+
+## Anti-patterns to avoid
+
+- Do NOT create two stories that modify the same file in conflicting ways
+- Do NOT create stories with circular dependencies
+- Do NOT include stories for "write tests" separately from the feature they test; bundle the test with its feature story
+- Do NOT create setup/cleanup stories unless they produce independently valuable output
+- Do NOT pad the list with trivial stories (rename a variable, add a comment)
+- Do NOT use generic scope like filesToModify: [] or filesToAvoid: []; be explicit
+
+## Story object schema
+
 {
-  "title": "imperative verb phrase",
-  "description": "what and why in 1-3 sentences",
-  "acceptanceCriteria": ["verifiable assertion 1", "verifiable assertion 2"],
+  "title": "imperative verb phrase describing the deliverable",
+  "description": "what changes and why, 1-3 sentences",
+  "acceptanceCriteria": ["testable assertion with expected outcome"],
   "scope": {
     "filesToModify": ["relative/path/to/file"],
     "filesToCreate": ["relative/path/to/new_file"],
-    "filesToAvoid": []
+    "filesToAvoid": ["relative/path/to/protected_file"]
   },
   "verification": {
-    "commands": ["cargo test", "npm run typecheck"],
-    "assertions": []
+    "commands": ["cargo test --lib module_name", "bun run typecheck"],
+    "assertions": ["function X exists in file Y", "endpoint returns 200"]
   },
   "commitMessage": "type(scope): description",
   "priority": "critical|high|medium|low",
@@ -34,7 +54,38 @@ Story object schema:
   "dependsOn": []
 }
 
-IMPORTANT: Output ONLY the JSON array. First character must be [, last character must be ].
+## Example story
+
+[
+  {
+    "title": "Add user creation endpoint to API router",
+    "description": "Implement POST /api/users handler that validates input, inserts into the users table, and returns the created user. This is the first endpoint in the user management module.",
+    "acceptanceCriteria": [
+      "POST /api/users with valid JSON body returns 201 and a user object with an id field",
+      "POST /api/users with missing required fields returns 400 with a validation error message",
+      "cargo test --lib routes::users passes with no failures"
+    ],
+    "scope": {
+      "filesToModify": ["src/routes/mod.rs"],
+      "filesToCreate": ["src/routes/users.rs"],
+      "filesToAvoid": ["src/db/migrations/"]
+    },
+    "verification": {
+      "commands": ["cargo test --lib routes::users", "cargo clippy -- -D warnings"],
+      "assertions": ["POST handler is registered in the router", "CreateUser struct validates required fields"]
+    },
+    "commitMessage": "feat(api): add user creation endpoint",
+    "priority": "high",
+    "estimatedComplexity": "medium",
+    "estimatedMinutes": 35,
+    "dependsOn": []
+  }
+]
+
+CONSTRAINTS:
+- Work ONLY with the section content provided below. Do NOT request file access or additional context.
+- Your entire response must be a single valid JSON array. No prose, no markdown fences, no explanation.
+- First character must be [, last character must be ].
 
 ---
 

@@ -30,7 +30,9 @@ impl InvokeHarness {
             .manage(crate::agents::AgentRegistryState::default())
             .manage(PlanSessionsState::default())
             .manage(LoopManagerState::default())
-            .manage(crate::ask_engine::session::AskSessionsState::default());
+            .manage(crate::ask_engine::session::AskSessionsState::default())
+            .manage(crate::atomizer::PipelineRegistryState::default())
+            .manage(crate::atomizer::ActivityLogState::default());
         let app = invoke::attach_contract(builder)
             .build(mock_context(noop_assets()))
             .expect("test app");
