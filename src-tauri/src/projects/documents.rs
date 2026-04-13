@@ -9,26 +9,36 @@ use std::sync::{Mutex, OnceLock};
 use tauri::{AppHandle, Runtime, State};
 
 static MERGE_GATE: OnceLock<Mutex<()>> = OnceLock::new();
+
+pub(crate) fn load_text_artifact_with_legacy_fallback(
+    artifacts: &Path,
+    working_directory: &Path,
+    file_name: &str,
+) -> Result<Option<String>, ProjectError> {
+    let artifact_path = artifacts.join(file_name);
+    if let Some(content) = non_empty_file_content(&artifact_path)? {
+        return Ok(Some(content));
+    }
+
+    let legacy_path = working_directory.join(file_name);
+    let legacy_content = non_empty_file_content(&legacy_path)?;
+    if let Some(content) = legacy_content {
+        let _ = std::fs::create_dir_all(artifacts);
+        let _ = std::fs::write(&artifact_path, &content);
+        return Ok(Some(content));
+    }
+
+    Ok(None)
+}
+
 pub async fn load_existing_plan<R: Runtime>(
     app: AppHandle<R>,
     db: State<'_, DbState>,
     project_id: String,
 ) -> Result<Option<String>, ProjectError> {
     let artifacts = artifact_dir(&app, &project_id)?;
-    let plan_path = artifacts.join("plan.md");
-    if let Some(content) = non_empty_file_content(&plan_path)? {
-        return Ok(Some(content));
-    }
-
     let working_directory = project_working_directory(&db, &project_id)?;
-    let legacy_path = Path::new(&working_directory).join("plan.md");
-    if let Some(content) = non_empty_file_content(&legacy_path)? {
-        std::fs::create_dir_all(&artifacts)?;
-        let _ = std::fs::write(&plan_path, &content);
-        return Ok(Some(content));
-    }
-
-    Ok(None)
+    load_text_artifact_with_legacy_fallback(&artifacts, Path::new(&working_directory), "plan.md")
 }
 pub async fn save_plan<R: Runtime>(
     app: AppHandle<R>,

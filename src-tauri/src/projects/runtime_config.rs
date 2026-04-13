@@ -1,8 +1,12 @@
 use crate::projects::artifacts::artifact_dir;
 use crate::projects::{ProjectConfig, ProjectError};
-use tauri::{AppHandle, Runtime};
+use std::path::Path;
+use tauri::{AppHandle, Manager, Runtime};
 
-fn sanitize_config(mut config: ProjectConfig) -> ProjectConfig {
+#[path = "../services/wizard_session_adapter.rs"]
+pub(crate) mod wizard_session_adapter;
+
+pub(crate) fn sanitize_config(mut config: ProjectConfig) -> ProjectConfig {
     let default_config = ProjectConfig::default();
     config.schema_version = default_config.schema_version;
     config.execute_agent = config.execute_agent.trim().to_string();
@@ -48,7 +52,7 @@ fn sanitize_config(mut config: ProjectConfig) -> ProjectConfig {
     config
 }
 
-fn legacy_config_from_loop_args(content: &str) -> Result<ProjectConfig, ProjectError> {
+pub(crate) fn legacy_config_from_loop_args(content: &str) -> Result<ProjectConfig, ProjectError> {
     let args: serde_json::Value = serde_json::from_str(content)?;
     let default_config = ProjectConfig::default();
     let execute_agent = args
@@ -126,27 +130,53 @@ pub fn save_project_config<R: Runtime>(
     Ok(())
 }
 
+pub(crate) fn load_project_config_from_paths(
+    artifacts: &Path,
+    working_directory: &Path,
+) -> Result<Option<ProjectConfig>, ProjectError> {
+    let config_path = artifacts.join("config.json");
+    if config_path.exists() {
+        let content = std::fs::read_to_string(&config_path)?;
+        let parsed_config: ProjectConfig = serde_json::from_str(&content)?;
+        return Ok(Some(sanitize_config(parsed_config)));
+    }
+
+    let loop_args_path = artifacts.join("loop_args.json");
+    if loop_args_path.exists() {
+        let content = std::fs::read_to_string(&loop_args_path)?;
+        return Ok(Some(legacy_config_from_loop_args(&content)?));
+    }
+
+    let legacy_config_path = working_directory.join("config.json");
+    if legacy_config_path.exists() {
+        let content = std::fs::read_to_string(&legacy_config_path)?;
+        let parsed_config: ProjectConfig = serde_json::from_str(&content)?;
+        return Ok(Some(sanitize_config(parsed_config)));
+    }
+
+    Ok(None)
+}
+
 pub async fn get_project_config<R: Runtime>(
     app: AppHandle<R>,
     project_id: String,
 ) -> Result<Option<ProjectConfig>, ProjectError> {
     let dir = artifact_dir(&app, &project_id)?;
-    let config_path = dir.join("config.json");
-
-    if config_path.exists() {
-        let content = std::fs::read_to_string(&config_path)?;
-        let parsed_config: ProjectConfig = serde_json::from_str(&content)?;
-        let sanitized_config = sanitize_config(parsed_config);
-        save_project_config(&app, &project_id, &sanitized_config)?;
-        return Ok(Some(sanitized_config));
-    }
-
-    let loop_args_path = dir.join("loop_args.json");
-    if loop_args_path.exists() {
-        let content = std::fs::read_to_string(&loop_args_path)?;
-        let migrated_config = legacy_config_from_loop_args(&content)?;
-        save_project_config(&app, &project_id, &migrated_config)?;
-        return Ok(Some(migrated_config));
+    let db = app.state::<crate::db::DbState>();
+    let conn =
+        db.0.lock()
+            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+    let working_directory = conn
+        .query_row(
+            "SELECT working_directory FROM projects WHERE id = ?1",
+            rusqlite::params![project_id],
+            |row: &rusqlite::Row| row.get::<_, String>(0),
+        )
+        .map_err(|_| ProjectError::NotFound(project_id.clone()))?;
+    drop(conn);
+    if let Some(config) = load_project_config_from_paths(&dir, Path::new(&working_directory))? {
+        save_project_config(&app, &project_id, &config)?;
+        return Ok(Some(config));
     }
 
     Ok(None)
