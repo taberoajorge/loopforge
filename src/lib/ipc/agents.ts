@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AgentCapabilities, AgentInfo } from "./types";
+import type { AgentCapabilities, AgentInfo, SystemReadiness } from "./types";
 
 export interface ResolvedAgentSelection {
   capabilities: AgentCapabilities;
@@ -13,6 +13,10 @@ export async function detectAgents(): Promise<AgentInfo[]> {
 
 export async function refreshAgents(): Promise<AgentInfo[]> {
   return invoke<AgentInfo[]>("refresh_agents");
+}
+
+export async function checkSystemReadiness(): Promise<SystemReadiness> {
+  return invoke<SystemReadiness>("check_system_readiness");
 }
 
 export async function getKnownAgents(): Promise<string[]> {

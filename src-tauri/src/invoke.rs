@@ -12,6 +12,7 @@ pub fn attach_app(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::
         let fallback: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             agents::detect_agents,
             agents::refresh_agents,
+            agents::check_system_readiness,
             agents::get_known_agents,
             agents::get_agent_capabilities,
             agents::resolve_agent_selection,
@@ -126,6 +127,7 @@ pub fn attach_app(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::
         let fallback: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             agents::detect_agents,
             agents::refresh_agents,
+            agents::check_system_readiness,
             agents::get_known_agents,
             agents::get_agent_capabilities,
             commands::display_vocabulary::get_display_vocabulary,

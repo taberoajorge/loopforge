@@ -6,11 +6,11 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tauri::Emitter;
+use tauri::{Emitter, Runtime};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent as ShellCommandEvent};
 use tauri_plugin_shell::ShellExt;
 
-impl ShellProvider {
+impl<R: Runtime> ShellProvider<R> {
     pub(super) async fn run_with_agent(
         &self,
         agent: &str,

@@ -1,16 +1,16 @@
 use crate::projects::notification_filter::should_emit_verification_failed;
 use crate::projects::notifications::{create_notification_and_emit, NotificationCreateInput};
 use ralph_core::events::{LoopEvent, LoopEventSink};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
-pub struct TauriEventSink {
-    app: AppHandle,
+pub struct TauriEventSink<R: Runtime> {
+    app: AppHandle<R>,
     project_id: String,
     session_id: String,
 }
 
-impl TauriEventSink {
-    pub fn new(app: AppHandle, project_id: String, session_id: String) -> Self {
+impl<R: Runtime> TauriEventSink<R> {
+    pub fn new(app: AppHandle<R>, project_id: String, session_id: String) -> Self {
         Self {
             app,
             project_id,
@@ -19,7 +19,7 @@ impl TauriEventSink {
     }
 }
 
-impl LoopEventSink for TauriEventSink {
+impl<R: Runtime> LoopEventSink for TauriEventSink<R> {
     fn emit(&self, event: LoopEvent) {
         let (event_name, payload) = match &event {
             LoopEvent::Heartbeat {

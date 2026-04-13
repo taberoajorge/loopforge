@@ -2,10 +2,10 @@ use super::helpers::close_session;
 use super::state::LoopManagerState;
 use crate::db::DbState;
 use crate::projects::notifications::{create_notification_and_emit, NotificationCreateInput};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-pub(super) async fn finalize_loop_run(
-    app: &AppHandle,
+pub(super) async fn finalize_loop_run<R: Runtime>(
+    app: &AppHandle<R>,
     project_id: &str,
     _project_name: &str,
     session_id: &str,

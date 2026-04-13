@@ -90,7 +90,7 @@ impl InvokeHarness {
                 conn.query_row(
                     "SELECT status FROM projects WHERE id = ?1",
                     rusqlite::params![project_id],
-                    |row| row.get::<_, String>(0),
+                    |row: &rusqlite::Row| row.get::<_, String>(0),
                 )
                 .expect("project status")
             };

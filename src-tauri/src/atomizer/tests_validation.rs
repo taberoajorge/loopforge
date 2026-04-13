@@ -85,6 +85,9 @@ fn shell_quote_escapes_single_quotes() {
 fn build_null_stdin_shell_command_appends_redirection() {
     let args = vec!["exec".to_string(), "prompt body".to_string()];
     let command = build_null_stdin_shell_command("codex", &args);
+    #[cfg(windows)]
+    assert!(command.ends_with("< NUL"));
+    #[cfg(not(windows))]
     assert!(command.ends_with("< /dev/null"));
 }
 

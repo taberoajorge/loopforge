@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
-use tokio::process::Command;
 
 const DENIED_PATTERNS: &[&str] = &[
     "rm -rf /",
@@ -63,9 +62,7 @@ pub async fn run_verification(story: &UserStory, work_dir: &Path) -> Verificatio
             continue;
         }
 
-        let result = Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
+        let result = crate::platform::shell_command(cmd)
             .current_dir(work_dir)
             .output()
             .await;

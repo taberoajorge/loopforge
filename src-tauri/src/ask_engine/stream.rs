@@ -57,10 +57,11 @@ pub async fn spawn_ask<R: Runtime>(
     let env_vars = agent_env_vars(&args.agent);
 
     let (mut event_rx, child) = if args.agent == "codex" {
-        let shell_cmd = build_null_stdin_command(&agent_binary, &agent_args);
+        let (shell_program, shell_args) =
+            crate::shell_resolve::build_null_stdin_command(&agent_binary, &agent_args);
         app.shell()
-            .command("/bin/zsh")
-            .args(["-lc", &shell_cmd])
+            .command(&shell_program)
+            .args(shell_args)
             .envs(env_vars)
             .current_dir(&project_dir)
             .spawn()
@@ -233,18 +234,6 @@ fn save_error_message<R: Runtime>(
     .ok()
 }
 
-fn build_null_stdin_command(binary: &str, args: &[String]) -> String {
-    let escaped_args: Vec<String> = args
-        .iter()
-        .map(|arg| format!("'{}'", arg.replace('\'', "'\\''")))
-        .collect();
-    format!(
-        "{binary} {args} < /dev/null",
-        binary = binary,
-        args = escaped_args.join(" ")
-    )
-}
-
 async fn resolve_agent_binary<R: Runtime>(
     app: &AppHandle<R>,
     agent: &str,
@@ -256,11 +245,11 @@ async fn resolve_agent_binary<R: Runtime>(
         )));
     }
 
-    let lookup = format!("command -v {binary}");
+    let (shell_program, shell_args) = crate::shell_resolve::resolve_binary_via_shell(binary);
     let output = app
         .shell()
-        .command("/bin/zsh")
-        .args(["-lc", &lookup])
+        .command(&shell_program)
+        .args(shell_args)
         .output()
         .await
         .map_err(|err| AskEngineError::Shell(err.to_string()))?;

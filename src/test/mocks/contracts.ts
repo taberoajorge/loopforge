@@ -34,6 +34,7 @@ import type {
   ResolvedAgentSelection,
   StartLoopArgs,
   StorySkippedPayload,
+  SystemReadiness,
   VerificationPayload,
   WizardResumeState,
 } from "../../lib/tauri";
@@ -47,6 +48,7 @@ export interface ProjectScopedEventPayload {
 export interface TauriCommandMap {
   detect_agents: { args: undefined; result: AgentInfo[] };
   refresh_agents: { args: undefined; result: AgentInfo[] };
+  check_system_readiness: { args: undefined; result: SystemReadiness };
   get_known_agents: { args: undefined; result: string[] };
   get_default_config: { args: undefined; result: ConfigDefaultsResponse };
   get_agent_capabilities: { args: { agent: string }; result: AgentCapabilities };

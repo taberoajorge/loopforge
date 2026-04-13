@@ -23,7 +23,7 @@ pub enum PlanSessionEvent {
 }
 
 pub trait PlanSessionService {
-    fn open(&self, project_id: &str) -> PlanSessionHandle;
+    fn open(&self, project_id: impl Into<String>) -> PlanSessionHandle;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

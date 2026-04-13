@@ -14,7 +14,7 @@ async fn plan_error_fixture_emits_deterministic_error_and_clears_session() {
 
     app.listen_any(crate::events::EVENT_PLAN_ERROR, {
         let errors = Arc::clone(&errors);
-        move |event| {
+        move |event: tauri::Event| {
             errors
                 .lock()
                 .unwrap()
@@ -23,7 +23,7 @@ async fn plan_error_fixture_emits_deterministic_error_and_clears_session() {
     });
     app.listen_any(crate::events::EVENT_PLAN_COMPLETE, {
         let completes = Arc::clone(&completes);
-        move |event| {
+        move |event: tauri::Event| {
             completes
                 .lock()
                 .unwrap()

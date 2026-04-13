@@ -1,6 +1,6 @@
 use crate::projects::notification_filter::{build_notification, AppNotification};
 use crate::projects::{NotificationPrefs, ProjectError};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 #[derive(Debug, Clone)]
 pub struct NotificationCreateInput {
@@ -10,8 +10,8 @@ pub struct NotificationCreateInput {
     pub message: String,
 }
 
-pub fn create_notification_and_emit(
-    app: &AppHandle,
+pub fn create_notification_and_emit<R: Runtime>(
+    app: &AppHandle<R>,
     input: NotificationCreateInput,
 ) -> Result<AppNotification, ProjectError> {
     let notification = {
@@ -54,8 +54,8 @@ pub fn create_notification_and_emit(
     Ok(notification)
 }
 
-pub async fn get_notification_prefs(
-    app: AppHandle,
+pub async fn get_notification_prefs<R: Runtime>(
+    app: AppHandle<R>,
     project_id: String,
 ) -> Result<NotificationPrefs, ProjectError> {
     let db = app.state::<crate::db::DbState>();
@@ -76,8 +76,8 @@ pub async fn get_notification_prefs(
     }
 }
 
-pub async fn save_notification_prefs(
-    app: AppHandle,
+pub async fn save_notification_prefs<R: Runtime>(
+    app: AppHandle<R>,
     project_id: String,
     prefs: NotificationPrefs,
 ) -> Result<(), ProjectError> {

@@ -25,3 +25,10 @@ export interface AgentCapabilities {
   defaultModel: string | null;
   defaultEffort: string | null;
 }
+
+export interface SystemReadiness {
+  agents: AgentInfo[];
+  gitAvailable: boolean;
+  shellAvailable: boolean;
+  platform: string;
+}

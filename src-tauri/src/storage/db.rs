@@ -1,6 +1,6 @@
 use rusqlite::Connection;
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -16,7 +16,7 @@ pub enum DbError {
 pub struct DbState(pub Mutex<Connection>);
 
 impl DbState {
-    pub fn open(app: &AppHandle) -> Result<Self, DbError> {
+    pub fn open<R: Runtime>(app: &AppHandle<R>) -> Result<Self, DbError> {
         let data_dir = app
             .path()
             .app_data_dir()

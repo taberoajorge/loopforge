@@ -45,6 +45,14 @@ fn codex_exec_line_starts_tool_output() {
 }
 
 #[test]
+fn codex_exec_cmd_line_starts_tool_output() {
+    let mut classifier = ActivityClassifier::new("codex");
+    let event = classifier.classify(r#"exec cmd.exe /C "rg -n foo" in C:\repo"#);
+    assert_eq!(event.kind, PlanEventKind::McpCall);
+    assert!(classifier.is_in_tool_output());
+}
+
+#[test]
 fn codex_tool_output_absorbed_until_narration() {
     let mut classifier = ActivityClassifier::new("codex");
     classifier.classify(r#"exec /bin/zsh -lc "rg foo" in /path"#);

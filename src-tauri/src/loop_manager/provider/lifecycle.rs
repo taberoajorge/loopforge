@@ -6,9 +6,9 @@ use ralph_core::providers::{AgentResult, Provider};
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, Runtime};
 
-async fn emit_project_state_changed(provider: &ShellProvider) {
+async fn emit_project_state_changed<R: Runtime>(provider: &ShellProvider<R>) {
     let snapshot = crate::commands::projects::get_project_snapshot(
         provider.app.clone(),
         provider.app.state::<DbState>(),
@@ -30,7 +30,7 @@ async fn emit_project_state_changed(provider: &ShellProvider) {
         .emit(crate::events::EVENT_PROJECT_STATE_CHANGED, payload);
 }
 
-impl Provider for ShellProvider {
+impl<R: Runtime> Provider for ShellProvider<R> {
     fn name(&self) -> &'static str {
         "shell"
     }

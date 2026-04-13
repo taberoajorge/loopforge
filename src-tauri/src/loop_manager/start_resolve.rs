@@ -1,7 +1,7 @@
 use super::{LoopError, StartLoopArgs};
 use crate::db::DbState;
 use crate::projects::ProjectConfig;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 
 #[derive(Clone)]
 pub(super) struct ResolvedStartLoop {
@@ -69,8 +69,8 @@ fn legacy_config_from_args(args: &StartLoopArgs) -> ProjectConfig {
     runtime_config
 }
 
-pub(super) async fn resolve_start_loop(
-    app: &AppHandle,
+pub(super) async fn resolve_start_loop<R: Runtime>(
+    app: &AppHandle<R>,
     db: &DbState,
     args: &StartLoopArgs,
 ) -> Result<ResolvedStartLoop, LoopError> {
