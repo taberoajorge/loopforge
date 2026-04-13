@@ -1,4 +1,6 @@
-use app_services::monitor::{MonitorEvent, MonitorRepository, MonitorService, RuntimeMonitorService};
+use app_services::monitor::{
+    MonitorEvent, MonitorRepository, MonitorService, RuntimeMonitorService,
+};
 use app_services::{MonitorSnapshot, MonitorStream, OutputEntry, ServiceError, SessionInfo};
 use rusqlite::OptionalExtension;
 use tauri::Manager;
@@ -20,10 +22,9 @@ impl<'a, R: tauri::Runtime> TauriMonitorAdapter<'a, R> {
 impl<R: tauri::Runtime> MonitorRepository for TauriMonitorAdapter<'_, R> {
     fn latest_session(&self, project_id: &str) -> Result<Option<SessionInfo>, ServiceError> {
         let db = self.window.state::<crate::db::DbState>();
-        let conn = db
-            .0
-            .lock()
-            .map_err(|_| ServiceError::Internal("database lock poisoned".into()))?;
+        let conn =
+            db.0.lock()
+                .map_err(|_| ServiceError::Internal("database lock poisoned".into()))?;
 
         conn.query_row(
             "SELECT id, started_at, ended_at FROM sessions WHERE project_id = ?1 ORDER BY started_at DESC LIMIT 1",
@@ -40,12 +41,14 @@ impl<R: tauri::Runtime> MonitorRepository for TauriMonitorAdapter<'_, R> {
         .map_err(|error| ServiceError::Internal(error.to_string()))
     }
 
-    fn recent_output(&self, project_id: &str, limit: usize) -> Result<Vec<OutputEntry>, ServiceError> {
-        let artifact_dir = crate::storage::artifacts::project_artifact_dir(
-            &self.window.app_handle(),
-            project_id,
-        )
-        .map_err(ServiceError::Internal)?;
+    fn recent_output(
+        &self,
+        project_id: &str,
+        limit: usize,
+    ) -> Result<Vec<OutputEntry>, ServiceError> {
+        let artifact_dir =
+            crate::storage::artifacts::project_artifact_dir(self.window.app_handle(), project_id)
+                .map_err(ServiceError::Internal)?;
         let output_path = artifact_dir.join("agent_output.log");
         let content = std::fs::read_to_string(output_path).unwrap_or_default();
 
@@ -73,10 +76,9 @@ impl<R: tauri::Runtime> MonitorRepository for TauriMonitorAdapter<'_, R> {
         limit: usize,
     ) -> Result<Vec<MonitorEvent>, ServiceError> {
         let db = self.window.state::<crate::db::DbState>();
-        let conn = db
-            .0
-            .lock()
-            .map_err(|_| ServiceError::Internal("database lock poisoned".into()))?;
+        let conn =
+            db.0.lock()
+                .map_err(|_| ServiceError::Internal("database lock poisoned".into()))?;
         let mut statement = conn
             .prepare(
                 "SELECT s.id, i.story_id, i.agent_used, i.duration_secs, i.result

@@ -26,7 +26,10 @@ pub(super) fn mark_pipeline_start<R: Runtime>(app: &AppHandle<R>, project_id: &s
     if let Ok(mut registry) = app.state::<PipelineRegistryState>().0.lock() {
         registry.entries.insert(
             project_id.to_string(),
-            PipelineEntry { snapshot, started_instant: Instant::now() },
+            PipelineEntry {
+                snapshot,
+                started_instant: Instant::now(),
+            },
         );
     }
 }
@@ -68,6 +71,7 @@ pub fn get_pipeline_snapshot<R: Runtime>(
                 if !snap.done && snap.error.is_none() {
                     snap.elapsed_ms = entry.started_instant.elapsed().as_millis() as u64;
                 }
+                snap.recompute_derived();
                 snap
             })
         })
@@ -98,7 +102,11 @@ pub(super) fn emit_progress<R: Runtime>(
         .0
         .lock()
         .ok()
-        .and_then(|reg| reg.entries.get(project_id).map(|ent| ent.snapshot.elapsed_ms))
+        .and_then(|reg| {
+            reg.entries
+                .get(project_id)
+                .map(|ent| ent.snapshot.elapsed_ms)
+        })
         .unwrap_or(0);
 
     let _ = app.emit(

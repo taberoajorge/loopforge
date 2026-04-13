@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
+import { reportError } from "../lib/reportError";
+import { hydrateWizard } from "../lib/tauri";
 import { useWizardStore } from "../stores/wizardStore";
-import { resumeWizard, loadExistingPrd, loadDraft } from "../lib/tauri";
+
+const STEP_NUMBERS: Record<string, number> = {
+  describe: 1,
+  plan: 2,
+  atomize: 3,
+  configure: 4,
+  launch: 5,
+};
 
 export function useWizardHydration(
   urlProjectId: string | undefined,
@@ -14,45 +23,29 @@ export function useWizardHydration(
     if (projectId === urlProjectId && projectName) return;
 
     setHydrating(true);
-    resumeWizard(urlProjectId)
-      .then(async (resumeState) => {
+    hydrateWizard(urlProjectId)
+      .then((result) => {
         const store = useWizardStore.getState();
-        store.setProjectId(resumeState.project.id);
+        store.setProjectId(result.project.id);
+        store.setStep(STEP_NUMBERS[result.wizardStep] ?? 1);
+        store.setHighestStep(result.highestStep);
         store.setProjectData({
-          name: resumeState.project.name,
-          description: resumeState.project.description,
-          workingDirectory: resumeState.project.workingDirectory,
-          planModel: null,
-          planEffort: null,
+          name: result.projectData.name,
+          description: result.projectData.description,
+          workingDirectory: result.projectData.workingDirectory,
+          planAgent: result.projectData.planAgent,
+          planModel: result.projectData.planModel,
+          planEffort: result.projectData.planEffort,
         });
-
-        const draftJson = await loadDraft(urlProjectId).catch(() => null);
-        if (draftJson) {
-          try {
-            const draft = JSON.parse(draftJson);
-            if (draft.describe) {
-              store.setProjectData({
-                name: draft.describe.name ?? resumeState.project.name,
-                description: draft.describe.description ?? resumeState.project.description,
-                workingDirectory: draft.describe.workingDirectory ?? resumeState.project.workingDirectory,
-                planAgent: draft.describe.planAgent ?? store.projectData.planAgent,
-                planModel: draft.describe.planModel ?? null,
-                planEffort: draft.describe.planEffort ?? null,
-              });
-            }
-            if (draft.plan?.completed) store.setPlanComplete(true);
-            if (draft.configure) store.setConfig(draft.configure);
-          } catch {
-          }
-        }
-
-        if (resumeState.hasPlan) store.setPlanComplete(true);
-        if (resumeState.hasPrd) {
-          const prd = await loadExistingPrd(resumeState.project.id);
-          if (prd && prd.stories.length > 0) store.setStories(prd.stories);
+        if (result.planComplete) store.setPlanComplete(true);
+        if (result.stories.length > 0) store.setStories(result.stories);
+        if (result.config) {
+          store.setConfig(result.config as import("../types/wizard").WizardConfig);
         }
       })
-      .catch(() => {})
+      .catch((caughtError: unknown) => {
+        reportError("useWizardHydration.hydrateWizard", caughtError);
+      })
       .finally(() => setHydrating(false));
   }, [urlProjectId, projectId, projectName]);
 

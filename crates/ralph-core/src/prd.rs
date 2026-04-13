@@ -145,7 +145,10 @@ impl Prd {
     }
 
     pub fn total_estimated_minutes(&self) -> u32 {
-        self.stories.iter().map(|story| story.estimated_minutes).sum()
+        self.stories
+            .iter()
+            .map(|story| story.estimated_minutes)
+            .sum()
     }
 
     pub fn validate_atomicity(&self) -> Result<(), PrdError> {
@@ -176,10 +179,7 @@ impl Prd {
             for dep_id in &story.depends_on {
                 if !all_ids.contains(dep_id.as_str()) {
                     return Err(PrdError::ValidationFailed {
-                        reason: format!(
-                            "Story '{}' depends_on unknown id '{}'",
-                            story.id, dep_id
-                        ),
+                        reason: format!("Story '{}' depends_on unknown id '{}'", story.id, dep_id),
                     });
                 }
             }
@@ -301,7 +301,10 @@ mod tests_d6_roundtrip {
         let prd = make_full_prd();
         let json = serde_json::to_string(&prd).unwrap();
         let value: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert!(value.get("projectName").is_some(), "must have projectName key");
+        assert!(
+            value.get("projectName").is_some(),
+            "must have projectName key"
+        );
         assert!(value.get("stories").is_some(), "must have stories key");
         let story = &value["stories"][0];
         assert!(story.get("scope").is_some());

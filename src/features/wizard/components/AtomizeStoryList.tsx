@@ -1,18 +1,12 @@
-import { useState, type DragEvent } from "react";
-import type { UserStory } from "../../../stores/wizardStore";
+import { type DragEvent, useState } from "react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
 import { ScrollArea, ScrollContent, ScrollViewport } from "../../../components/ui/scroll-area";
 import { Textarea } from "../../../components/ui/textarea";
-
-const PRIORITY_BADGE: Record<UserStory["priority"], "danger" | "warning" | "info" | "neutral"> = {
-  critical: "danger",
-  high: "warning",
-  medium: "info",
-  low: "neutral",
-};
+import { useDisplayVocabularyStore } from "../../../stores/displayVocabularyStore";
+import type { UserStory } from "../../../stores/wizardStore";
 
 type AtomizeStoryListProps = {
   stories: UserStory[];
@@ -46,6 +40,7 @@ function StoryCard({
   const [editing, setEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState(story.title);
   const [descriptionDraft, setDescriptionDraft] = useState(story.description);
+  const vocabulary = useDisplayVocabularyStore((state) => state.vocabulary);
 
   function commitEdit() {
     onUpdateStory(story.id, {
@@ -56,13 +51,36 @@ function StoryCard({
   }
 
   return (
-    <Card draggable role="article" aria-label={`Story ${story.id}`} data-testid={`atomize-story-${story.id}`} onDragStart={() => onDragStart(index)} onDragOver={onDragOver} onDrop={() => onDrop(index)}>
+    <Card
+      draggable
+      role="article"
+      aria-label={`Story ${story.id}`}
+      data-testid={`atomize-story-${story.id}`}
+      onDragStart={() => onDragStart(index)}
+      onDragOver={onDragOver}
+      onDrop={() => onDrop(index)}
+    >
       <CardHeader className="flex flex-row items-center justify-between gap-3 p-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono font-semibold text-primary">{story.id}</span>
-          <Badge variant={PRIORITY_BADGE[story.priority]}>{story.priority}</Badge>
+          <span className="font-mono font-semibold text-primary text-xs">{story.id}</span>
+          <Badge
+            variant={
+              (vocabulary?.storyPriorityVariants[story.priority] ?? "neutral") as
+                | "danger"
+                | "warning"
+                | "info"
+                | "neutral"
+            }
+          >
+            {story.priority}
+          </Badge>
         </div>
-        <Button variant="ghost" size="sm" data-testid={`atomize-story-remove-${story.id}`} onClick={() => onRequestRemoveStory(story)}>
+        <Button
+          variant="ghost"
+          size="sm"
+          data-testid={`atomize-story-remove-${story.id}`}
+          onClick={() => onRequestRemoveStory(story)}
+        >
           Remove
         </Button>
       </CardHeader>
@@ -70,7 +88,11 @@ function StoryCard({
         {editing ? (
           <>
             <Input value={titleDraft} onChange={(event) => setTitleDraft(event.target.value)} />
-            <Textarea rows={2} value={descriptionDraft} onChange={(event) => setDescriptionDraft(event.target.value)} />
+            <Textarea
+              rows={2}
+              value={descriptionDraft}
+              onChange={(event) => setDescriptionDraft(event.target.value)}
+            />
             <div className="flex items-center gap-2">
               <Button variant="primary" size="sm" onClick={commitEdit}>
                 Save
@@ -82,9 +104,17 @@ function StoryCard({
           </>
         ) : (
           <>
-            <button className="w-full text-left" aria-label={`Edit story ${story.id}`} data-testid={`atomize-story-edit-${story.id}`} onClick={() => setEditing(true)}>
-              <p className="text-sm font-medium text-text">{story.title}</p>
-              {story.description ? <p className="text-xs text-text-muted">{story.description}</p> : null}
+            <button
+              type="button"
+              className="w-full text-left"
+              aria-label={`Edit story ${story.id}`}
+              data-testid={`atomize-story-edit-${story.id}`}
+              onClick={() => setEditing(true)}
+            >
+              <p className="font-medium text-sm text-text">{story.title}</p>
+              {story.description ? (
+                <p className="text-text-muted text-xs">{story.description}</p>
+              ) : null}
             </button>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="neutral">EST {story.estimatedMinutes}m</Badge>
@@ -114,11 +144,24 @@ export function AtomizeStoryList({
       : isDone
         ? "Atomization completed with no stories. Add a story manually or go back."
         : "Atomizing plan into stories...";
-    return <div className="flex h-full items-center justify-center p-6 text-sm text-text-dim" role="status" data-testid="atomize-story-list-status">{message}</div>;
+    return (
+      <div
+        className="flex h-full items-center justify-center p-6 text-sm text-text-dim"
+        role="status"
+        data-testid="atomize-story-list-status"
+      >
+        {message}
+      </div>
+    );
   }
 
   return (
-    <ScrollArea className="h-full" role="region" aria-label="Atomized stories" data-testid="atomize-story-list">
+    <ScrollArea
+      className="h-full"
+      role="region"
+      aria-label="Atomized stories"
+      data-testid="atomize-story-list"
+    >
       <ScrollViewport className="h-full" padding="md">
         <ScrollContent className="space-y-3">
           {stories.map((story, index) => (

@@ -33,6 +33,7 @@ pub(super) fn spawn_plan_flush_task(
 
 pub(super) fn spawn_batch_flush_task<R: Runtime>(
     buffer: Arc<Mutex<Vec<PlanActivityPayload>>>,
+    classifier: Arc<Mutex<ActivityClassifier>>,
     app: AppHandle<R>,
     project_id: String,
 ) -> JoinHandle<()> {
@@ -41,7 +42,7 @@ pub(super) fn spawn_batch_flush_task<R: Runtime>(
         interval.tick().await;
         loop {
             interval.tick().await;
-            flush_event_buffer(&buffer, &app, &project_id);
+            flush_event_buffer(&buffer, &classifier, &app, &project_id);
         }
     })
 }
@@ -131,7 +132,7 @@ pub(super) fn handle_termination<R: Runtime>(
     exit_code: i32,
     tracer: &Option<SessionTracer>,
 ) {
-    flush_event_buffer(event_buffer, app, project_id);
+    flush_event_buffer(event_buffer, classifier, app, project_id);
 
     if let Ok(guard) = classifier.lock() {
         let plan_content = guard.accumulated_plan();
@@ -182,7 +183,11 @@ pub(super) fn handle_termination<R: Runtime>(
         if let Some(tracer) = tracer {
             tracer.log(TraceEvent::PlanComplete { plan_bytes });
         }
-        let final_content = if accumulated.is_empty() { None } else { Some(accumulated) };
+        let final_content = if accumulated.is_empty() {
+            None
+        } else {
+            Some(accumulated)
+        };
         let _ = app.emit(
             crate::events::EVENT_PLAN_COMPLETE,
             PlanTerminalPayload {

@@ -86,11 +86,7 @@ impl CliProvider {
             binary: "opencode".into(),
             model,
             build_args: |_provider, prompt, _| {
-                vec![
-                    "run".into(),
-                    "--print-logs".into(),
-                    prompt.into(),
-                ]
+                vec!["run".into(), "--print-logs".into(), prompt.into()]
             },
             use_current_dir: true,
         }
@@ -255,8 +251,7 @@ impl Provider for CliProvider {
             .try_wait()
             .ok()
             .flatten()
-            .map(|status| status.code().unwrap_or(1))
-            .unwrap_or(1);
+            .map_or(1, |status| status.code().unwrap_or(1));
 
         logger::log_info(&format!(
             "[{}] {} finished (exit: {exit_code})",

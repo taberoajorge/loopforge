@@ -82,7 +82,10 @@ pub struct MonitorMessage {
 }
 
 pub trait MonitorRepository {
-    fn latest_session(&self, project_id: &str) -> crate::session::ServiceResult<Option<SessionInfo>>;
+    fn latest_session(
+        &self,
+        project_id: &str,
+    ) -> crate::session::ServiceResult<Option<SessionInfo>>;
     fn recent_output(
         &self,
         project_id: &str,

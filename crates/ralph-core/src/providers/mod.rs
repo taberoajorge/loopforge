@@ -32,7 +32,9 @@ impl AgentResult {
     pub fn detect_rate_limit(output_lines: &[String]) -> (bool, Option<String>) {
         for line in output_lines.iter().rev().take(30) {
             let lower = line.to_lowercase();
-            let is_rate_limited = RATE_LIMIT_PATTERNS.iter().any(|pattern| lower.contains(pattern));
+            let is_rate_limited = RATE_LIMIT_PATTERNS
+                .iter()
+                .any(|pattern| lower.contains(pattern));
             if is_rate_limited {
                 let retry_msg = extract_retry_time(line);
                 return (true, retry_msg);
@@ -45,7 +47,7 @@ impl AgentResult {
 fn extract_retry_time(line: &str) -> Option<String> {
     if let Some(idx) = line.to_lowercase().find("try again at ") {
         let after = &line[idx + 13..];
-        let end = after.find(|ch: char| ch == '"' || ch == '.' || ch == '}').unwrap_or(after.len());
+        let end = after.find(['"', '.', '}']).unwrap_or(after.len());
         let time_str = after[..end].trim();
         if !time_str.is_empty() {
             return Some(time_str.to_string());

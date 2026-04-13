@@ -163,6 +163,24 @@ impl DbState {
             )?;
         }
 
+        if current_version < 7 {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS notifications (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL REFERENCES projects(id),
+                    notification_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    ring_color TEXT NOT NULL DEFAULT 'cyan',
+                    read INTEGER NOT NULL DEFAULT 0,
+                    timestamp INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_notifications_project
+                    ON notifications(project_id, timestamp DESC);
+                INSERT INTO _migrations (version) VALUES (7);",
+            )?;
+        }
+
         Ok(())
     }
 
@@ -186,7 +204,7 @@ impl DbState {
         stmt.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })
-        .map(|rows| rows.filter_map(|row| row.ok()).collect())
+        .map(|rows| rows.filter_map(Result::ok).collect())
         .unwrap_or_default()
     }
 

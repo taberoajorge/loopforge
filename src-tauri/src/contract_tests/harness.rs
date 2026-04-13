@@ -25,7 +25,8 @@ struct EnvGuard {
 impl TestHarness {
     pub fn new() -> Self {
         let lock = ENV_LOCK.lock().unwrap_or_else(|err| err.into_inner());
-        let root_dir = std::env::temp_dir().join(format!("loopforge-contract-{}", uuid::Uuid::new_v4()));
+        let root_dir =
+            std::env::temp_dir().join(format!("loopforge-contract-{}", uuid::Uuid::new_v4()));
         let home_dir = root_dir.join("home");
         let bin_dir = root_dir.join("bin");
         let work_dir = root_dir.join("work");
@@ -94,12 +95,10 @@ impl TestHarness {
         expected: usize,
     ) -> Vec<AskMessage> {
         for _ in 0..100 {
-            let messages = commands::ask::ask_history(
-                self.app.state::<DbState>(),
-                project_id.to_string(),
-            )
-            .await
-            .expect("ask history");
+            let messages =
+                commands::ask::ask_history(self.app.state::<DbState>(), project_id.to_string())
+                    .await
+                    .expect("ask history");
             if messages.len() >= expected {
                 return messages;
             }
@@ -171,15 +170,14 @@ impl Drop for EnvGuard {
 
 fn install_fixture_agent(bin_dir: &Path, agent_name: &str) {
     let script = bin_dir.join(agent_name);
-    std::fs::write(
-        &script,
-        "#!/bin/sh\nprintf 'fixture agent completed\\n'\n",
-    )
-    .expect("fixture agent");
+    std::fs::write(&script, "#!/bin/sh\nprintf 'fixture agent completed\\n'\n")
+        .expect("fixture agent");
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(&script).expect("fixture metadata").permissions();
+        let mut perms = std::fs::metadata(&script)
+            .expect("fixture metadata")
+            .permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&script, perms).expect("fixture perms");
     }

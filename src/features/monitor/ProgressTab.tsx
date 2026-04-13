@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { ListChecks } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { EmptyState } from "../../components/EmptyState";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -11,97 +11,35 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import {
-  getProjectStories,
-  onIterationCompleted,
-  onIterationStarted,
-  onSessionEnded,
-  type IterationStory,
-} from "../../lib/tauri";
+import { reportError } from "../../lib/reportError";
+import { getProjectStories, type IterationStory, onStoriesUpdated } from "../../lib/tauri";
+import { useDisplayVocabularyStore } from "../../stores/displayVocabularyStore";
 import { TerminalFrame } from "./components/TerminalFrame";
-
-const STORY_STATUS_VARIANT: Record<
-  IterationStory["status"],
-  "neutral" | "info" | "success" | "warning" | "danger"
-> = {
-  completed: "success",
-  current: "info",
-  blocked: "danger",
-  pending: "neutral",
-};
-
-function formatDuration(secs?: number): string {
-  if (typeof secs !== "number") {
-    return "—";
-  }
-  if (secs <= 0) {
-    return "0s";
-  }
-  if (secs < 60) {
-    return `${secs}s`;
-  }
-  const minutes = Math.floor(secs / 60);
-  const remaining = secs % 60;
-  return `${minutes}m ${remaining}s`;
-}
 
 export function ProgressTab({ projectId }: { projectId: string }) {
   const [stories, setStories] = useState<IterationStory[]>([]);
-  const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
+  const vocabulary = useDisplayVocabularyStore((state) => state.vocabulary);
 
-  useEffect(() => {
-    getProjectStories(projectId).then(setStories).catch(() => {});
-    setCurrentStoryId(null);
+  const refresh = useCallback(() => {
+    getProjectStories(projectId)
+      .then(setStories)
+      .catch((caughtError: unknown) => {
+        reportError("ProgressTab.getProjectStories", caughtError);
+      });
   }, [projectId]);
 
   useEffect(() => {
-    const refresh = () => {
-      getProjectStories(projectId).then(setStories).catch(() => {});
-    };
-    const listeners = [
-      onIterationStarted((payload: unknown) => {
-        const event = payload as { projectId?: string; storyId?: string };
-        if (event.projectId !== projectId || typeof event.storyId !== "string") {
-          return;
-        }
-        setCurrentStoryId(event.storyId);
-        setStories((current) =>
-          current.map((story) => {
-            if (story.status === "current" && story.id !== event.storyId) {
-              return { ...story, status: "pending" };
-            }
-            if (story.id === event.storyId && story.status === "pending") {
-              return { ...story, status: "current" };
-            }
-            return story;
-          }),
-        );
-      }),
-      onIterationCompleted((payload: unknown) => {
-        const event = payload as { projectId?: string; storyId?: string };
-        if (event.projectId !== projectId) {
-          return;
-        }
-        if (event.storyId === currentStoryId) {
-          setCurrentStoryId(null);
-        }
-        refresh();
-      }),
-      onSessionEnded((payload: unknown) => {
-        const event = payload as { projectId?: string };
-        if (event.projectId !== projectId) {
-          return;
-        }
-        setCurrentStoryId(null);
-        refresh();
-      }),
-    ];
+    refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const unlisten = onStoriesUpdated((payload) => {
+      if (payload.projectId === projectId) refresh();
+    });
     return () => {
-      listeners.forEach((pending) => {
-        pending.then((off) => off());
-      });
+      unlisten.then((off) => off());
     };
-  }, [currentStoryId, projectId]);
+  }, [projectId, refresh]);
 
   if (stories.length === 0) {
     return (
@@ -130,34 +68,51 @@ export function ProgressTab({ projectId }: { projectId: string }) {
             <col className="w-20" />
             <col className="w-14" />
           </colgroup>
-          <TableHeader className="sticky top-0 z-10 border-b border-border">
+          <TableHeader className="sticky top-0 z-10 border-border border-b">
             <TableRow interactive={false}>
-              <TableHead className="border-r border-border/40">ID</TableHead>
-              <TableHead className="border-r border-border/40">Title</TableHead>
-              <TableHead className="border-r border-border/40">Status</TableHead>
-              <TableHead className="border-r border-border/40">Time</TableHead>
+              <TableHead className="border-border/40 border-r">ID</TableHead>
+              <TableHead className="border-border/40 border-r">Title</TableHead>
+              <TableHead className="border-border/40 border-r">Status</TableHead>
+              <TableHead className="border-border/40 border-r">Time</TableHead>
               <TableHead numeric>Tries</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {stories.map((story) => (
               <TableRow key={story.id}>
-                <TableCell className="border-r border-border/30 text-xs text-text-dim">
-                  <span className="block truncate" title={story.id}>{story.id}</span>
+                <TableCell className="border-border/30 border-r text-text-dim text-xs">
+                  <span className="block truncate" title={story.id}>
+                    {story.id}
+                  </span>
                 </TableCell>
-                <TableCell className="border-r border-border/30 text-sm text-text max-w-0">
-                  <span className="block truncate" title={story.title}>{story.title}</span>
+                <TableCell className="max-w-0 border-border/30 border-r text-sm text-text">
+                  <span className="block truncate" title={story.title}>
+                    {story.title}
+                  </span>
                 </TableCell>
-                <TableCell className="border-r border-border/30 font-sans">
+                <TableCell className="border-border/30 border-r font-sans">
                   <Badge
-                    variant={STORY_STATUS_VARIANT[story.status]}
-                    className={story.status === "pending" ? "text-text-dim border-border/40 bg-transparent" : ""}
+                    variant={
+                      (vocabulary?.storyStatusVariants[story.status] ?? "neutral") as
+                        | "neutral"
+                        | "info"
+                        | "success"
+                        | "warning"
+                        | "danger"
+                    }
+                    className={
+                      story.status === "pending"
+                        ? "border-border/40 bg-transparent text-text-dim"
+                        : ""
+                    }
                   >
                     {story.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="border-r border-border/30 text-xs text-text-dim whitespace-nowrap">{formatDuration(story.durationSecs)}</TableCell>
-                <TableCell className="text-xs text-text-dim whitespace-nowrap" numeric>
+                <TableCell className="whitespace-nowrap border-border/30 border-r text-text-dim text-xs">
+                  {story.durationLabel ?? "—"}
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-text-dim text-xs" numeric>
                   {typeof story.attempts === "number" ? story.attempts : "—"}
                 </TableCell>
               </TableRow>

@@ -1,7 +1,9 @@
 mod coordinator;
 pub mod worktree_runner;
 
-use crate::loop_engine::scheduler::{schedule as schedule_completions, MergeAction, WorktreeCompletion};
+use crate::loop_engine::scheduler::{
+    schedule as schedule_completions, MergeAction, WorktreeCompletion,
+};
 use crate::prd::{Prd, UserStory};
 use std::collections::HashSet;
 

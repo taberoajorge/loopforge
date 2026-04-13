@@ -25,6 +25,20 @@ jobs:
       - name: TypeScript check
         run: bun run typecheck
 
+  lint:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Biome lint
+        run: bun run lint
+
   build:
     strategy:
       fail-fast: false
@@ -90,6 +104,8 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -101,3 +117,9 @@ jobs:
 
       - name: Run tests
         run: cargo test
+
+      - name: Rust format check
+        run: cargo fmt --all -- --check
+
+      - name: Rust clippy
+        run: cargo clippy --workspace -- -D warnings

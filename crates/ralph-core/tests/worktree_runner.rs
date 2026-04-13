@@ -57,7 +57,11 @@ fn different_stories_receive_different_worktree_paths() {
     for (idx, path) in paths.iter().enumerate() {
         for (jdx, other) in paths.iter().enumerate() {
             if idx != jdx {
-                assert_ne!(path, other, "{} and {} must differ", stories[idx], stories[jdx]);
+                assert_ne!(
+                    path, other,
+                    "{} and {} must differ",
+                    stories[idx], stories[jdx]
+                );
             }
         }
     }

@@ -35,6 +35,7 @@ pub(super) fn buffer_text_segments(
 
 pub(super) fn flush_event_buffer<R: Runtime>(
     buffer: &Arc<Mutex<Vec<PlanActivityPayload>>>,
+    classifier: &Arc<Mutex<ActivityClassifier>>,
     app: &AppHandle<R>,
     project_id: &str,
 ) {
@@ -54,17 +55,19 @@ pub(super) fn flush_event_buffer<R: Runtime>(
         .map(|evt| evt.content.as_str())
         .collect::<Vec<_>>()
         .join("\n");
+    let plan_content = classifier
+        .lock()
+        .map(|guard| guard.accumulated_plan())
+        .unwrap_or_default();
     let raw_batch = PlanActivityBatchPayload {
         project_id: project_id.to_string(),
         events,
+        plan_content,
         plan_content_delta,
     };
     let filtered_batch = crate::plan_engine::filters::filter_plan_batch(raw_batch);
-    if filtered_batch.events.is_empty() && filtered_batch.plan_content_delta.is_empty() {
+    if filtered_batch.events.is_empty() && filtered_batch.plan_content.is_empty() {
         return;
     }
-    let _ = app.emit(
-        crate::events::EVENT_PLAN_ACTIVITY_BATCH,
-        filtered_batch,
-    );
+    let _ = app.emit(crate::events::EVENT_PLAN_ACTIVITY_BATCH, filtered_batch);
 }

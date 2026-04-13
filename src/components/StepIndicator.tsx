@@ -3,6 +3,7 @@ import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useDisplayVocabularyStore } from "@/stores/displayVocabularyStore";
 
 export type StepState = "upcoming" | "current" | "complete" | "stale" | "error";
 
@@ -13,22 +14,6 @@ export type StepIndicatorItem = {
   state: StepState;
   marker?: React.ReactNode;
   disabled?: boolean;
-};
-
-const STEP_VARIANT: Record<StepState, NonNullable<BadgeProps["variant"]>> = {
-  upcoming: "neutral",
-  current: "info",
-  complete: "success",
-  stale: "warning",
-  error: "danger",
-};
-
-const STEP_EMPHASIS: Record<StepState, NonNullable<BadgeProps["emphasis"]>> = {
-  upcoming: "subtle",
-  current: "solid",
-  complete: "subtle",
-  stale: "subtle",
-  error: "subtle",
 };
 
 const STEP_LABEL_CLASS: Record<StepState, string> = {
@@ -62,6 +47,7 @@ export function StepIndicator({
   steps,
   ...props
 }: StepIndicatorProps) {
+  const vocabulary = useDisplayVocabularyStore((state) => state.vocabulary);
   return (
     <div
       className={cn(
@@ -74,25 +60,24 @@ export function StepIndicator({
     >
       {steps.map((step, stepIndex) => {
         const isClickable = Boolean(onStepSelect) && !step.disabled;
+        const variant = (vocabulary?.stepIndicatorVariants[step.state] ?? "neutral") as NonNullable<
+          BadgeProps["variant"]
+        >;
+        const emphasis = (vocabulary?.stepIndicatorEmphasis[step.state] ?? "subtle") as NonNullable<
+          BadgeProps["emphasis"]
+        >;
         const stepBody = (
           <>
-            <Badge
-              variant={STEP_VARIANT[step.state]}
-              emphasis={STEP_EMPHASIS[step.state]}
-              className="min-w-6 justify-center px-1.5"
-            >
+            <Badge variant={variant} emphasis={emphasis} className="min-w-6 justify-center px-1.5">
               {resolveMarker(step, stepIndex)}
             </Badge>
             <span
-              className={cn(
-                "text-xs font-sans whitespace-nowrap",
-                STEP_LABEL_CLASS[step.state],
-              )}
+              className={cn("whitespace-nowrap font-sans text-xs", STEP_LABEL_CLASS[step.state])}
             >
               {step.label}
             </span>
             {step.description ? (
-              <span className="text-[11px] font-sans text-text-dim whitespace-nowrap">
+              <span className="whitespace-nowrap font-sans text-[11px] text-text-dim">
                 {step.description}
               </span>
             ) : null}
@@ -116,18 +101,14 @@ export function StepIndicator({
                   {stepBody}
                 </Button>
               ) : (
-                <div className="h-auto items-center gap-2 px-0 py-0 flex">
-                  {stepBody}
-                </div>
+                <div className="flex h-auto items-center gap-2 px-0 py-0">{stepBody}</div>
               )}
             </div>
             {showConnectors && stepIndex < steps.length - 1 ? (
               <Separator
                 tone={step.state === "complete" ? "default" : "muted"}
                 orientation={orientation === "horizontal" ? "horizontal" : "vertical"}
-                className={cn(
-                  orientation === "horizontal" ? "w-6" : "ml-3 h-4",
-                )}
+                className={cn(orientation === "horizontal" ? "w-6" : "ml-3 h-4")}
               />
             ) : null}
           </React.Fragment>

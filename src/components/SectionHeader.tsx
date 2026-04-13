@@ -1,9 +1,5 @@
-import * as React from "react";
-import {
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import type * as React from "react";
+import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator, type SeparatorProps } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -32,9 +28,7 @@ export function SectionHeader({
     <div className={cn("space-y-3", className)} {...props}>
       <CardHeader className={cn("border-none p-0", compact ? "gap-1" : "gap-1.5")}>
         {eyebrow ? (
-          <p className="text-xs font-sans uppercase tracking-wider text-text-muted">
-            {eyebrow}
-          </p>
+          <p className="font-sans text-text-muted text-xs uppercase tracking-wider">{eyebrow}</p>
         ) : null}
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="text-base">{title}</CardTitle>

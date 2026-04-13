@@ -20,6 +20,8 @@ pub struct PlanActivityPayload {
 pub struct PlanActivityBatchPayload {
     pub project_id: String,
     pub events: Vec<PlanActivityPayload>,
+    pub plan_content: String,
+    #[serde(default)]
     pub plan_content_delta: String,
 }
 

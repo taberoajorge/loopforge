@@ -1,12 +1,14 @@
-import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const tableContainerVariants = cva("min-h-0 min-w-0 overflow-auto rounded-lg border border-border bg-surface");
+const tableContainerVariants = cva(
+  "min-h-0 min-w-0 overflow-auto rounded-lg border border-border bg-surface",
+);
 
 const tableRowVariants = cva(
-  "border-b border-border/50 text-text transition-colors last:border-0",
+  "border-border/50 border-b text-text transition-colors last:border-0",
   {
     variants: {
       interactive: {
@@ -38,17 +40,15 @@ const TableContainer = React.forwardRef<HTMLDivElement, TableContainerProps>(
 
 TableContainer.displayName = "TableContainer";
 
-const Table = React.forwardRef<HTMLTableElement, TableProps>(
-  ({ className, ...props }, ref) => {
-    return (
-      <table
-        ref={ref}
-        className={cn("w-full caption-bottom border-separate border-spacing-0 text-sm", className)}
-        {...props}
-      />
-    );
-  },
-);
+const Table = React.forwardRef<HTMLTableElement, TableProps>(({ className, ...props }, ref) => {
+  return (
+    <table
+      ref={ref}
+      className={cn("w-full caption-bottom border-separate border-spacing-0 text-sm", className)}
+      {...props}
+    />
+  );
+});
 
 Table.displayName = "Table";
 
@@ -79,7 +79,7 @@ const TableFooter = React.forwardRef<HTMLTableSectionElement, TableFooterProps>(
     return (
       <tfoot
         ref={ref}
-        className={cn("border-t border-border bg-elevated/60 font-medium text-text", className)}
+        className={cn("border-border border-t bg-elevated/60 font-medium text-text", className)}
         {...props}
       />
     );
@@ -116,7 +116,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
       <th
         ref={ref}
         className={cn(
-          "h-11 px-4 align-middle text-xs font-sans uppercase tracking-wider text-text-muted",
+          "h-11 px-4 align-middle font-sans text-text-muted text-xs uppercase tracking-wider",
           numeric ? "text-right tabular-nums" : "text-left",
           className,
         )}
@@ -137,7 +137,11 @@ const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
     return (
       <td
         ref={ref}
-        className={cn("px-4 py-3 align-middle font-mono", numeric && "text-right tabular-nums", className)}
+        className={cn(
+          "px-4 py-3 align-middle font-mono",
+          numeric && "text-right tabular-nums",
+          className,
+        )}
         {...props}
       />
     );
@@ -151,7 +155,11 @@ export type TableCaptionProps = React.HTMLAttributes<HTMLTableCaptionElement>;
 const TableCaption = React.forwardRef<HTMLTableCaptionElement, TableCaptionProps>(
   ({ className, ...props }, ref) => {
     return (
-      <caption ref={ref} className={cn("mt-4 text-sm font-sans text-text-muted", className)} {...props} />
+      <caption
+        ref={ref}
+        className={cn("mt-4 font-sans text-sm text-text-muted", className)}
+        {...props}
+      />
     );
   },
 );

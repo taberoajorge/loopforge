@@ -1,6 +1,4 @@
-use ralph_core::prd::{
-    Complexity, Prd, Priority, ScopeSpec, UserStory, VerificationSpec,
-};
+use ralph_core::prd::{Complexity, Prd, Priority, ScopeSpec, UserStory, VerificationSpec};
 use ralph_core::scheduler;
 
 fn story(id: &str) -> UserStory {

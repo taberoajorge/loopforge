@@ -1,5 +1,5 @@
-import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -23,16 +23,7 @@ export type SeparatorProps = React.HTMLAttributes<HTMLDivElement> &
   };
 
 const Separator = React.forwardRef<HTMLDivElement, SeparatorProps>(
-  (
-    {
-      className,
-      orientation = "horizontal",
-      decorative = true,
-      tone,
-      ...props
-    },
-    ref,
-  ) => {
+  ({ className, orientation = "horizontal", decorative = true, tone, ...props }, ref) => {
     return (
       <div
         ref={ref}

@@ -9,7 +9,7 @@ pub mod worktree;
 pub use crate::scheduler::worktree_runner::{
     provision as provision_worktree, run_in_worktree, ProvisionedWorktree,
 };
-pub use worktree::{LoopExecutionState, PRIMARY_WORKTREE_ID, WorktreeExecutionState};
+pub use worktree::{LoopExecutionState, WorktreeExecutionState, PRIMARY_WORKTREE_ID};
 
 use crate::config::RalphConfig;
 use crate::detection::failure_memory::{FailureMemory, StoryFailureRecord};
@@ -26,8 +26,8 @@ use crate::scheduler::{ArtifactCoordinator, SharedArtifactUpdate};
 use crate::state;
 use std::future::{poll_fn, Future};
 use std::pin::Pin;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::task::Poll;
 
 use self::scheduler::WorktreeCompletion;
@@ -68,12 +68,11 @@ pub async fn run<P: Provider>(
             tokio::time::sleep(std::time::Duration::from_secs(30)).await;
             continue;
         }
-        let mut prd = match prd_lifecycle::load_or_restore(config) {
-            Some(prd) => prd,
-            None => {
-                logger::log_error("PRD unrecoverable, stopping", Some(&config.paths.error_log));
-                break;
-            }
+        let mut prd = if let Some(prd) = prd_lifecycle::load_or_restore(config) {
+            prd
+        } else {
+            logger::log_error("PRD unrecoverable, stopping", Some(&config.paths.error_log));
+            break;
         };
         if prd.pending_count() == 0 {
             logger::log_success(&format!(
@@ -288,7 +287,10 @@ async fn run_parallel_ready_stories<P: Provider>(
     }
     let reports = collect_worker_reports(workers).await?;
     for update in story_scheduler::shared_updates_for(
-        reports.iter().map(|report| report.completion.clone()).collect(),
+        reports
+            .iter()
+            .map(|report| report.completion.clone())
+            .collect(),
     ) {
         artifact_coordinator
             .submit(update)
@@ -367,7 +369,13 @@ async fn execute_ready_story<P: Provider>(
     let head_before = git::get_head_hash(&worker_config.paths.work_dir)
         .await
         .unwrap_or_default();
-    let built = build_prompt(&worker_config, iteration, &failure_memory, &story, event_sink);
+    let built = build_prompt(
+        &worker_config,
+        iteration,
+        &failure_memory,
+        &story,
+        event_sink,
+    );
     if let Err(validation_errors) = built.validate(&story.id) {
         tracing::error!(story_id = %story.id, errors = ?validation_errors, "prompt validation failed");
         event_sink.emit(LoopEvent::StorySkipped {
@@ -401,8 +409,7 @@ async fn execute_ready_story<P: Provider>(
         iteration,
     )
     .await;
-    let final_passed =
-        outcome.story_passed || check_story_passed_in_prd(&worker_config, &story.id);
+    let final_passed = outcome.story_passed || check_story_passed_in_prd(&worker_config, &story.id);
     let progress_report = progress::analyze_iteration_progress(
         &worker_config.paths.work_dir,
         &head_before,
@@ -450,8 +457,8 @@ fn worker_report(
         completion: WorktreeCompletion {
             worktree_id: worktree_id.to_string(),
             story_id: story_id.to_string(),
-            passed: state.map(|story| story.passes).unwrap_or(false),
-            blocked: state.map(|story| story.blocked).unwrap_or(false),
+            passed: state.is_some_and(|story| story.passes),
+            blocked: state.is_some_and(|story| story.blocked),
             head_commit: None,
             guardrail_append,
             sequence,
@@ -477,7 +484,10 @@ fn merge_failure_record(failure_memory: &mut FailureMemory, record: Option<Story
 
 fn guardrail_append(seed: &str, path: &std::path::Path) -> Option<String> {
     let current = std::fs::read_to_string(path).ok()?;
-    let appended = current.strip_prefix(seed).unwrap_or(current.as_str()).trim();
+    let appended = current
+        .strip_prefix(seed)
+        .unwrap_or(current.as_str())
+        .trim();
     if appended.is_empty() {
         None
     } else {

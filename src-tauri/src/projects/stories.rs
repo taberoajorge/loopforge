@@ -5,6 +5,18 @@ use ralph_core::prd::Prd;
 use rusqlite::OptionalExtension;
 use tauri::{AppHandle, State};
 
+fn format_duration_label(duration_secs: i64) -> String {
+    if duration_secs <= 0 {
+        return "0s".to_string();
+    }
+    if duration_secs < 60 {
+        return format!("{duration_secs}s");
+    }
+    let minutes = duration_secs / 60;
+    let seconds = duration_secs % 60;
+    format!("{minutes}m {seconds}s")
+}
+
 pub async fn get_project_stories(
     app: AppHandle,
     db: State<'_, DbState>,
@@ -14,15 +26,16 @@ pub async fn get_project_stories(
     let prd_path = dir.join("prd.json");
 
     let stories = if prd_path.exists() {
-        Prd::load(&prd_path).map(|prd| prd.stories).unwrap_or_default()
+        Prd::load(&prd_path)
+            .map(|prd| prd.stories)
+            .unwrap_or_default()
     } else {
         return Ok(Vec::new());
     };
 
-    let conn = db
-        .0
-        .lock()
-        .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
 
     let latest_session: Option<(String, Option<String>)> = conn
         .query_row(
@@ -32,11 +45,12 @@ pub async fn get_project_stories(
         )
         .optional()
         .map_err(|err| ProjectError::Db(err.to_string()))?;
-    let latest_session_id = latest_session.as_ref().map(|(session_id, _)| session_id.clone());
+    let latest_session_id = latest_session
+        .as_ref()
+        .map(|(session_id, _)| session_id.clone());
     let latest_session_is_open = latest_session
         .as_ref()
-        .map(|(_, ended_at)| ended_at.is_none())
-        .unwrap_or(false);
+        .is_some_and(|(_, ended_at)| ended_at.is_none());
 
     let active_story_id: Option<String> = if latest_session_is_open {
         if let Some(ref sid) = latest_session_id {
@@ -98,6 +112,7 @@ pub async fn get_project_stories(
                 title: story.title.clone(),
                 status,
                 duration_secs,
+                duration_label: duration_secs.map(format_duration_label),
                 attempts,
             }
         })

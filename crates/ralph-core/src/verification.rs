@@ -34,10 +34,7 @@ pub struct VerificationResult {
     pub raw_output: String,
 }
 
-pub async fn run_verification(
-    story: &UserStory,
-    work_dir: &Path,
-) -> VerificationResult {
+pub async fn run_verification(story: &UserStory, work_dir: &Path) -> VerificationResult {
     let commands = &story.verification.commands;
     if commands.is_empty() {
         return VerificationResult {
@@ -129,42 +126,43 @@ fn parse_diagnostics(output: &str) -> Vec<Diagnostic> {
 }
 
 fn parse_typescript(output: &str) -> Vec<Diagnostic> {
-    let pattern = Regex::new(
-        r"(?m)^(.+?)\((\d+),(\d+)\):\s*error\s+(TS\d+):\s*(.+)$"
-    ).expect("valid regex");
+    let pattern =
+        Regex::new(r"(?m)^(.+?)\((\d+),(\d+)\):\s*error\s+(TS\d+):\s*(.+)$").expect("valid regex");
 
-    pattern.captures_iter(output).map(|cap| {
-        Diagnostic {
+    pattern
+        .captures_iter(output)
+        .map(|cap| Diagnostic {
             file: Some(cap[1].to_string()),
             line: cap[2].parse().ok(),
             col: cap[3].parse().ok(),
             error_type: cap[4].to_string(),
             message: cap[5].to_string(),
             source_context: None,
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 fn parse_cargo(output: &str) -> Vec<Diagnostic> {
-    let pattern = Regex::new(
-        r"(?m)^error\[([A-Z]\d+)\]:\s*(.+)\n\s*-->\s*(.+?):(\d+):(\d+)"
-    ).expect("valid regex");
+    let pattern = Regex::new(r"(?m)^error\[([A-Z]\d+)\]:\s*(.+)\n\s*-->\s*(.+?):(\d+):(\d+)")
+        .expect("valid regex");
 
-    pattern.captures_iter(output).map(|cap| {
-        Diagnostic {
+    pattern
+        .captures_iter(output)
+        .map(|cap| Diagnostic {
             file: Some(cap[3].to_string()),
             line: cap[4].parse().ok(),
             col: cap[5].parse().ok(),
             error_type: cap[1].to_string(),
             message: cap[2].to_string(),
             source_context: None,
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 fn parse_eslint(output: &str) -> Vec<Diagnostic> {
     let file_pattern = Regex::new(r"(?m)^(/[^\s]+|[A-Za-z]:\\[^\s]+)$").expect("valid regex");
-    let rule_pattern = Regex::new(r"(?m)^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s{2,}(\S+)$").expect("valid regex");
+    let rule_pattern = Regex::new(r"(?m)^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s{2,}(\S+)$")
+        .expect("valid regex");
 
     let mut results = Vec::new();
     let mut current_file: Option<String> = None;
@@ -187,18 +185,20 @@ fn parse_eslint(output: &str) -> Vec<Diagnostic> {
 }
 
 fn parse_jest(output: &str) -> Vec<Diagnostic> {
-    let pattern = Regex::new(r"(?m)●\s+(.+?)\s*\n.*?\n\s+at\s+.*?\((.+?):(\d+):(\d+)\)").expect("valid regex");
+    let pattern = Regex::new(r"(?m)●\s+(.+?)\s*\n.*?\n\s+at\s+.*?\((.+?):(\d+):(\d+)\)")
+        .expect("valid regex");
 
-    pattern.captures_iter(output).map(|cap| {
-        Diagnostic {
+    pattern
+        .captures_iter(output)
+        .map(|cap| Diagnostic {
             file: Some(cap[2].to_string()),
             line: cap[3].parse().ok(),
             col: cap[4].parse().ok(),
             error_type: "test_failure".to_string(),
             message: cap[1].to_string(),
             source_context: None,
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 pub fn build_retry_prompt(
@@ -213,7 +213,7 @@ pub fn build_retry_prompt(
     prompt.push_str("You are fixing a story that failed verification. ");
     prompt.push_str("Study the diagnostics carefully and fix only the identified issues.\n\n");
 
-    prompt.push_str(&format!("## Story Context\n\n"));
+    prompt.push_str("## Story Context\n\n");
     prompt.push_str(&format!("**ID:** {}\n", story.id));
     prompt.push_str(&format!("**Title:** {}\n", story.title));
     if let Some(desc) = &story.description {
@@ -292,7 +292,9 @@ pub fn validate_command(cmd: &str) -> Result<(), String> {
     let lower = cmd.to_lowercase();
     for pattern in DENIED_PATTERNS {
         if lower.contains(pattern) {
-            return Err(format!("blocked: command matches denied pattern '{pattern}'"));
+            return Err(format!(
+                "blocked: command matches denied pattern '{pattern}'"
+            ));
         }
     }
     Ok(())

@@ -24,13 +24,13 @@ pub(super) fn agent_cli_args(
     effort: Option<&str>,
 ) -> Vec<String> {
     let selected_model = model
-        .map(|value| value.trim())
+        .map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(|value| value.to_string());
+        .map(ToString::to_string);
     let selected_effort = effort
-        .map(|value| value.trim())
+        .map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(|value| value.to_string());
+        .map(ToString::to_string);
     match agent {
         "claude" => {
             let mut args = vec![

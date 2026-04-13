@@ -3,10 +3,10 @@ mod agent_profiles;
 mod agent_runtime;
 mod agent_runtime_env;
 mod agents;
-mod ask_engine;
-mod atomizer;
 #[path = "../../crates/loopforge-app-core/src/plan.rs"]
 mod app_core_plan;
+mod ask_engine;
+mod atomizer;
 mod commands;
 mod db;
 mod events;
@@ -103,7 +103,10 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 let plan_state = window.state::<plan_engine::PlanSessionsState>();
-                cleanup_all_plan_sessions(&plan_state, app_core_plan::PlanCleanupReason::WindowClose);
+                cleanup_all_plan_sessions(
+                    &plan_state,
+                    app_core_plan::PlanCleanupReason::WindowClose,
+                );
 
                 let ask_state = window.state::<ask_engine::AskSessionsState>();
                 ask_state.kill_all();
@@ -172,7 +175,10 @@ pub fn run() {
                     let _ = db.save_loop_state(&handle.args.project_id, &args_json);
                 }
             }
-            cleanup_all_plan_sessions(&plan_state, app_core_plan::PlanCleanupReason::RestartRecovery);
+            cleanup_all_plan_sessions(
+                &plan_state,
+                app_core_plan::PlanCleanupReason::RestartRecovery,
+            );
             loop_state.shutdown_all();
         }
     });

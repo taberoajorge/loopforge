@@ -70,8 +70,10 @@ impl InvokeHarness {
 
     pub async fn wait_for_plan_idle(&self, project_id: &str) {
         for _ in 0..100 {
-            let status: Option<serde_json::Value> =
-                self.invoke_ok("query_plan_status", serde_json::json!({ "projectId": project_id }));
+            let status: Option<serde_json::Value> = self.invoke_ok(
+                "query_plan_status",
+                serde_json::json!({ "projectId": project_id }),
+            );
             if status.is_none() && self.artifact_dir(project_id).join("plan.md").exists() {
                 return;
             }

@@ -26,4 +26,10 @@ pub struct StartLoopArgs {
     pub test_command: Option<String>,
     #[serde(default)]
     pub max_verification_retries: Option<u32>,
+    #[serde(default)]
+    pub scm_provider: Option<String>,
+    #[serde(default)]
+    pub review_polling_interval: Option<u64>,
+    #[serde(default)]
+    pub review_timeout: Option<u64>,
 }

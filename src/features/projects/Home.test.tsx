@@ -1,11 +1,11 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
 import { useParams } from "react-router";
+import { beforeEach, describe, expect, it } from "vitest";
+import { useProjectStore } from "../../stores/projectStore";
 import { createProject } from "../../test/fixtures";
 import { invokeMock, mockTauriCommand } from "../../test/mocks";
 import { renderRoute } from "../../test/renderRoute";
-import { useProjectStore } from "../../stores/projectStore";
 import { Home } from "./Home";
 
 function resetProjectStore() {

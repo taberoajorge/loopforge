@@ -71,8 +71,8 @@ pub fn advance_wizard_step(
     let mut state = current_state.cloned().unwrap_or_default();
     state.advance(target_step);
 
-    let step_name = step_number_to_name(target_step)
-        .ok_or_else(|| format!("Unknown step: {target_step}"))?;
+    let step_name =
+        step_number_to_name(target_step).ok_or_else(|| format!("Unknown step: {target_step}"))?;
 
     Ok(AdvanceWizardResult {
         current_step: state.current_step,

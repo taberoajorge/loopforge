@@ -41,7 +41,7 @@ pub fn summarize_approach(output_lines: &[String]) -> String {
             !trimmed.is_empty() && trimmed.len() > 10
         })
         .take(3)
-        .map(|line| line.as_str())
+        .map(String::as_str)
         .collect();
 
     if meaningful.is_empty() {

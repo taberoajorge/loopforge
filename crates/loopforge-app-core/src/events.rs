@@ -23,7 +23,7 @@ impl EventFanout {
         let (sender, receiver) = mpsc::channel();
         self.subscribers
             .lock()
-            .unwrap_or_else(|poison| poison.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .push(sender);
         receiver
     }
@@ -32,7 +32,7 @@ impl EventFanout {
         let mut subscribers = self
             .subscribers
             .lock()
-            .unwrap_or_else(|poison| poison.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         subscribers.retain(|subscriber| subscriber.send(event.clone()).is_ok());
     }
 }

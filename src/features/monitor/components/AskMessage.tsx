@@ -13,7 +13,13 @@ type AskMessageProps = {
   onRetryWith?: (agent: string) => void;
 };
 
-export function AskMessageBubble({ message, onCopy, onEdit, onRetry, onRetryWith }: AskMessageProps) {
+export function AskMessageBubble({
+  message,
+  onCopy,
+  onEdit,
+  onRetry,
+  onRetryWith,
+}: AskMessageProps) {
   const isUser = message.role === "user";
 
   return (
@@ -22,8 +28,8 @@ export function AskMessageBubble({ message, onCopy, onEdit, onRetry, onRetryWith
         <div
           className={`rounded-md px-4 py-3 text-sm ${
             isUser
-              ? "bg-primary/10 border border-primary/20 text-text"
-              : "bg-surface border border-border text-text"
+              ? "border border-primary/20 bg-primary/10 text-text"
+              : "border border-border bg-surface text-text"
           }`}
         >
           {isUser ? (
@@ -37,12 +43,12 @@ export function AskMessageBubble({ message, onCopy, onEdit, onRetry, onRetryWith
             <div className="mt-2 flex items-center gap-2">
               <Badge variant="neutral">{message.agent}</Badge>
               {message.model ? (
-                <span className="text-text-dim text-[10px]">{message.model}</span>
+                <span className="text-[10px] text-text-dim">{message.model}</span>
               ) : null}
             </div>
           ) : null}
         </div>
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="opacity-0 transition-opacity group-hover:opacity-100">
           <AskMessageActions
             role={message.role}
             onCopy={onCopy}

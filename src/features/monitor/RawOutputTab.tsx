@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { Terminal } from "@xterm/xterm";
 import { TerminalSquare } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import "@xterm/xterm/css/xterm.css";
 import { EmptyState } from "../../components/EmptyState";
 import { Button } from "../../components/ui/button";
+import { reportError } from "../../lib/reportError";
 import { loadOutputLog, onAgentOutput } from "../../lib/tauri";
-import { useThemeStore } from "../../stores/themeStore";
+import { useDisplayVocabularyStore } from "../../stores/displayVocabularyStore";
 import { TerminalFrame } from "./components/TerminalFrame";
 import { useTerminalFit } from "./useTerminalFit";
 import { buildXtermTheme } from "./xtermTheme";
@@ -20,7 +21,9 @@ export function RawOutputTab({ projectId }: { projectId: string }) {
   const [atBottom, setAtBottom] = useState(true);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [lineCount, setLineCount] = useState(0);
-  const currentTheme = useThemeStore((state) => state.theme);
+  const maxOutputLines = useDisplayVocabularyStore(
+    (state) => state.vocabulary?.maxOutputLines ?? 5000,
+  );
 
   useTerminalFit({ containerRef, fitAddonRef });
 
@@ -34,7 +37,7 @@ export function RawOutputTab({ projectId }: { projectId: string }) {
       lineHeight: 1.4,
       cursorStyle: "bar",
       cursorBlink: false,
-      scrollback: 5000,
+      scrollback: maxOutputLines,
       disableStdin: true,
     });
 
@@ -65,13 +68,13 @@ export function RawOutputTab({ projectId }: { projectId: string }) {
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, []);
+  }, [maxOutputLines]);
 
   useEffect(() => {
     if (terminalRef.current) {
       terminalRef.current.options.theme = buildXtermTheme();
     }
-  }, [currentTheme]);
+  }, []);
 
   useEffect(() => {
     if (copyState === "idle") {
@@ -94,7 +97,7 @@ export function RawOutputTab({ projectId }: { projectId: string }) {
           return;
         }
         const lines = content.split("\n");
-        outputBufferRef.current = lines.slice(-5000);
+        outputBufferRef.current = lines.slice(-maxOutputLines);
         setLineCount(outputBufferRef.current.length);
         if (terminalRef.current) {
           terminalRef.current.clear();
@@ -104,7 +107,9 @@ export function RawOutputTab({ projectId }: { projectId: string }) {
           terminalRef.current.scrollToBottom();
         }
       })
-      .catch(() => {});
+      .catch((caughtError: unknown) => {
+        reportError("RawOutputTab.loadOutputLog", caughtError);
+      });
 
     const unlistenPromise = onAgentOutput((payload) => {
       if (payload.projectId !== projectId) {
@@ -112,7 +117,7 @@ export function RawOutputTab({ projectId }: { projectId: string }) {
       }
 
       outputBufferRef.current.push(payload.line);
-      if (outputBufferRef.current.length > 5000) {
+      if (outputBufferRef.current.length > maxOutputLines) {
         outputBufferRef.current.shift();
       }
       setLineCount(outputBufferRef.current.length);
@@ -125,7 +130,7 @@ export function RawOutputTab({ projectId }: { projectId: string }) {
     return () => {
       unlistenPromise.then((fn) => fn());
     };
-  }, [projectId]);
+  }, [projectId, maxOutputLines]);
 
   function jumpToBottom() {
     terminalRef.current?.scrollToBottom();
@@ -155,11 +160,12 @@ export function RawOutputTab({ projectId }: { projectId: string }) {
     }
   }
 
-  const copyLabel = copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy";
+  const copyLabel =
+    copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy";
 
   return (
     <TerminalFrame
-      controls={(
+      controls={
         <>
           <Button variant="outline" size="sm" onClick={copyOutput}>
             {copyLabel}
@@ -173,7 +179,7 @@ export function RawOutputTab({ projectId }: { projectId: string }) {
             </Button>
           ) : null}
         </>
-      )}
+      }
     >
       <div className="relative h-full overflow-hidden rounded-md border border-border/60 bg-void p-2">
         <div ref={containerRef} className="h-full overflow-hidden" />

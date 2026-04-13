@@ -8,13 +8,13 @@ pub(super) fn build_plan_args(
     effort: Option<&str>,
 ) -> Vec<String> {
     let selected_model = model
-        .map(|value| value.trim())
+        .map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(|value| value.to_string());
+        .map(ToString::to_string);
     let selected_effort = effort
-        .map(|value| value.trim())
+        .map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(|value| value.to_string());
+        .map(ToString::to_string);
     match agent {
         "claude" => {
             let mut args = vec![
@@ -84,9 +84,6 @@ pub(super) fn build_plan_args(
             vec![
                 "agent".to_string(),
                 "--print".to_string(),
-                "--mode".to_string(),
-                "plan".to_string(),
-                "--force".to_string(),
                 "--output-format".to_string(),
                 "text".to_string(),
                 "--model".to_string(),

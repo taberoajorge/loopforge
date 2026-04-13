@@ -16,9 +16,7 @@ export async function loadOutputLog(projectId: string): Promise<string> {
   return invoke<string>("load_output_log", { projectId });
 }
 
-export async function getAtomizerActivityLog(
-  projectId: string,
-): Promise<AtomizeActivityPayload[]> {
+export async function getAtomizerActivityLog(projectId: string): Promise<AtomizeActivityPayload[]> {
   return invoke<AtomizeActivityPayload[]>("get_atomizer_activity_log", { projectId });
 }
 

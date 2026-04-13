@@ -66,33 +66,33 @@ pub fn validate_config(config: &ProjectConfig) -> ValidationErrors {
         &mut errors,
         "gutterThreshold",
         "Gutter threshold",
-        config.gutter_threshold as u64,
-        limits.gutter_threshold.0 as u64,
-        limits.gutter_threshold.1 as u64,
+        u64::from(config.gutter_threshold),
+        u64::from(limits.gutter_threshold.0),
+        u64::from(limits.gutter_threshold.1),
     );
     validate_range(
         &mut errors,
         "maxIterations",
         "Max iterations",
-        config.max_iterations as u64,
-        limits.max_iterations.0 as u64,
-        limits.max_iterations.1 as u64,
+        u64::from(config.max_iterations),
+        u64::from(limits.max_iterations.0),
+        u64::from(limits.max_iterations.1),
     );
     validate_range(
         &mut errors,
         "cooldownSeconds",
         "Cooldown",
-        config.cooldown_seconds as u64,
-        limits.cooldown_seconds.0 as u64,
-        limits.cooldown_seconds.1 as u64,
+        u64::from(config.cooldown_seconds),
+        u64::from(limits.cooldown_seconds.0),
+        u64::from(limits.cooldown_seconds.1),
     );
     validate_range(
         &mut errors,
         "maxVerificationRetries",
         "Verification retries",
-        config.max_verification_retries as u64,
-        limits.max_verification_retries.0 as u64,
-        limits.max_verification_retries.1 as u64,
+        u64::from(config.max_verification_retries),
+        u64::from(limits.max_verification_retries.0),
+        u64::from(limits.max_verification_retries.1),
     );
     validate_range(
         &mut errors,
@@ -178,6 +178,10 @@ pub fn validate_describe(input: &DescribeInput, available_agents: &[String]) -> 
 pub struct LaunchReadiness {
     pub ready: bool,
     pub issues: Vec<String>,
+    #[serde(default)]
+    pub total_estimated_minutes: u32,
+    #[serde(default)]
+    pub total_estimated_hours: f64,
 }
 
 pub fn validate_launch_readiness(
@@ -185,6 +189,7 @@ pub fn validate_launch_readiness(
     working_directory: &str,
     stories_count: usize,
     execute_agent: &str,
+    estimated_minutes_per_story: &[u32],
 ) -> LaunchReadiness {
     let mut issues = Vec::new();
 
@@ -201,9 +206,14 @@ pub fn validate_launch_readiness(
         issues.push("Execution agent is missing.".to_string());
     }
 
+    let total_minutes: u32 = estimated_minutes_per_story.iter().sum();
+    let total_hours = f64::from(total_minutes) / 60.0;
+
     LaunchReadiness {
         ready: issues.is_empty(),
         issues,
+        total_estimated_minutes: total_minutes,
+        total_estimated_hours: (total_hours * 10.0).round() / 10.0,
     }
 }
 
@@ -228,8 +238,16 @@ mod tests {
 
     #[test]
     fn launch_readiness_catches_missing_fields() {
-        let result = validate_launch_readiness("", "", 0, "");
+        let result = validate_launch_readiness("", "", 0, "", &[]);
         assert!(!result.ready);
         assert_eq!(result.issues.len(), 4);
+    }
+
+    #[test]
+    fn launch_readiness_computes_totals() {
+        let result = validate_launch_readiness("proj", "/tmp", 2, "claude", &[30, 90]);
+        assert!(result.ready);
+        assert_eq!(result.total_estimated_minutes, 120);
+        assert!((result.total_estimated_hours - 2.0).abs() < 0.01);
     }
 }

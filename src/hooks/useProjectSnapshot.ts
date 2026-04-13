@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { getProjectSnapshot, type ProjectSnapshot } from "../lib/tauri";
+import {
+  getProjectSnapshot,
+  onProjectStateChanged,
+  onStoriesUpdated,
+  type ProjectSnapshot,
+} from "../lib/tauri";
 
 interface SnapshotState {
   snapshot: ProjectSnapshot | null;
@@ -7,7 +12,7 @@ interface SnapshotState {
   error: string | null;
 }
 
-export function useProjectSnapshot(projectId: string | undefined, pollMs = 5000) {
+export function useProjectSnapshot(projectId: string | undefined) {
   const [state, setState] = useState<SnapshotState>({
     snapshot: null,
     loading: true,
@@ -41,14 +46,26 @@ export function useProjectSnapshot(projectId: string | undefined, pollMs = 5000)
   }, [refresh]);
 
   useEffect(() => {
-    if (!projectId || pollMs <= 0) {
-      return;
-    }
-    const timer = window.setInterval(() => {
-      refresh();
-    }, pollMs);
-    return () => window.clearInterval(timer);
-  }, [pollMs, projectId, refresh]);
+    if (!projectId) return;
+    const listeners = [
+      onProjectStateChanged((payload) => {
+        if (payload.projectId !== projectId) return;
+        if (payload.snapshot) {
+          setState({ snapshot: payload.snapshot, loading: false, error: null });
+          return;
+        }
+        void refresh();
+      }),
+      onStoriesUpdated((payload) => {
+        if (payload.projectId === projectId) void refresh();
+      }),
+    ];
+    return () => {
+      listeners.forEach((pending) => {
+        pending.then((unlisten) => unlisten());
+      });
+    };
+  }, [projectId, refresh]);
 
   return {
     snapshot: state.snapshot,

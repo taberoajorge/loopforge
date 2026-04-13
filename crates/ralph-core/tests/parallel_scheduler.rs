@@ -5,10 +5,10 @@ use ralph_core::prd::Prd;
 use ralph_core::providers::{AgentResult, Provider};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use tokio::sync::Barrier;
-use tokio::time::{Duration, timeout};
+use tokio::time::{timeout, Duration};
 
 #[derive(Clone)]
 struct ParallelProbeProvider {

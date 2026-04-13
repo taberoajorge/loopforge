@@ -1,4 +1,6 @@
-use ralph_core::loop_engine::scheduler::{self, CompletionScheduler, MergeAction, WorktreeCompletion};
+use ralph_core::loop_engine::scheduler::{
+    self, CompletionScheduler, MergeAction, WorktreeCompletion,
+};
 
 fn completion(
     story_id: &str,
@@ -53,7 +55,9 @@ fn same_story_from_different_worktrees_ordered_by_sequence_then_id() {
     let worktree_order: Vec<&str> = actions
         .iter()
         .filter_map(|action| match action {
-            MergeAction::UpdateStoryStatus { story_id, .. } if story_id == "S-001" => Some("status"),
+            MergeAction::UpdateStoryStatus { story_id, .. } if story_id == "S-001" => {
+                Some("status")
+            }
             _ => None,
         })
         .collect();
@@ -177,7 +181,14 @@ fn blocked_completion_propagates_blocked_flag() {
 #[test]
 fn large_concurrent_set_stays_deterministic() {
     let mut completions: Vec<WorktreeCompletion> = (0..50)
-        .map(|idx| completion(&format!("S-{idx:03}"), &format!("wt-{idx}"), idx % 3 == 0, idx))
+        .map(|idx| {
+            completion(
+                &format!("S-{idx:03}"),
+                &format!("wt-{idx}"),
+                idx % 3 == 0,
+                idx,
+            )
+        })
         .collect();
     let forward = scheduler::schedule(completions.clone());
     completions.reverse();
@@ -192,8 +203,7 @@ fn serialization_roundtrip_preserves_completion() {
     comp.guardrail_append = Some("limit reached".into());
 
     let json = serde_json::to_string(&comp).expect("should serialize");
-    let restored: WorktreeCompletion =
-        serde_json::from_str(&json).expect("should deserialize");
+    let restored: WorktreeCompletion = serde_json::from_str(&json).expect("should deserialize");
     assert_eq!(comp, restored);
 }
 
@@ -204,7 +214,6 @@ fn serialization_roundtrip_preserves_merge_action() {
         content: "circuit breaker".into(),
     };
     let json = serde_json::to_string(&action).expect("should serialize");
-    let restored: MergeAction =
-        serde_json::from_str(&json).expect("should deserialize");
+    let restored: MergeAction = serde_json::from_str(&json).expect("should deserialize");
     assert_eq!(action, restored);
 }

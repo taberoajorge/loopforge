@@ -4,8 +4,8 @@ use ralph_core::providers::AgentResult;
 use std::io::Write;
 use std::path::Path;
 use std::process::Stdio;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tauri::Emitter;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command as TokioCommand;
@@ -99,7 +99,7 @@ pub(super) async fn run_codex_process(
                 Ok(None) => stderr_done = true,
                 Err(err) => return Err(anyhow::anyhow!("Stderr read failed: {err}")),
             },
-            _ = &mut sleep => {}
+            () = &mut sleep => {}
         }
 
         if stdout_done && stderr_done && child.try_wait().ok().flatten().is_some() {

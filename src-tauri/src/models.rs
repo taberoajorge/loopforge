@@ -114,6 +114,10 @@ pub struct ProjectSnapshot {
     pub config: Option<ProjectConfig>,
     #[serde(default)]
     pub artifact_paths: ArtifactPaths,
+    #[serde(default)]
+    pub progress_percent: u32,
+    #[serde(default)]
+    pub uptime_label: String,
 }
 
 #[allow(dead_code)]

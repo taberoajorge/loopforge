@@ -39,10 +39,9 @@ fn load_successful_story_ids(
     project_id: &str,
 ) -> Result<HashSet<String>, ProjectError> {
     let db = app.state::<DbState>();
-    let conn = db
-        .0
-        .lock()
-        .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
     let mut stmt = conn.prepare(
         "SELECT DISTINCT iterations.story_id
          FROM iterations
@@ -51,7 +50,7 @@ fn load_successful_story_ids(
     )?;
 
     let rows = stmt.query_map(rusqlite::params![project_id], |row| row.get::<_, String>(0))?;
-    Ok(rows.filter_map(|row| row.ok()).collect())
+    Ok(rows.filter_map(Result::ok).collect())
 }
 
 fn load_blocked_story_ids(project_dir: &Path, gutter_threshold: u32) -> HashSet<String> {

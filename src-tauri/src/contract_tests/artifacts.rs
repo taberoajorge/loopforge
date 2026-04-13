@@ -1,7 +1,7 @@
-#[path = "wizard_persistence.rs"]
-mod wizard_persistence;
 #[path = "merge_coordinator.rs"]
 mod merge_coordinator;
+#[path = "wizard_persistence.rs"]
+mod wizard_persistence;
 
 use super::harness::TestHarness;
 use super::support::{

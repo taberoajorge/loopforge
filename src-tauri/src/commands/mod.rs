@@ -1,6 +1,8 @@
 pub mod ask;
 pub mod atomization;
+pub mod display_vocabulary;
 pub mod execution;
+pub mod notifications;
 pub mod planning;
 pub mod projects;
 pub mod projects_artifacts;

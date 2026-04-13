@@ -25,19 +25,13 @@ pub async fn run_shell_command_background(command: &str, work_dir: Option<&Path>
 
 pub async fn kill_process_on_port(port: u16) {
     let lsof_cmd = format!("lsof -ti :{port}");
-    let output = Command::new("sh")
-        .args(["-c", &lsof_cmd])
-        .output()
-        .await;
+    let output = Command::new("sh").args(["-c", &lsof_cmd]).output().await;
 
     if let Ok(output) = output {
         let pids = String::from_utf8_lossy(&output.stdout);
         for pid_str in pids.lines() {
             if let Ok(pid) = pid_str.trim().parse::<i32>() {
-                let _ = Command::new("kill")
-                    .arg(pid.to_string())
-                    .output()
-                    .await;
+                let _ = Command::new("kill").arg(pid.to_string()).output().await;
             }
         }
     }
@@ -48,10 +42,7 @@ pub async fn graceful_kill(pid: u32) {
 
     let pid_str = pid.to_string();
 
-    let _ = Command::new("kill")
-        .args(["-INT", &pid_str])
-        .output()
-        .await;
+    let _ = Command::new("kill").args(["-INT", &pid_str]).output().await;
     tokio::time::sleep(Duration::from_secs(10)).await;
 
     if is_process_alive(pid).await {
@@ -63,10 +54,7 @@ pub async fn graceful_kill(pid: u32) {
     }
 
     if is_process_alive(pid).await {
-        let _ = Command::new("kill")
-            .args(["-9", &pid_str])
-            .output()
-            .await;
+        let _ = Command::new("kill").args(["-9", &pid_str]).output().await;
         crate::logger::log_warning(&format!("Force killed PID {pid} (SIGKILL)"));
     }
 }

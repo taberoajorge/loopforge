@@ -30,13 +30,21 @@ pub async fn load_existing_plan<R: Runtime>(
 
     Ok(None)
 }
-pub async fn save_plan<R: Runtime>(app: AppHandle<R>, project_id: String, content: String) -> Result<(), ProjectError> {
+pub async fn save_plan<R: Runtime>(
+    app: AppHandle<R>,
+    project_id: String,
+    content: String,
+) -> Result<(), ProjectError> {
     let artifacts = artifact_dir(&app, &project_id)?;
     std::fs::create_dir_all(&artifacts)?;
     std::fs::write(artifacts.join("plan.md"), &content)?;
     Ok(())
 }
-pub async fn save_prd<R: Runtime>(app: AppHandle<R>, project_id: String, prd_json: String) -> Result<(), ProjectError> {
+pub async fn save_prd<R: Runtime>(
+    app: AppHandle<R>,
+    project_id: String,
+    prd_json: String,
+) -> Result<(), ProjectError> {
     let artifacts = artifact_dir(&app, &project_id)?;
     std::fs::create_dir_all(&artifacts)?;
     serde_json::from_str::<Prd>(&prd_json)?;
@@ -46,12 +54,19 @@ pub async fn save_prd<R: Runtime>(app: AppHandle<R>, project_id: String, prd_jso
     })?;
     Ok(())
 }
-pub async fn save_config<R: Runtime>(app: AppHandle<R>, project_id: String, config_json: String) -> Result<(), ProjectError> {
+pub async fn save_config<R: Runtime>(
+    app: AppHandle<R>,
+    project_id: String,
+    config_json: String,
+) -> Result<(), ProjectError> {
     let parsed_config = serde_json::from_str::<crate::projects::ProjectConfig>(&config_json)?;
     crate::projects::runtime_config::save_project_config(&app, &project_id, &parsed_config)?;
     Ok(())
 }
-pub async fn load_config<R: Runtime>(app: AppHandle<R>, project_id: String) -> Result<Option<String>, ProjectError> {
+pub async fn load_config<R: Runtime>(
+    app: AppHandle<R>,
+    project_id: String,
+) -> Result<Option<String>, ProjectError> {
     let artifacts = artifact_dir(&app, &project_id)?;
     let config_path = artifacts.join("config.json");
     non_empty_file_content(&config_path)
@@ -81,7 +96,10 @@ pub async fn load_existing_prd<R: Runtime>(
 
     Ok(None)
 }
-pub async fn get_guardrails<R: Runtime>(app: AppHandle<R>, project_id: String) -> Result<String, ProjectError> {
+pub async fn get_guardrails<R: Runtime>(
+    app: AppHandle<R>,
+    project_id: String,
+) -> Result<String, ProjectError> {
     let dir = artifact_dir(&app, &project_id)?;
     let guardrails_path = dir.join("guardrails.md");
     if guardrails_path.exists() {
@@ -90,7 +108,10 @@ pub async fn get_guardrails<R: Runtime>(app: AppHandle<R>, project_id: String) -
         Ok(String::new())
     }
 }
-pub async fn load_output_log<R: Runtime>(app: AppHandle<R>, project_id: String) -> Result<String, ProjectError> {
+pub async fn load_output_log<R: Runtime>(
+    app: AppHandle<R>,
+    project_id: String,
+) -> Result<String, ProjectError> {
     let dir = artifact_dir(&app, &project_id)?;
     let output_path = dir.join("agent_output.log");
     if !output_path.exists() {
@@ -99,9 +120,16 @@ pub async fn load_output_log<R: Runtime>(app: AppHandle<R>, project_id: String) 
     let content = std::fs::read_to_string(output_path)?;
     Ok(tail_lines(&content, 400))
 }
-pub(crate) fn insert_session(db: &DbState, project_id: &str, session_id: &str, started_at: &str) -> Result<(), ProjectError> {
+pub(crate) fn insert_session(
+    db: &DbState,
+    project_id: &str,
+    session_id: &str,
+    started_at: &str,
+) -> Result<(), ProjectError> {
     with_merge_gate(|| {
-        let conn = db.0.lock().map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+        let conn =
+            db.0.lock()
+                .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
         conn.execute(
             "INSERT INTO sessions (id, project_id, started_at) VALUES (?1, ?2, ?3)",
             rusqlite::params![session_id, project_id, started_at],
@@ -109,9 +137,15 @@ pub(crate) fn insert_session(db: &DbState, project_id: &str, session_id: &str, s
         Ok(())
     })
 }
-pub(crate) fn close_session(db: &DbState, session_id: &str, ended_at: &str) -> Result<(), ProjectError> {
+pub(crate) fn close_session(
+    db: &DbState,
+    session_id: &str,
+    ended_at: &str,
+) -> Result<(), ProjectError> {
     with_merge_gate(|| {
-        let conn = db.0.lock().map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+        let conn =
+            db.0.lock()
+                .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
         conn.execute(
             "UPDATE sessions SET ended_at = ?1 WHERE id = ?2",
             rusqlite::params![ended_at, session_id],
@@ -136,7 +170,10 @@ pub(crate) fn merge_action_target(project_dir: &Path, action: &MergeAction) -> S
     }
 }
 #[cfg(test)]
-pub(crate) fn apply_merge_action(project_dir: &Path, action: &MergeAction) -> Result<(), ProjectError> {
+pub(crate) fn apply_merge_action(
+    project_dir: &Path,
+    action: &MergeAction,
+) -> Result<(), ProjectError> {
     match action {
         MergeAction::UpdateStoryStatus {
             story_id,
@@ -155,7 +192,12 @@ fn with_merge_gate<T>(write: impl FnOnce() -> Result<T, ProjectError>) -> Result
     write()
 }
 #[cfg(test)]
-fn update_story_status(project_dir: &Path, story_id: &str, passed: bool, blocked: bool) -> Result<(), ProjectError> {
+fn update_story_status(
+    project_dir: &Path,
+    story_id: &str,
+    passed: bool,
+    blocked: bool,
+) -> Result<(), ProjectError> {
     let prd_path = project_dir.join("prd.json");
     let mut prd = serde_json::from_str::<Prd>(&std::fs::read_to_string(&prd_path)?)?;
     if let Some(story) = prd.stories.iter_mut().find(|story| story.id == story_id) {

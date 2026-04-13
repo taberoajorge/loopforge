@@ -49,9 +49,11 @@ function resizePanels(sizes: number[], panels: PanelConfig[], handleIndex: numbe
   });
 }
 
-export type ResizablePanelGroupProps = React.HTMLAttributes<HTMLDivElement> & { direction?: Direction };
+export type ResizablePanelGroupProps = React.HTMLAttributes<HTMLDivElement> & {
+  direction?: Direction;
+};
 export type ResizablePanelProps = React.HTMLAttributes<HTMLDivElement> & PanelConfig;
-export type ResizableHandleProps = React.HTMLAttributes<HTMLDivElement> & {
+export type ResizableHandleProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   step?: number;
   withGrip?: boolean;
 };
@@ -76,9 +78,13 @@ const ResizablePanel = React.forwardRef<HTMLDivElement, InternalPanelProps>(
 
 ResizablePanel.displayName = "ResizablePanel";
 
-const ResizableHandle = React.forwardRef<HTMLDivElement, InternalHandleProps>(
-  ({ className, handleIndex = 0, onKeyDown, onPointerDown, step = 5, withGrip = true, ...props }, ref) => {
-    const { containerRef, direction, panels, setSizes, sizes } = useResizableContext("ResizableHandle");
+const ResizableHandle = React.forwardRef<HTMLButtonElement, InternalHandleProps>(
+  (
+    { className, handleIndex = 0, onKeyDown, onPointerDown, step = 5, withGrip = true, ...props },
+    ref,
+  ) => {
+    const { containerRef, direction, panels, setSizes, sizes } =
+      useResizableContext("ResizableHandle");
     const startRef = React.useRef<{ point: number; sizes: number[] } | null>(null);
 
     React.useEffect(() => {
@@ -109,10 +115,15 @@ const ResizableHandle = React.forwardRef<HTMLDivElement, InternalHandleProps>(
     }, [containerRef, direction, handleIndex, panels, setSizes]);
 
     return (
-      <div
+      <button
+        type="button"
         ref={ref}
-        aria-orientation={direction === "horizontal" ? "vertical" : "horizontal"}
-        className={cn("group relative shrink-0 bg-border/50 transition-colors hover:bg-primary/30", direction === "horizontal" ? "w-1.5 cursor-col-resize" : "h-1.5 cursor-row-resize", className)}
+        aria-label={direction === "horizontal" ? "Resize columns" : "Resize rows"}
+        className={cn(
+          "group relative shrink-0 bg-border/50 transition-colors hover:bg-primary/30",
+          direction === "horizontal" ? "w-1.5 cursor-col-resize" : "h-1.5 cursor-row-resize",
+          className,
+        )}
         onKeyDown={(event) => {
           onKeyDown?.(event);
           if (event.defaultPrevented) return;
@@ -127,18 +138,28 @@ const ResizableHandle = React.forwardRef<HTMLDivElement, InternalHandleProps>(
         onPointerDown={(event) => {
           onPointerDown?.(event);
           if (event.defaultPrevented) return;
-          startRef.current = { point: direction === "horizontal" ? event.clientX : event.clientY, sizes };
+          startRef.current = {
+            point: direction === "horizontal" ? event.clientX : event.clientY,
+            sizes,
+          };
           document.body.style.cursor = direction === "horizontal" ? "col-resize" : "row-resize";
           document.body.style.userSelect = "none";
           event.currentTarget.setPointerCapture(event.pointerId);
         }}
-        role="separator"
-        tabIndex={0}
         data-direction={direction}
         {...props}
       >
-        {withGrip ? <span className={cn("absolute rounded-full bg-text-dim/60 opacity-0 transition-opacity group-hover:opacity-100", direction === "horizontal" ? "left-1/2 top-1/2 h-10 w-0.5 -translate-x-1/2 -translate-y-1/2" : "left-1/2 top-1/2 h-0.5 w-10 -translate-x-1/2 -translate-y-1/2")} /> : null}
-      </div>
+        {withGrip ? (
+          <span
+            className={cn(
+              "absolute rounded-full bg-text-dim/60 opacity-0 transition-opacity group-hover:opacity-100",
+              direction === "horizontal"
+                ? "top-1/2 left-1/2 h-10 w-0.5 -translate-x-1/2 -translate-y-1/2"
+                : "top-1/2 left-1/2 h-0.5 w-10 -translate-x-1/2 -translate-y-1/2",
+            )}
+          />
+        ) : null}
+      </button>
     );
   },
 );
@@ -149,19 +170,40 @@ const ResizablePanelGroup = React.forwardRef<HTMLDivElement, ResizablePanelGroup
   ({ children, className, direction = "horizontal", ...props }, ref) => {
     const containerRef = React.useRef<HTMLDivElement>(null);
     const panels = React.useMemo(
-      () => React.Children.toArray(children).flatMap((child) => !React.isValidElement<ResizablePanelProps>(child) || child.type !== ResizablePanel ? [] : [{ defaultSize: child.props.defaultSize, maxSize: child.props.maxSize, minSize: child.props.minSize }]),
+      () =>
+        React.Children.toArray(children).flatMap((child) =>
+          !React.isValidElement<ResizablePanelProps>(child) || child.type !== ResizablePanel
+            ? []
+            : [
+                {
+                  defaultSize: child.props.defaultSize,
+                  maxSize: child.props.maxSize,
+                  minSize: child.props.minSize,
+                },
+              ],
+        ),
       [children],
     );
     const [sizes, setSizes] = React.useState(() => buildSizes(panels));
 
-    React.useEffect(() => setSizes((current) => current.length === panels.length ? current : buildSizes(panels)), [panels]);
+    React.useEffect(
+      () =>
+        setSizes((current) => (current.length === panels.length ? current : buildSizes(panels))),
+      [panels],
+    );
 
     let panelIndex = 0;
     let handleIndex = 0;
     const items = React.Children.map(children, (child) => {
       if (!React.isValidElement(child)) return child;
-      if (child.type === ResizablePanel) return React.cloneElement(child as React.ReactElement<InternalPanelProps>, { panelIndex: panelIndex++ });
-      if (child.type === ResizableHandle) return React.cloneElement(child as React.ReactElement<InternalHandleProps>, { handleIndex: handleIndex++ });
+      if (child.type === ResizablePanel)
+        return React.cloneElement(child as React.ReactElement<InternalPanelProps>, {
+          panelIndex: panelIndex++,
+        });
+      if (child.type === ResizableHandle)
+        return React.cloneElement(child as React.ReactElement<InternalHandleProps>, {
+          handleIndex: handleIndex++,
+        });
       return child;
     });
 
@@ -172,7 +214,11 @@ const ResizablePanelGroup = React.forwardRef<HTMLDivElement, ResizablePanelGroup
             containerRef.current = node;
             assignRef(ref, node);
           }}
-          className={cn("flex h-full w-full min-h-0 min-w-0", direction === "horizontal" ? "flex-row" : "flex-col", className)}
+          className={cn(
+            "flex h-full min-h-0 w-full min-w-0",
+            direction === "horizontal" ? "flex-row" : "flex-col",
+            className,
+          )}
           data-direction={direction}
           {...props}
         >

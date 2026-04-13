@@ -34,9 +34,7 @@ impl ActivityClassifier {
             return Some(PlanEventKind::Thinking);
         }
 
-        if trimmed == "exec"
-            || trimmed.starts_with("exec ")
-            || trimmed.starts_with("/bin/zsh -lc")
+        if trimmed == "exec" || trimmed.starts_with("exec ") || trimmed.starts_with("/bin/zsh -lc")
         {
             self.in_tool_output = true;
             self.in_plan_markdown = false;
@@ -83,7 +81,12 @@ impl ActivityClassifier {
             return Some(PlanEventKind::Search);
         }
 
-        if self.patterns.docs_lookup.iter().any(|re| re.is_match(trimmed)) {
+        if self
+            .patterns
+            .docs_lookup
+            .iter()
+            .any(|re| re.is_match(trimmed))
+        {
             self.saw_agent_response = true;
             return Some(PlanEventKind::DocsLookup);
         }
@@ -92,8 +95,8 @@ impl ActivityClassifier {
             return Some(PlanEventKind::McpCall);
         }
 
-        let can_be_plan = self.saw_agent_response
-            && self.line_count > super::PLAN_UNLOCK_LINE_THRESHOLD;
+        let can_be_plan =
+            self.saw_agent_response && self.line_count > super::PLAN_UNLOCK_LINE_THRESHOLD;
 
         if can_be_plan && Self::looks_like_markdown_plan_line(trimmed) {
             self.in_plan_markdown = true;

@@ -1,5 +1,5 @@
 use crate::ask_engine::session::AskSessionsState;
-use crate::ask_engine::types::{AskMessage, StartAskArgs};
+use crate::ask_engine::types::{AskMessage, AskQuestionResult, StartAskArgs};
 use crate::ask_engine::AskEngineError;
 use crate::commands::validation::{optional_trimmed, required_trimmed};
 use crate::db::DbState;
@@ -13,8 +13,9 @@ pub async fn ask_question(
     sessions: State<'_, AskSessionsState>,
     db: State<'_, DbState>,
     args: StartAskArgs,
-) -> Result<String, AskEngineError> {
-    let project_id = required_trimmed(args.project_id, "project_id").map_err(AskEngineError::Path)?;
+) -> Result<AskQuestionResult, AskEngineError> {
+    let project_id =
+        required_trimmed(args.project_id, "project_id").map_err(AskEngineError::Path)?;
     let question = required_trimmed(args.question, "question").map_err(AskEngineError::Path)?;
     let agent = required_trimmed(args.agent, "agent").map_err(AskEngineError::Path)?;
     let model = optional_trimmed(args.model);
@@ -37,14 +38,21 @@ pub async fn ask_question(
 
     let message_id = Uuid::new_v4().to_string();
 
-    {
+    let user_message = {
         let conn = db.0.lock().map_err(|_| AskEngineError::LockPoisoned)?;
         let conversation =
             crate::ask_engine::storage::get_or_create_conversation(&conn, &project_id)
                 .map_err(|err| AskEngineError::Db(err.to_string()))?;
-        crate::ask_engine::storage::insert_message(&conn, &conversation.id, "user", &question, None, None)
-            .map_err(|err| AskEngineError::Db(err.to_string()))?;
-    }
+        crate::ask_engine::storage::insert_message(
+            &conn,
+            &conversation.id,
+            "user",
+            &question,
+            None,
+            None,
+        )
+        .map_err(|err| AskEngineError::Db(err.to_string()))?
+    };
 
     let normalized = StartAskArgs {
         project_id,
@@ -62,7 +70,10 @@ pub async fn ask_question(
     )
     .await?;
 
-    Ok(message_id)
+    Ok(AskQuestionResult {
+        message_id,
+        user_message,
+    })
 }
 
 #[tauri::command]
@@ -84,7 +95,7 @@ pub async fn stop_ask(
     let project_id = required_trimmed(project_id, "project_id").map_err(AskEngineError::Path)?;
     sessions
         .remove_and_kill(&project_id)
-        .map_err(|err| AskEngineError::Shell(err))?;
+        .map_err(AskEngineError::Shell)?;
     Ok(())
 }
 
@@ -164,8 +175,15 @@ pub async fn retry_ask(
         let conversation =
             crate::ask_engine::storage::get_or_create_conversation(&conn, &project_id)
                 .map_err(|err| AskEngineError::Db(err.to_string()))?;
-        crate::ask_engine::storage::insert_message(&conn, &conversation.id, "user", &question, None, None)
-            .map_err(|err| AskEngineError::Db(err.to_string()))?;
+        crate::ask_engine::storage::insert_message(
+            &conn,
+            &conversation.id,
+            "user",
+            &question,
+            None,
+            None,
+        )
+        .map_err(|err| AskEngineError::Db(err.to_string()))?;
     }
 
     let args = StartAskArgs {

@@ -1,5 +1,5 @@
-use crate::plan_engine::payloads::{PlanActivityBatchPayload, PlanActivityPayload};
 use crate::activity::PlanEventKind;
+use crate::plan_engine::payloads::{PlanActivityBatchPayload, PlanActivityPayload};
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
@@ -47,7 +47,9 @@ fn is_noise_line(content: &str) -> bool {
     if exact_noise_set().contains(trimmed) {
         return true;
     }
-    PREFIX_NOISE.iter().any(|prefix| trimmed.starts_with(prefix))
+    PREFIX_NOISE
+        .iter()
+        .any(|prefix| trimmed.starts_with(prefix))
 }
 
 fn normalize_line(content: &str) -> String {
@@ -87,10 +89,16 @@ pub fn filter_plan_batch(batch: PlanActivityBatchPayload) -> PlanActivityBatchPa
         .map(|evt| evt.content.as_str())
         .collect::<Vec<_>>()
         .join("\n");
+    let plan_content = if batch.plan_content.trim().is_empty() {
+        plan_content_delta.clone()
+    } else {
+        batch.plan_content
+    };
 
     PlanActivityBatchPayload {
         project_id: batch.project_id,
         events: filtered_events,
+        plan_content,
         plan_content_delta,
     }
 }
@@ -117,6 +125,7 @@ mod tests {
                 make_event("Real plan content"),
                 make_event("OpenAI Codex v1.0"),
             ],
+            plan_content: String::new(),
             plan_content_delta: String::new(),
         };
         let filtered = filter_plan_batch(batch);
@@ -129,6 +138,7 @@ mod tests {
         let batch = PlanActivityBatchPayload {
             project_id: "test".to_string(),
             events: vec![make_event("codex Some plan output")],
+            plan_content: String::new(),
             plan_content_delta: String::new(),
         };
         let filtered = filter_plan_batch(batch);
@@ -144,6 +154,7 @@ mod tests {
                 make_event("Same line"),
                 make_event("Different line"),
             ],
+            plan_content: String::new(),
             plan_content_delta: String::new(),
         };
         let filtered = filter_plan_batch(batch);

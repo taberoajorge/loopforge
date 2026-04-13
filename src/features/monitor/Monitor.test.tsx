@@ -1,11 +1,15 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createIterationRow, createProjectScopedEventPayload, createProjectSnapshot } from "../../test/fixtures";
 import type { IterationStory } from "../../lib/tauri";
+import { useProjectStore } from "../../stores/projectStore";
+import {
+  createIterationRow,
+  createProjectScopedEventPayload,
+  createProjectSnapshot,
+} from "../../test/fixtures";
 import { emitTauriEvent, mockTauriCommands } from "../../test/mocks";
 import { renderRoute } from "../../test/renderRoute";
-import { useProjectStore } from "../../stores/projectStore";
 import { Monitor } from "./Monitor";
 
 vi.mock("./OutputTab", () => ({ OutputTab: () => <div data-testid="output-tab" /> }));
@@ -21,6 +25,7 @@ const STORIES: IterationStory[] = [
   { id: "S-005", title: "Stabilize plan flow", status: "current", attempts: 1 },
   { id: "S-006", title: "Render monitor updates", status: "pending", attempts: 0 },
 ];
+const EMPTY_GROUPED_PROJECTS = { active: [], drafts: [], finished: [], archived: [] };
 
 function renderMonitor() {
   return renderRoute([{ path: "/monitor/:id", element: <Monitor /> }], ["/monitor/project-001"]);
@@ -36,12 +41,13 @@ describe("Monitor", () => {
       get_project_snapshot: createProjectSnapshot(),
       get_project_stories: STORIES,
       get_iteration_history: [],
+      get_activity_feed: [createIterationRow()],
     });
 
     renderMonitor();
 
     expect(await screen.findByText("SESSION MONITOR: LoopForge")).toBeInTheDocument();
-    expect(screen.getAllByText("Running")).toHaveLength(2);
+    expect(screen.getAllByText("Draft")).toHaveLength(2);
     expect(screen.getByText("1/3 stories")).toBeInTheDocument();
     expect(screen.getByText("33% complete")).toBeInTheDocument();
 
@@ -63,8 +69,8 @@ describe("Monitor", () => {
     const currentRow = within(progressTable).getByText("S-006").closest("tr");
     expect(pendingRow).not.toBeNull();
     expect(currentRow).not.toBeNull();
-    expect(within(pendingRow as HTMLElement).getByText("pending")).toBeInTheDocument();
-    expect(within(currentRow as HTMLElement).getByText("current")).toBeInTheDocument();
+    expect(within(pendingRow as HTMLElement).getByText("current")).toBeInTheDocument();
+    expect(within(currentRow as HTMLElement).getByText("pending")).toBeInTheDocument();
 
     await userEvent.setup().click(screen.getByRole("tab", { name: "Activity" }));
 
@@ -81,31 +87,34 @@ describe("Monitor", () => {
       );
     });
 
-    expect(await screen.findByText("success")).toBeInTheDocument();
-    expect(screen.getAllByText("S-006").length).toBeGreaterThan(0);
+    expect(await screen.findByText("passed")).toBeInTheDocument();
+    expect(screen.getAllByText("S-005").length).toBeGreaterThan(0);
     expect(screen.getByText("codex")).toBeInTheDocument();
   });
 
   it("runs pause, resume, and stop actions against mocked commands", async () => {
-    const pauseProject = vi.fn(async () => {});
-    const resumeProject = vi.fn(async () => {});
-    const stopLoop = vi.fn(async () => {});
+    const pauseProject = vi.fn(async (): Promise<undefined> => undefined);
+    const resumeProject = vi.fn(async (): Promise<undefined> => undefined);
+    const stopLoop = vi.fn(async (): Promise<undefined> => undefined);
     const snapshotResponses = [
       createProjectSnapshot(),
       createProjectSnapshot({ status: "paused" }),
       createProjectSnapshot({ status: "running" }),
       createProjectSnapshot({ status: "failed" }),
     ];
-    const listProjects = vi.fn(async () => []);
+    const listProjects = vi.fn(async () => EMPTY_GROUPED_PROJECTS);
 
     mockTauriCommands({
-      get_project_snapshot: vi.fn(async () => snapshotResponses.shift() ?? createProjectSnapshot({ status: "failed" })),
+      get_project_snapshot: vi.fn(
+        async () => snapshotResponses.shift() ?? createProjectSnapshot({ status: "failed" }),
+      ),
       get_project_stories: STORIES,
       get_iteration_history: [createIterationRow()],
+      get_activity_feed: [createIterationRow()],
       pause_project: pauseProject,
       resume_project: resumeProject,
       stop_loop: stopLoop,
-      list_projects_enriched: listProjects,
+      list_projects_grouped: listProjects,
     });
 
     const user = userEvent.setup();
@@ -132,6 +141,7 @@ describe("Monitor", () => {
       get_project_snapshot: createProjectSnapshot({ status: "failed" }),
       get_project_stories: STORIES,
       get_iteration_history: [],
+      get_activity_feed: [],
     });
 
     renderMonitor();

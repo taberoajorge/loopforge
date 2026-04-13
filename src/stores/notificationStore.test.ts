@@ -46,7 +46,9 @@ describe("notificationStore", () => {
       message: "Agent switched",
     });
 
-    const [firstId, secondId] = useNotificationStore.getState().notifications.map((item) => item.id);
+    const [firstId, secondId] = useNotificationStore
+      .getState()
+      .notifications.map((item) => item.id);
 
     store.markAsRead(firstId);
     expect(useNotificationStore.getState().unreadCountForProject("project-002")).toBe(0);
@@ -56,7 +58,9 @@ describe("notificationStore", () => {
 
     store.clearNotifications("project-001");
     expect(useNotificationStore.getState().getNotificationsForProject("project-001")).toEqual([]);
-    expect(useNotificationStore.getState().getNotificationsForProject("project-002")).toHaveLength(1);
+    expect(useNotificationStore.getState().getNotificationsForProject("project-002")).toHaveLength(
+      1,
+    );
     expect(secondId).toMatch(/^notif_/);
   });
 });

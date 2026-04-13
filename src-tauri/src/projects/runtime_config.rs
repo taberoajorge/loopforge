@@ -59,11 +59,11 @@ fn legacy_config_from_loop_args(content: &str) -> Result<ProjectConfig, ProjectE
     let execute_model = args
         .get("model")
         .and_then(|value| value.as_str())
-        .map(|value| value.to_string());
+        .map(ToString::to_string);
     let execute_effort = args
         .get("effort")
         .and_then(|value| value.as_str())
-        .map(|value| value.to_string());
+        .map(ToString::to_string);
     let fallback_chain = args
         .get("fallbackAgents")
         .and_then(|value| value.as_array())
@@ -76,19 +76,16 @@ fn legacy_config_from_loop_args(content: &str) -> Result<ProjectConfig, ProjectE
         .unwrap_or(default_config.fallback_chain.clone());
     let max_iterations = args
         .get("maxIterations")
-        .and_then(|value| value.as_u64())
-        .map(|value| value as u32)
-        .unwrap_or(default_config.max_iterations);
+        .and_then(serde_json::Value::as_u64)
+        .map_or(default_config.max_iterations, |value| value as u32);
     let gutter_threshold = args
         .get("gutterThreshold")
-        .and_then(|value| value.as_u64())
-        .map(|value| value as u32)
-        .unwrap_or(default_config.gutter_threshold);
+        .and_then(serde_json::Value::as_u64)
+        .map_or(default_config.gutter_threshold, |value| value as u32);
     let cooldown_seconds = args
         .get("cooldownSeconds")
-        .and_then(|value| value.as_u64())
-        .map(|value| value as u32)
-        .unwrap_or(default_config.cooldown_seconds);
+        .and_then(serde_json::Value::as_u64)
+        .map_or(default_config.cooldown_seconds, |value| value as u32);
     let test_command = args
         .get("testCommand")
         .and_then(|value| value.as_str())
@@ -96,9 +93,10 @@ fn legacy_config_from_loop_args(content: &str) -> Result<ProjectConfig, ProjectE
         .to_string();
     let max_verification_retries = args
         .get("maxVerificationRetries")
-        .and_then(|value| value.as_u64())
-        .map(|value| value as u32)
-        .unwrap_or(default_config.max_verification_retries);
+        .and_then(serde_json::Value::as_u64)
+        .map_or(default_config.max_verification_retries, |value| {
+            value as u32
+        });
     Ok(sanitize_config(ProjectConfig {
         schema_version: default_config.schema_version,
         execute_agent,

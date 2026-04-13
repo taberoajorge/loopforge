@@ -20,7 +20,8 @@ mod reconcile_tests;
 
 pub use config_types::{NotificationPrefs, ProjectConfig};
 pub use core_types::{
-    IterationStory, Project, ProjectDetail, ProjectError, ProjectsByStatus, WizardResumeState,
+    IterationStory, Project, ProjectDetail, ProjectError, ProjectsByStatus, WizardHydrationResult,
+    WizardProjectData, WizardResumeState,
 };
 pub use validation::{ConfigDefaultsResponse, DescribeInput, LaunchReadiness, ValidationErrors};
 pub use wizard_state::AdvanceWizardResult;

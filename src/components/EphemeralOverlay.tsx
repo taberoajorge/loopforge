@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ephemeralQuery, type EphemeralAnswer } from "../lib/tauri";
+import { type EphemeralAnswer, ephemeralQuery } from "../lib/tauri";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -18,11 +18,7 @@ interface EphemeralOverlayProps {
   onClose: () => void;
 }
 
-export function EphemeralOverlay({
-  projectId,
-  isOpen,
-  onClose,
-}: EphemeralOverlayProps) {
+export function EphemeralOverlay({ projectId, isOpen, onClose }: EphemeralOverlayProps) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<EphemeralAnswer | null>(null);
   const [loading, setLoading] = useState(false);
@@ -73,7 +69,7 @@ export function EphemeralOverlay({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="w-[min(36rem,calc(100vw-2rem))] p-0 overflow-hidden"
+        className="w-[min(36rem,calc(100vw-2rem))] overflow-hidden p-0"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           inputRef.current?.focus();
@@ -90,7 +86,7 @@ export function EphemeralOverlay({
           </DialogDescription>
         </DialogHeader>
 
-        <form id="ephemeral-query-form" onSubmit={handleSubmit} className="px-4 pb-3 space-y-2">
+        <form id="ephemeral-query-form" onSubmit={handleSubmit} className="space-y-2 px-4 pb-3">
           <Input
             ref={inputRef}
             type="text"
@@ -99,11 +95,11 @@ export function EphemeralOverlay({
             placeholder="Ask about the current session..."
             className="font-mono text-sm"
           />
-          {loading ? <p className="text-xs font-mono text-text-dim">thinking...</p> : null}
+          {loading ? <p className="font-mono text-text-dim text-xs">thinking...</p> : null}
         </form>
 
         {answer && (
-          <div className="border-y border-border px-4 py-3">
+          <div className="border-border border-y px-4 py-3">
             <div className="mb-2 flex items-center gap-2">
               <Badge
                 variant={answer.source === "instant" ? "info" : "neutral"}
@@ -112,14 +108,16 @@ export function EphemeralOverlay({
                 {answer.source}
               </Badge>
             </div>
-            <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed text-text">
+            <pre className="whitespace-pre-wrap font-mono text-sm text-text leading-relaxed">
               {answer.answer}
             </pre>
           </div>
         )}
 
-        <DialogFooter className="border-t border-border/50 px-4 py-3 sm:justify-between">
-          <p className="text-xs font-mono text-text-dim">Esc to close · Ctrl+Shift+Space to toggle</p>
+        <DialogFooter className="border-border/50 border-t px-4 py-3 sm:justify-between">
+          <p className="font-mono text-text-dim text-xs">
+            Esc to close · Ctrl+Shift+Space to toggle
+          </p>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={clearAnswer} disabled={loading}>
               Clear

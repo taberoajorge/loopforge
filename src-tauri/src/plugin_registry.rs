@@ -76,9 +76,7 @@ fn builtin_plugins() -> Vec<PluginEntry> {
 }
 
 #[tauri::command]
-pub async fn list_plugins(
-    db: State<'_, DbState>,
-) -> Result<Vec<PluginEntry>, String> {
+pub async fn list_plugins(db: State<'_, DbState>) -> Result<Vec<PluginEntry>, String> {
     let mut entries = builtin_plugins();
 
     let conn = db.0.lock().map_err(|_| "Lock poisoned".to_string())?;

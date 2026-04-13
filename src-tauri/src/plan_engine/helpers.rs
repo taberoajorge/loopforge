@@ -57,7 +57,8 @@ pub(super) fn build_plan_prompt(user_description: &str) -> String {
         "You are a senior software architect. Research the codebase and create a detailed \
 implementation plan for the following feature request.\n\n\
 Think through the problem carefully. Identify affected files, dependencies, and edge cases.\n\
-Output a structured plan in markdown.\n\n\
+Output a structured plan in markdown with clear headings (use # headers).\n\
+Do not ask clarifying questions. Make reasonable assumptions and document them in the plan.\n\n\
 Feature request:\n{user_description}"
     )
 }

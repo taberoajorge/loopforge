@@ -1,14 +1,14 @@
 import { act, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useWizardStore } from "../../stores/wizardStore";
 import {
-  createAtomizeProgress,
   createAtomizedPrd,
+  createAtomizeProgress,
   createPrd,
   createWizardProjectData,
 } from "../../test/fixtures";
 import { emitTauriEvent, mockTauriCommands } from "../../test/mocks";
 import { renderRoute } from "../../test/renderRoute";
-import { useWizardStore } from "../../stores/wizardStore";
 import { Atomize } from "./Atomize";
 
 function createDeferred<TValue>() {
@@ -76,9 +76,7 @@ describe("Atomize", () => {
     expect(screen.getByTestId("atomize-story-S-005")).toBeInTheDocument();
     expect(screen.getByTestId("atomize-story-S-006")).toBeInTheDocument();
     expect(screen.getByText("Done. 2 stories generated.")).toBeInTheDocument();
-    expect(
-      screen.getByText("Atomization Complete · 2 Stories · 1.7h"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Atomization Complete · 2 Stories · 1.7h")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add story" })).toBeEnabled();
   });
 
@@ -113,7 +111,9 @@ describe("Atomize", () => {
   });
 
   it("shows an empty result state when atomization succeeds with no stories", async () => {
-    mockTauriCommands({ run_atomizer: vi.fn(async () => createPrd({ stories: [], totalEstimatedMinutes: 0 })) });
+    mockTauriCommands({
+      run_atomizer: vi.fn(async () => createPrd({ stories: [], totalEstimatedMinutes: 0 })),
+    });
 
     renderAtomizeRoute();
 

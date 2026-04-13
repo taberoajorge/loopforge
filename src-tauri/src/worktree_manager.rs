@@ -136,12 +136,20 @@ pub async fn create_worktree(
     let worktree_path = format!(".loopforge/worktrees/{loop_name}");
     let branch = format!("loopforge/{loop_name}");
 
-    let (ok, stdout, _stderr) =
-        git_run(&app, &working_directory, &["worktree", "add", &worktree_path, "-b", &branch]).await?;
+    let (ok, stdout, _stderr) = git_run(
+        &app,
+        &working_directory,
+        &["worktree", "add", &worktree_path, "-b", &branch],
+    )
+    .await?;
 
     if !ok {
-        let (ok2, stdout2, stderr2) =
-            git_run(&app, &working_directory, &["worktree", "add", &worktree_path, &branch]).await?;
+        let (ok2, stdout2, stderr2) = git_run(
+            &app,
+            &working_directory,
+            &["worktree", "add", &worktree_path, &branch],
+        )
+        .await?;
         if !ok2 {
             return Err(WorktreeError::Git(stderr2));
         }
@@ -170,8 +178,12 @@ pub async fn list_worktrees(
     app: AppHandle,
     working_directory: String,
 ) -> Result<Vec<WorktreeInfo>, WorktreeError> {
-    let (ok, stdout, stderr) =
-        git_run(&app, &working_directory, &["worktree", "list", "--porcelain"]).await?;
+    let (ok, stdout, stderr) = git_run(
+        &app,
+        &working_directory,
+        &["worktree", "list", "--porcelain"],
+    )
+    .await?;
 
     if !ok {
         return Err(WorktreeError::Git(stderr));
@@ -187,8 +199,12 @@ pub async fn remove_worktree(
     worktree_path: String,
     delete_branch: bool,
 ) -> Result<(), WorktreeError> {
-    let (ok, _stdout, stderr) =
-        git_run(&app, &working_directory, &["worktree", "remove", &worktree_path, "--force"]).await?;
+    let (ok, _stdout, stderr) = git_run(
+        &app,
+        &working_directory,
+        &["worktree", "remove", &worktree_path, "--force"],
+    )
+    .await?;
 
     if !ok {
         return Err(WorktreeError::Git(stderr));
@@ -220,7 +236,10 @@ pub async fn check_scope_overlap(
     working_directory: String,
 ) -> Result<Vec<ScopeOverlap>, WorktreeError> {
     let active_project_ids: Vec<String> = {
-        let handles = loop_state.0.lock().map_err(|_| WorktreeError::LockPoisoned)?;
+        let handles = loop_state
+            .0
+            .lock()
+            .map_err(|_| WorktreeError::LockPoisoned)?;
         handles.keys().cloned().collect()
     };
 
@@ -299,11 +318,11 @@ pub async fn start_loop_with_worktree(
     .unwrap_or_default();
 
     let has_active_loop_in_dir = {
-        let handles = loop_state.0.lock().map_err(|_| crate::loop_manager::LoopError::LockPoisoned)?;
-        handles
-            .keys()
-            .any(|pid| pid != &args.project_id)
-            && !overlaps.is_empty()
+        let handles = loop_state
+            .0
+            .lock()
+            .map_err(|_| crate::loop_manager::LoopError::LockPoisoned)?;
+        handles.keys().any(|pid| pid != &args.project_id) && !overlaps.is_empty()
     };
 
     let effective_working_dir = if has_active_loop_in_dir {

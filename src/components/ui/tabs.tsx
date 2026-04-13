@@ -27,15 +27,29 @@ export type TabsProps = React.HTMLAttributes<HTMLDivElement> & {
 };
 
 const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
-  ({ children, className, defaultValue = "", onValueChange, orientation = "horizontal", value, ...props }, ref) => {
+  (
+    {
+      children,
+      className,
+      defaultValue = "",
+      onValueChange,
+      orientation = "horizontal",
+      value,
+      ...props
+    },
+    ref,
+  ) => {
     const id = React.useId();
     const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue);
     const currentValue = value ?? uncontrolledValue;
 
-    const setValue = React.useCallback((nextValue: string) => {
-      if (value === undefined) setUncontrolledValue(nextValue);
-      onValueChange?.(nextValue);
-    }, [onValueChange, value]);
+    const setValue = React.useCallback(
+      (nextValue: string) => {
+        if (value === undefined) setUncontrolledValue(nextValue);
+        onValueChange?.(nextValue);
+      },
+      [onValueChange, value],
+    );
 
     return (
       <TabsContext.Provider
@@ -49,7 +63,11 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
       >
         <div
           ref={ref}
-          className={cn("flex min-h-0 min-w-0 gap-4", orientation === "horizontal" ? "flex-col" : "flex-row", className)}
+          className={cn(
+            "flex min-h-0 min-w-0 gap-4",
+            orientation === "horizontal" ? "flex-col" : "flex-row",
+            className,
+          )}
           data-orientation={orientation}
           {...props}
         >
@@ -71,7 +89,11 @@ const TabsList = React.forwardRef<HTMLDivElement, TabsListProps>(({ className, .
       ref={ref}
       role="tablist"
       aria-orientation={orientation}
-      className={cn("inline-flex w-fit items-center gap-1 rounded-lg border border-border bg-surface p-1", orientation === "vertical" && "flex-col items-stretch", className)}
+      className={cn(
+        "inline-flex w-fit items-center gap-1 rounded-lg border border-border bg-surface p-1",
+        orientation === "vertical" && "flex-col items-stretch",
+        className,
+      )}
       {...props}
     />
   );
@@ -91,7 +113,9 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
     function focusTrigger(event: React.KeyboardEvent<HTMLButtonElement>, nextIndex: number) {
       const list = event.currentTarget.closest("[role='tablist']");
       if (!list) return;
-      const triggers = Array.from(list.querySelectorAll<HTMLButtonElement>("[role='tab']:not(:disabled)"));
+      const triggers = Array.from(
+        list.querySelectorAll<HTMLButtonElement>("[role='tab']:not(:disabled)"),
+      );
       if (!triggers.length) return;
       const nextTrigger = triggers[nextIndex];
       nextTrigger?.focus();
@@ -105,8 +129,10 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
         aria-controls={context.contentId(value)}
         aria-selected={active}
         className={cn(
-          "inline-flex items-center justify-center rounded-md border px-3 py-2 text-xs font-sans font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
-          active ? "border-primary/30 bg-primary/10 text-primary shadow-glow-primary" : "border-transparent text-text-muted hover:bg-elevated hover:text-text",
+          "inline-flex items-center justify-center rounded-md border px-3 py-2 font-medium font-sans text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+          active
+            ? "border-primary/30 bg-primary/10 text-primary shadow-glow-primary"
+            : "border-transparent text-text-muted hover:bg-elevated hover:text-text",
           className,
         )}
         data-state={active ? "active" : "inactive"}
@@ -121,13 +147,21 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
           if (event.defaultPrevented) return;
           const isHorizontal = context.orientation === "horizontal";
           const list = event.currentTarget.closest("[role='tablist']");
-          const triggers = list ? Array.from(list.querySelectorAll<HTMLButtonElement>("[role='tab']:not(:disabled)")) : [];
+          const triggers = list
+            ? Array.from(list.querySelectorAll<HTMLButtonElement>("[role='tab']:not(:disabled)"))
+            : [];
           const index = triggers.indexOf(event.currentTarget);
           if (!triggers.length || index === -1) return;
-          if ((isHorizontal && event.key === "ArrowRight") || (!isHorizontal && event.key === "ArrowDown")) {
+          if (
+            (isHorizontal && event.key === "ArrowRight") ||
+            (!isHorizontal && event.key === "ArrowDown")
+          ) {
             event.preventDefault();
             focusTrigger(event, (index + 1 + triggers.length) % triggers.length);
-          } else if ((isHorizontal && event.key === "ArrowLeft") || (!isHorizontal && event.key === "ArrowUp")) {
+          } else if (
+            (isHorizontal && event.key === "ArrowLeft") ||
+            (!isHorizontal && event.key === "ArrowUp")
+          ) {
             event.preventDefault();
             focusTrigger(event, (index - 1 + triggers.length) % triggers.length);
           } else if (event.key === "Home" || event.key === "End") {
@@ -151,25 +185,26 @@ export type TabsContentProps = Omit<React.HTMLAttributes<HTMLDivElement>, "value
   value: string;
 };
 
-const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(({ className, forceMount = false, value, ...props }, ref) => {
-  const context = useTabsContext("TabsContent");
-  const active = context.value === value;
-  if (!active && !forceMount) return null;
+const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
+  ({ className, forceMount = false, value, ...props }, ref) => {
+    const context = useTabsContext("TabsContent");
+    const active = context.value === value;
+    if (!active && !forceMount) return null;
 
-  return (
-    <div
-      ref={ref}
-      aria-labelledby={context.triggerId(value)}
-      className={cn("min-h-0 min-w-0 flex-1 outline-none", !active && "hidden", className)}
-      data-state={active ? "active" : "inactive"}
-      hidden={!active}
-      id={context.contentId(value)}
-      role="tabpanel"
-      tabIndex={0}
-      {...props}
-    />
-  );
-});
+    return (
+      <div
+        ref={ref}
+        aria-labelledby={context.triggerId(value)}
+        className={cn("min-h-0 min-w-0 flex-1 outline-none", !active && "hidden", className)}
+        data-state={active ? "active" : "inactive"}
+        hidden={!active}
+        id={context.contentId(value)}
+        role="tabpanel"
+        {...props}
+      />
+    );
+  },
+);
 
 TabsContent.displayName = "TabsContent";
 

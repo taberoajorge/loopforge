@@ -30,10 +30,16 @@ pub struct AgentCapabilities {
     pub default_effort: Option<String>,
 }
 
-pub fn resolve_capabilities(agent: &str, binary_path: Option<&str>, path_env: &str) -> AgentCapabilities {
+pub fn resolve_capabilities(
+    agent: &str,
+    binary_path: Option<&str>,
+    path_env: &str,
+) -> AgentCapabilities {
     let curated = curated_capabilities(agent);
     let discovered = discover_models(agent, binary_path, path_env);
-    if discovered.is_empty() { return curated; }
+    if discovered.is_empty() {
+        return curated;
+    }
     let models = discovered
         .into_iter()
         .map(|id| AgentModelOption {
@@ -67,7 +73,12 @@ fn curated_capabilities(agent: &str) -> AgentCapabilities {
             source: "curated".to_string(),
             supports_model: true,
             supports_effort: true,
-            models: model_options(&["gpt-5.4", "gpt-5.4-mini", "gpt-5-codex", "gpt-5.3-codex-high"]),
+            models: model_options(&[
+                "gpt-5.4",
+                "gpt-5.4-mini",
+                "gpt-5-codex",
+                "gpt-5.3-codex-high",
+            ]),
             efforts: effort_options(&["low", "medium", "high"]),
             default_model: Some("gpt-5.4".to_string()),
             default_effort: None,
@@ -87,7 +98,12 @@ fn curated_capabilities(agent: &str) -> AgentCapabilities {
             source: "curated".to_string(),
             supports_model: true,
             supports_effort: false,
-            models: model_options(&["auto", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"]),
+            models: model_options(&[
+                "auto",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+            ]),
             efforts: Vec::new(),
             default_model: Some("auto".to_string()),
             default_effort: None,

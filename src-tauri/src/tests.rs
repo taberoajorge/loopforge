@@ -141,7 +141,12 @@ fn list_projects_groups_correctly_by_status() {
         .filter_map(|result| result.ok())
         .collect();
 
-    let count = |target: &str| statuses.iter().filter(|status| status.as_str() == target).count();
+    let count = |target: &str| {
+        statuses
+            .iter()
+            .filter(|status| status.as_str() == target)
+            .count()
+    };
 
     assert_eq!(count("active"), 1);
     assert_eq!(count("paused"), 1);
@@ -361,29 +366,34 @@ fn ci_feedback_loop_verification_retries_tracked() {
         "INSERT INTO projects (id, name, status, working_directory, created_at, updated_at)
          VALUES ('proj-ci', 'CI Test', 'active', '/tmp', ?1, ?2)",
         rusqlite::params![now, now],
-    ).unwrap();
+    )
+    .unwrap();
 
     conn.execute(
         "INSERT INTO sessions (id, project_id, started_at)
          VALUES ('sess-ci', 'proj-ci', ?1)",
         rusqlite::params![now],
-    ).unwrap();
+    )
+    .unwrap();
 
     conn.execute(
         "INSERT INTO iterations (id, session_id, story_id, duration_secs, result, agent_used)
          VALUES ('iter-1', 'sess-ci', 'S-001', 10, 'failed', 'claude')",
         [],
-    ).unwrap();
+    )
+    .unwrap();
     conn.execute(
         "INSERT INTO iterations (id, session_id, story_id, duration_secs, result, agent_used)
          VALUES ('iter-2', 'sess-ci', 'S-001', 15, 'failed', 'claude')",
         [],
-    ).unwrap();
+    )
+    .unwrap();
     conn.execute(
         "INSERT INTO iterations (id, session_id, story_id, duration_secs, result, agent_used)
          VALUES ('iter-3', 'sess-ci', 'S-001', 20, 'success', 'claude')",
         [],
-    ).unwrap();
+    )
+    .unwrap();
 
     let attempts: i64 = conn
         .query_row(
@@ -411,7 +421,8 @@ fn connection_crud_lifecycle() {
     conn.execute(
         "INSERT INTO connections (id, name) VALUES ('conn-1', 'Monorepo Connection')",
         [],
-    ).unwrap();
+    )
+    .unwrap();
     conn.execute(
         "INSERT INTO connection_repos (connection_id, repo_path, display_name) VALUES ('conn-1', '/tmp/repo-a', 'Repo A')",
         [],
@@ -430,7 +441,8 @@ fn connection_crud_lifecycle() {
         .unwrap();
     assert_eq!(repo_count, 2);
 
-    conn.execute("DELETE FROM connections WHERE id = 'conn-1'", []).unwrap();
+    conn.execute("DELETE FROM connections WHERE id = 'conn-1'", [])
+        .unwrap();
 
     let leftover: i64 = conn
         .query_row(
@@ -451,13 +463,16 @@ fn notification_prefs_stored_and_retrieved() {
         "INSERT INTO projects (id, name, status, working_directory, created_at, updated_at)
          VALUES ('proj-notif', 'Notif Test', 'active', '/tmp', ?1, ?2)",
         rusqlite::params![now, now],
-    ).unwrap();
+    )
+    .unwrap();
 
-    let prefs_json = r#"{"story_blocked":{"ring":true,"os":true},"loop_completed":{"ring":true,"os":false}}"#;
+    let prefs_json =
+        r#"{"story_blocked":{"ring":true,"os":true},"loop_completed":{"ring":true,"os":false}}"#;
     conn.execute(
         "UPDATE projects SET notification_prefs = ?1 WHERE id = 'proj-notif'",
         rusqlite::params![prefs_json],
-    ).unwrap();
+    )
+    .unwrap();
 
     let stored: Option<String> = conn
         .query_row(
@@ -503,13 +518,15 @@ fn session_stats_calculation() {
         "INSERT INTO projects (id, name, status, working_directory, created_at, updated_at)
          VALUES ('proj-stats', 'Stats Test', 'active', '/tmp', ?1, ?2)",
         rusqlite::params![now, now],
-    ).unwrap();
+    )
+    .unwrap();
 
     conn.execute(
         "INSERT INTO sessions (id, project_id, started_at, total_iterations)
          VALUES ('sess-stats', 'proj-stats', ?1, 0)",
         rusqlite::params![now],
-    ).unwrap();
+    )
+    .unwrap();
 
     for idx in 0..5 {
         let iter_id = format!("iter-s-{idx}");
@@ -518,7 +535,8 @@ fn session_stats_calculation() {
             "INSERT INTO iterations (id, session_id, story_id, duration_secs, result, agent_used)
              VALUES (?1, 'sess-stats', ?2, ?3, ?4, 'claude')",
             rusqlite::params![iter_id, format!("S-{:03}", idx + 1), (idx + 1) * 60, result],
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     let total: i64 = conn

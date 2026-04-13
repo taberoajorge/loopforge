@@ -1,7 +1,7 @@
 use crate::projects::artifacts::artifact_dir;
 use crate::projects::ProjectError;
 use std::sync::atomic::Ordering;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 const TRANSITION_WAIT_STEPS: usize = 24;
 const TRANSITION_WAIT_MS: u64 = 250;
@@ -16,6 +16,26 @@ fn loop_handle_state(app: &AppHandle, project_id: &str) -> (bool, bool) {
         return (true, shutdown_requested);
     }
     (false, false)
+}
+
+async fn emit_project_state_changed(app: &AppHandle, project_id: &str) {
+    let snapshot = crate::commands::projects::get_project_snapshot(
+        app.clone(),
+        app.state::<crate::db::DbState>(),
+        app.state::<crate::loop_manager::LoopManagerState>(),
+        project_id.to_string(),
+    )
+    .await
+    .ok();
+    let payload = if let Some(snapshot) = snapshot {
+        serde_json::json!({
+            "projectId": project_id,
+            "snapshot": snapshot,
+        })
+    } else {
+        serde_json::json!({ "projectId": project_id })
+    };
+    let _ = app.emit(crate::events::EVENT_PROJECT_STATE_CHANGED, payload);
 }
 
 async fn wait_for_shutdown_transition(app: &AppHandle, project_id: &str) {
@@ -45,27 +65,28 @@ pub async fn pause_project(app: AppHandle, project_id: String) -> Result<(), Pro
 
     let db = app.state::<crate::db::DbState>();
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = db
-        .0
-        .lock()
-        .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
-    let updated = conn.execute(
-        "UPDATE projects SET status = 'paused', updated_at = ?1 WHERE id = ?2",
-        rusqlite::params![now, project_id],
-    )?;
+    let updated = {
+        let conn =
+            db.0.lock()
+                .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+        conn.execute(
+            "UPDATE projects SET status = 'paused', updated_at = ?1 WHERE id = ?2",
+            rusqlite::params![now, &project_id],
+        )?
+    };
     if updated == 0 {
         return Err(ProjectError::NotFound(project_id));
     }
+    emit_project_state_changed(&app, &project_id).await;
     Ok(())
 }
 
 pub async fn resume_project(app: AppHandle, project_id: String) -> Result<(), ProjectError> {
     {
         let db = app.state::<crate::db::DbState>();
-        let conn = db
-            .0
-            .lock()
-            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+        let conn =
+            db.0.lock()
+                .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
         let exists = conn
             .query_row(
                 "SELECT id FROM projects WHERE id = ?1",
@@ -91,14 +112,16 @@ pub async fn resume_project(app: AppHandle, project_id: String) -> Result<(), Pr
     if has_loop_handle && still_has_loop_handle {
         let now = chrono::Utc::now().to_rfc3339();
         let db = app.state::<crate::db::DbState>();
-        let conn = db
-            .0
-            .lock()
-            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
-        let _ = conn.execute(
-            "UPDATE projects SET status = 'active', updated_at = ?1 WHERE id = ?2",
-            rusqlite::params![now, &project_id],
-        );
+        {
+            let conn =
+                db.0.lock()
+                    .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+            let _ = conn.execute(
+                "UPDATE projects SET status = 'active', updated_at = ?1 WHERE id = ?2",
+                rusqlite::params![now, &project_id],
+            );
+        }
+        emit_project_state_changed(&app, &project_id).await;
         return Ok(());
     }
     let restart_args = crate::loop_manager::StartLoopArgs {
@@ -114,6 +137,9 @@ pub async fn resume_project(app: AppHandle, project_id: String) -> Result<(), Pr
         cooldown_seconds: None,
         test_command: None,
         max_verification_retries: None,
+        scm_provider: None,
+        review_polling_interval: None,
+        review_timeout: None,
     };
     crate::loop_manager::start_loop(app, restart_args)
         .await

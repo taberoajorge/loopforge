@@ -33,7 +33,7 @@ pub(super) fn build_ralph_config(
         config.tuning.gutter_threshold = gutter;
     }
     if let Some(cooldown) = args.cooldown_seconds {
-        config.tuning.cooldown_secs = cooldown as u64;
+        config.tuning.cooldown_secs = u64::from(cooldown);
     }
     if let Some(ref test_cmd) = args.test_command {
         config.tuning.test_command = Some(test_cmd.clone());

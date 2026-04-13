@@ -101,6 +101,12 @@ pub struct PipelineSnapshot {
     pub started_at: Option<String>,
     pub elapsed_ms: u64,
     pub done: bool,
+    #[serde(default)]
+    pub percent: u8,
+    #[serde(default)]
+    pub is_done: bool,
+    #[serde(default)]
+    pub is_running: bool,
 }
 
 impl PipelineSnapshot {
@@ -112,7 +118,7 @@ impl PipelineSnapshot {
                 .enumerate()
                 .map(|(idx, label)| StageSnapshot {
                     number: (idx + 1) as u8,
-                    label: label.to_string(),
+                    label: (*label).to_string(),
                     status: StageStatus::Pending,
                 })
                 .collect(),
@@ -120,7 +126,40 @@ impl PipelineSnapshot {
             started_at: None,
             elapsed_ms: 0,
             done: false,
+            percent: 0,
+            is_done: false,
+            is_running: false,
         }
+    }
+
+    pub fn recompute_derived(&mut self) {
+        let total = self.stages.len() as f64;
+        if total == 0.0 {
+            self.percent = 0;
+            self.is_done = false;
+            self.is_running = false;
+            return;
+        }
+        let progress: f64 = self
+            .stages
+            .iter()
+            .map(|stage| match stage.status {
+                StageStatus::Done => 1.0,
+                StageStatus::Running => 0.5,
+                _ => 0.0,
+            })
+            .sum();
+        self.percent = ((progress / total) * 100.0).round() as u8;
+        self.is_done = self
+            .stages
+            .iter()
+            .all(|stage| stage.status == StageStatus::Done);
+        self.is_running = !self.is_done
+            && self.error.is_none()
+            && self
+                .stages
+                .iter()
+                .any(|stage| stage.status == StageStatus::Running);
     }
 }
 
