@@ -1,7 +1,8 @@
 use crate::db::DbState;
 use crate::projects::artifacts::{artifact_dir, non_empty_file_content};
+use crate::projects::config_types::ProjectConfig;
 use crate::projects::repository::{row_to_project, PROJECT_COLUMNS};
-use crate::projects::{ProjectError, WizardResumeState};
+use crate::projects::{ProjectError, WizardHydrationResult, WizardProjectData, WizardResumeState};
 use ralph_core::prd::Prd;
 use serde_json::{Map, Value};
 use std::path::Path;
@@ -180,5 +181,106 @@ pub async fn resume_wizard<R: Runtime>(
         wizard_state_json,
         has_plan,
         has_prd,
+    })
+}
+
+pub async fn hydrate_wizard<R: Runtime>(
+    app: AppHandle<R>,
+    db: State<'_, DbState>,
+    project_id: String,
+) -> Result<WizardHydrationResult, ProjectError> {
+    let resume = resume_wizard(app.clone(), db, project_id.clone()).await?;
+    let dir = artifact_dir(&app, &project_id)?;
+    let current_step_number =
+        crate::projects::wizard_state::step_name_to_number(&resume.wizard_step).unwrap_or(1);
+
+    let mut project_data = WizardProjectData {
+        name: resume.project.name.clone(),
+        description: resume.project.description.clone(),
+        working_directory: resume.project.working_directory.clone(),
+        plan_agent: "claude".to_string(),
+        plan_model: None,
+        plan_effort: None,
+    };
+
+    let mut plan_complete = resume.has_plan;
+    let mut config: Option<ProjectConfig> = None;
+    let mut highest_step = current_step_number;
+
+    let draft_content = non_empty_file_content(&dir.join("draft.json"))?;
+    let state_fallback = draft_content
+        .is_none()
+        .then(|| resume.wizard_state_json.clone())
+        .flatten();
+    let hydration_source = draft_content.or(state_fallback);
+    if let Some(raw) = hydration_source {
+        if let Ok(draft) = serde_json::from_str::<Value>(&raw) {
+            if let Some(describe) = draft.get("describe") {
+                if let Some(val) = describe.get("name").and_then(Value::as_str) {
+                    if !val.is_empty() {
+                        project_data.name = val.to_string();
+                    }
+                }
+                if let Some(val) = describe.get("description").and_then(Value::as_str) {
+                    if !val.is_empty() {
+                        project_data.description = val.to_string();
+                    }
+                }
+                if let Some(val) = describe.get("workingDirectory").and_then(Value::as_str) {
+                    if !val.is_empty() {
+                        project_data.working_directory = val.to_string();
+                    }
+                }
+                if let Some(val) = describe.get("planAgent").and_then(Value::as_str) {
+                    if !val.is_empty() {
+                        project_data.plan_agent = val.to_string();
+                    }
+                }
+                project_data.plan_model = describe
+                    .get("planModel")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                project_data.plan_effort = describe
+                    .get("planEffort")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+            }
+            if let Some(plan) = draft.get("plan") {
+                if plan
+                    .get("completed")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+                {
+                    plan_complete = true;
+                }
+            }
+            if let Some(value) = draft.get("highestStep").and_then(Value::as_u64) {
+                let parsed = value as u32;
+                if parsed > highest_step {
+                    highest_step = parsed;
+                }
+            }
+            if let Some(configure) = draft.get("configure") {
+                config = serde_json::from_value(configure.clone()).ok();
+            }
+        }
+    }
+
+    let stories = if resume.has_prd {
+        Prd::load(&dir.join("prd.json"))
+            .map(|prd| prd.stories)
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    Ok(WizardHydrationResult {
+        project: resume.project,
+        wizard_step: resume.wizard_step,
+        highest_step,
+        project_data,
+        plan_complete,
+        stories,
+        config,
     })
 }

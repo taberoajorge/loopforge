@@ -79,10 +79,46 @@ pub struct WizardResumeState {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct WizardProjectData {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub working_directory: String,
+    #[serde(default = "default_plan_agent")]
+    pub plan_agent: String,
+    #[serde(default)]
+    pub plan_model: Option<String>,
+    #[serde(default)]
+    pub plan_effort: Option<String>,
+}
+
+fn default_plan_agent() -> String {
+    "claude".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WizardHydrationResult {
+    pub project: Project,
+    pub wizard_step: String,
+    #[serde(default)]
+    pub highest_step: u32,
+    pub project_data: WizardProjectData,
+    pub plan_complete: bool,
+    pub stories: Vec<ralph_core::prd::UserStory>,
+    pub config: Option<super::config_types::ProjectConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IterationStory {
     pub id: String,
     pub title: String,
     pub status: String,
     pub duration_secs: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_label: Option<String>,
     pub attempts: i64,
 }

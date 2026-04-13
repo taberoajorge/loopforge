@@ -147,7 +147,10 @@ async fn wizard_draft_roundtrip_preserves_nested_and_optional_fields() {
         .expect("draft content");
 
     assert_eq!(resume_state.project.name, "Roundtrip Project");
-    assert_eq!(resume_state.project.description, "Persist wizard draft values");
+    assert_eq!(
+        resume_state.project.description,
+        "Persist wizard draft values"
+    );
     assert_eq!(resume_state.project.working_directory, working_directory);
     assert_eq!(resume_state.wizard_step, "configure");
     assert_eq!(resume_state.wizard_state_json, None);

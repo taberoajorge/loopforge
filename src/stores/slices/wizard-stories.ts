@@ -10,12 +10,9 @@ export const STORIES_DEFAULTS = {
   stories: [] as UserStory[],
 };
 
-export const createStoriesSlice: StateCreator<
-  WizardStoriesSlice,
-  [],
-  [],
-  WizardStoriesSlice
-> = (set) => ({
+export const createStoriesSlice: StateCreator<WizardStoriesSlice, [], [], WizardStoriesSlice> = (
+  set,
+) => ({
   ...STORIES_DEFAULTS,
   setStories: (stories) => set({ stories }),
 });

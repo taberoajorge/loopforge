@@ -1,21 +1,30 @@
 import { useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router";
-import { type StepState } from "../../components/StepIndicator";
+import type { StepState } from "../../components/StepIndicator";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel,
-  AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Separator } from "../../components/ui/separator";
-import { useWizardStore } from "../../stores/wizardStore";
-import { stopPlan, saveWizardDraft } from "../../lib/tauri";
 import { useWizardHydration } from "../../hooks/useWizardHydration";
+import { reportError } from "../../lib/reportError";
+import { exitWizard } from "../../lib/tauri";
+import { useWizardDefaultsStore } from "../../stores/wizardDefaultsStore";
+import { useWizardStore } from "../../stores/wizardStore";
 import { WizardExitDialog } from "./components/WizardExitDialog";
 import { WizardStepRail } from "./components/WizardStepRail";
 
-const WIZARD_STEPS = [
+type WizardStepItem = { number: number; label: string; slug: string };
+
+const FALLBACK_WIZARD_STEPS: WizardStepItem[] = [
   { number: 1, label: "Describe", slug: "describe" },
   { number: 2, label: "Plan", slug: "plan" },
   { number: 3, label: "Atomize", slug: "atomize" },
@@ -40,6 +49,9 @@ export function WizardLayout() {
   const staleFromStep = useWizardStore((state) => state.staleFromStep);
   const highestStep = useWizardStore((state) => state.highestStep);
   const planRunning = useWizardStore((state) => state.planRunning);
+  const wizardSteps = useWizardDefaultsStore(
+    (state) => state.defaults?.wizardSteps ?? FALLBACK_WIZARD_STEPS,
+  );
   const currentStep = resolveStep(location.pathname);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showLeavePlanConfirm, setShowLeavePlanConfirm] = useState(false);
@@ -49,24 +61,20 @@ export function WizardLayout() {
 
   async function handleGoHome() {
     if (projectId) {
-      if (currentStep === 2) {
-        await stopPlan(projectId).catch(() => {});
-      }
-      const stepSlug = WIZARD_STEPS.find((step) => step.number === currentStep)?.slug ?? "describe";
-      await saveWizardDraft(projectId, stepSlug).catch(() => {});
+      await exitWizard(projectId, currentStep).catch((caughtError: unknown) => {
+        reportError("WizardLayout.exitWizard", caughtError);
+      });
     }
     navigate("/");
   }
 
-  function executeNav(step: typeof WIZARD_STEPS[number]) {
-    const path = step.number === 1
-      ? "/new/describe"
-      : `/new/${step.slug}/${projectId}`;
+  function executeNav(step: WizardStepItem) {
+    const path = step.number === 1 ? "/new/describe" : `/new/${step.slug}/${projectId}`;
     useWizardStore.getState().setStep(step.number);
     navigate(path);
   }
 
-  function handleStepClick(step: typeof WIZARD_STEPS[number]) {
+  function handleStepClick(step: WizardStepItem) {
     if (step.number === currentStep) return;
     if (step.number > highestStep) return;
     if (!projectId && step.number > 1) return;
@@ -80,18 +88,20 @@ export function WizardLayout() {
     executeNav(step);
   }
 
-  const activeStepLabel = WIZARD_STEPS.find((step) => step.number === currentStep)?.label ?? "Describe";
+  const activeStepLabel =
+    wizardSteps.find((step) => step.number === currentStep)?.label ?? "Describe";
 
-  const stepItems = WIZARD_STEPS.map((step) => {
+  const stepItems = wizardSteps.map((step) => {
     const isCompleted = step.number < currentStep;
     const isStale = staleFromStep !== null && step.number >= staleFromStep && isCompleted;
-    const state: StepState = step.number === currentStep
-      ? "current"
-      : isStale
-        ? "stale"
-        : isCompleted
-          ? "complete"
-          : "upcoming";
+    const state: StepState =
+      step.number === currentStep
+        ? "current"
+        : isStale
+          ? "stale"
+          : isCompleted
+            ? "complete"
+            : "upcoming";
     return {
       id: step.slug,
       label: step.label,
@@ -107,28 +117,31 @@ export function WizardLayout() {
         currentStep={currentStep}
         steps={stepItems}
         onStepSelect={(stepIndex) => {
-          const selectedStep = WIZARD_STEPS[stepIndex];
+          const selectedStep = wizardSteps[stepIndex];
           if (!selectedStep) return;
           handleStepClick(selectedStep);
         }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="border-b border-border bg-surface px-4 py-3 lg:hidden">
+        <div className="border-border border-b bg-surface px-4 py-3 lg:hidden">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setShowExitConfirm(true)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setShowExitConfirm(true)}
+            >
               Home
             </Button>
             <Separator orientation="vertical" className="h-5" />
             <Badge variant="info">Step {currentStep}</Badge>
-            <span className="truncate text-xs font-sans text-text-muted">
-              {activeStepLabel}
-            </span>
+            <span className="truncate font-sans text-text-muted text-xs">{activeStepLabel}</span>
           </div>
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="min-h-0 flex-1">
           {hydrating ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-sm font-mono text-text-dim">Loading draft...</p>
+              <p className="font-mono text-sm text-text-dim">Loading draft...</p>
             </div>
           ) : (
             <Outlet />
@@ -156,11 +169,14 @@ export function WizardLayout() {
             <AlertDialogCancel asChild>
               <Button variant="secondary">Stay</Button>
             </AlertDialogCancel>
-            <AlertDialogAction asChild onClick={() => {
-              setShowLeavePlanConfirm(false);
-              pendingNavRef.current?.();
-              pendingNavRef.current = null;
-            }}>
+            <AlertDialogAction
+              asChild
+              onClick={() => {
+                setShowLeavePlanConfirm(false);
+                pendingNavRef.current?.();
+                pendingNavRef.current = null;
+              }}
+            >
               <Button variant="primary">Leave Anyway</Button>
             </AlertDialogAction>
           </AlertDialogFooter>

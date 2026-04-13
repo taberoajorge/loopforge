@@ -1,5 +1,5 @@
-import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -57,9 +57,9 @@ function Empty({
     >
       {icon ? <div className="text-text-dim">{icon}</div> : null}
       <div className={cn("space-y-1", align === "start" ? "max-w-full" : "")}>
-        <p className="text-sm font-sans font-semibold text-text">{title}</p>
+        <p className="font-sans font-semibold text-sm text-text">{title}</p>
         {description ? (
-          <p className="max-w-md text-sm font-sans leading-relaxed text-text-muted">
+          <p className="max-w-md font-sans text-sm text-text-muted leading-relaxed">
             {description}
           </p>
         ) : null}

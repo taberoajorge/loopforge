@@ -24,7 +24,13 @@ pub async fn run_atomizer<R: Runtime>(
     match &result {
         Ok(prd) => {
             mark_pipeline_done(&app, &pid);
-            emit_progress(&app, &pid, 4, "merge", &format!("Done — {} stories", prd.stories.len()));
+            emit_progress(
+                &app,
+                &pid,
+                4,
+                "merge",
+                &format!("Done — {} stories", prd.stories.len()),
+            );
         }
         Err(err) => mark_pipeline_error(&app, &pid, &err.to_string()),
     }
@@ -63,55 +69,140 @@ async fn execute_pipeline<R: Runtime>(
     }
 
     let pid = &args.project_id;
-    emit_activity(app, pid, AtomizeActivityKind::PlanLoaded, &format!("Plan loaded ({} chars)", plan_content.len()));
+    emit_activity(
+        app,
+        pid,
+        AtomizeActivityKind::PlanLoaded,
+        &format!("Plan loaded ({} chars)", plan_content.len()),
+    );
 
     emit_progress(app, pid, 1, "summarize", "Summarizing plan...");
-    emit_activity(app, pid, AtomizeActivityKind::TemplateRender, "Rendering summarize template");
+    emit_activity(
+        app,
+        pid,
+        AtomizeActivityKind::TemplateRender,
+        "Rendering summarize template",
+    );
     let condensed = stage_summarize(
-        app, pid, &env, &plan_content, &args.agent,
-        args.model.as_deref(), args.effort.as_deref(), &args.project_dir,
+        app,
+        pid,
+        &env,
+        &plan_content,
+        &args.agent,
+        args.model.as_deref(),
+        args.effort.as_deref(),
+        &args.project_dir,
     )
     .await?;
 
-    emit_activity(app, pid, AtomizeActivityKind::AgentComplete, &format!("Summarize complete ({} chars condensed)", condensed.len()));
+    emit_activity(
+        app,
+        pid,
+        AtomizeActivityKind::AgentComplete,
+        &format!("Summarize complete ({} chars condensed)", condensed.len()),
+    );
 
     emit_progress(app, pid, 2, "chunk", "Splitting into sections...");
-    emit_activity(app, pid, AtomizeActivityKind::TemplateRender, "Rendering chunk template");
+    emit_activity(
+        app,
+        pid,
+        AtomizeActivityKind::TemplateRender,
+        "Rendering chunk template",
+    );
     let sections = stage_chunk(
-        app, pid, &env, &condensed, &args.agent,
-        args.model.as_deref(), args.effort.as_deref(), &args.project_dir,
+        app,
+        pid,
+        &env,
+        &condensed,
+        &args.agent,
+        args.model.as_deref(),
+        args.effort.as_deref(),
+        &args.project_dir,
     )
     .await?;
 
     let section_count = sections.len();
     for (idx, section) in sections.iter().enumerate() {
-        emit_activity(app, pid, AtomizeActivityKind::ChunkDetected, &format!("[{}/{}] {}", idx + 1, section_count, section.title));
+        emit_activity(
+            app,
+            pid,
+            AtomizeActivityKind::ChunkDetected,
+            &format!("[{}/{}] {}", idx + 1, section_count, section.title),
+        );
     }
 
-    emit_progress(app, pid, 3, "atomize", &format!("Atomizing {section_count} sections..."));
+    emit_progress(
+        app,
+        pid,
+        3,
+        "atomize",
+        &format!("Atomizing {section_count} sections..."),
+    );
     let all_stories = stage_atomize(
-        app, pid, &env, &sections, &args.project_name, &args.agent,
-        args.model.as_deref(), args.effort.as_deref(), &args.project_dir,
+        app,
+        pid,
+        &env,
+        &sections,
+        &args.project_name,
+        &args.agent,
+        args.model.as_deref(),
+        args.effort.as_deref(),
+        &args.project_dir,
     )
     .await?;
 
-    emit_activity(app, pid, AtomizeActivityKind::StoryExtracted, &format!("{} raw stories across {section_count} sections", all_stories.len()));
+    emit_activity(
+        app,
+        pid,
+        AtomizeActivityKind::StoryExtracted,
+        &format!(
+            "{} raw stories across {section_count} sections",
+            all_stories.len()
+        ),
+    );
 
     emit_progress(app, pid, 4, "merge", "Merging and ordering stories...");
-    emit_activity(app, pid, AtomizeActivityKind::TemplateRender, "Rendering merge template");
+    emit_activity(
+        app,
+        pid,
+        AtomizeActivityKind::TemplateRender,
+        "Rendering merge template",
+    );
     let prd = stage_merge(
-        app, pid, &env, all_stories, &args.project_name, &args.agent,
-        args.model.as_deref(), args.effort.as_deref(), &args.project_dir,
+        app,
+        pid,
+        &env,
+        all_stories,
+        &args.project_name,
+        &args.agent,
+        args.model.as_deref(),
+        args.effort.as_deref(),
+        &args.project_dir,
     )
     .await?;
 
-    emit_activity(app, pid, AtomizeActivityKind::Validation, &format!("Validating atomicity of {} stories", prd.stories.len()));
+    emit_activity(
+        app,
+        pid,
+        AtomizeActivityKind::Validation,
+        &format!("Validating atomicity of {} stories", prd.stories.len()),
+    );
     prd.validate_atomicity()
         .map_err(|err| AtomizerError::Validation(err.to_string()))?;
-    emit_activity(app, pid, AtomizeActivityKind::Validation, "Validation passed");
+    emit_activity(
+        app,
+        pid,
+        AtomizeActivityKind::Validation,
+        "Validation passed",
+    );
 
     save_artifacts(&artifact_path, &prd)?;
-    emit_activity(app, pid, AtomizeActivityKind::ArtifactSaved, "Artifacts saved (prd.json, prompt.md, guardrails.md)");
+    emit_activity(
+        app,
+        pid,
+        AtomizeActivityKind::ArtifactSaved,
+        "Artifacts saved (prd.json, prompt.md, guardrails.md)",
+    );
 
     Ok(prd)
 }

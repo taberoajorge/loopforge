@@ -11,7 +11,7 @@ pub fn compute_wait(result: &AgentResult, default_secs: u64) -> u64 {
 
 fn parse_retry_time_to_secs(time_str: &str) -> Option<u64> {
     let now = chrono::Local::now();
-    let cleaned = time_str.trim().replace(".", "").to_uppercase();
+    let cleaned = time_str.trim().replace('.', "").to_uppercase();
 
     let is_pm = cleaned.contains("PM");
     let is_am = cleaned.contains("AM");

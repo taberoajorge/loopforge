@@ -72,7 +72,11 @@ async fn happy_path_emits_deterministic_events() {
     let result = ralph_core::loop_engine::run(&config, &provider, shutdown, &sink).await;
     assert!(result.is_ok(), "loop should complete without error");
 
-    assert_eq!(provider.call_count(), 1, "happy path should run exactly one iteration");
+    assert_eq!(
+        provider.call_count(),
+        1,
+        "happy path should run exactly one iteration"
+    );
 
     let types = sink.event_types();
     assert!(
@@ -120,8 +124,14 @@ async fn loop_failure_stops_after_gutter_threshold() {
     );
 
     let prd = ralph_core::prd::Prd::load(&config.paths.prd_file).unwrap();
-    assert!(!prd.stories[0].passes, "failed story should not be marked passed");
-    assert!(prd.stories[0].blocked, "failed story should be blocked after gutter");
+    assert!(
+        !prd.stories[0].passes,
+        "failed story should not be marked passed"
+    );
+    assert!(
+        prd.stories[0].blocked,
+        "failed story should be blocked after gutter"
+    );
 }
 
 #[tokio::test]

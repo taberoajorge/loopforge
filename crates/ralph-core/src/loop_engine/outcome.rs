@@ -31,8 +31,15 @@ pub async fn handle(
         }
         Ok(result) if result.success() => {
             handle_success(
-                config, prd, story_id, story_passed, progress_report,
-                failure_memory, consecutive_zero_progress, result, *iteration,
+                config,
+                prd,
+                story_id,
+                story_passed,
+                progress_report,
+                failure_memory,
+                consecutive_zero_progress,
+                result,
+                *iteration,
             );
         }
         Ok(result) => {
@@ -60,11 +67,17 @@ async fn handle_rate_limit(
         wait_secs % 60,
     ));
     logger::log_error(
-        &format!("Iteration {} rate limited (retry at: {retry_hint})", *iteration),
+        &format!(
+            "Iteration {} rate limited (retry at: {retry_hint})",
+            *iteration
+        ),
         Some(&config.paths.error_log),
     );
     logger::log_activity(
-        &format!("Rate limited at iteration {}, sleeping {wait_secs}s", *iteration),
+        &format!(
+            "Rate limited at iteration {}, sleeping {wait_secs}s",
+            *iteration
+        ),
         &config.paths.activity_log,
     );
     *iteration = iteration.saturating_sub(1);

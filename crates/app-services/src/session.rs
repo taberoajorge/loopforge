@@ -98,7 +98,8 @@ pub struct StoryCounts {
 
 pub trait SessionRepository {
     fn is_running(&self, project_id: &str) -> ServiceResult<bool>;
-    fn latest_session_record(&self, project_id: &str) -> ServiceResult<Option<LatestSessionRecord>>;
+    fn latest_session_record(&self, project_id: &str)
+        -> ServiceResult<Option<LatestSessionRecord>>;
     fn iteration_counts(&self, session_id: &str) -> ServiceResult<IterationCounts>;
     fn latest_agent(&self, session_id: &str) -> ServiceResult<Option<String>>;
     fn story_counts(&self, project_id: &str) -> ServiceResult<StoryCounts>;
@@ -167,9 +168,9 @@ impl<R: SessionRepository> SessionService for RuntimeSessionService<R> {
         } else {
             0.0
         };
-        let stories_per_hour =
-            self.repository
-                .stories_per_hour(session.as_ref(), stories.passed)?;
+        let stories_per_hour = self
+            .repository
+            .stories_per_hour(session.as_ref(), stories.passed)?;
 
         Ok(SessionStats {
             project_id: project_id.to_string(),

@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, type MouseEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useEffect, useMemo, useState } from "react";
+import { isApplePlatform } from "../lib/platform";
 import { WindowControls } from "./title-bar/WindowControls";
 import { Button } from "./ui/button";
 import {
@@ -13,12 +14,7 @@ import {
 export function TitleBar() {
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
-  const isMac = useMemo(
-    () =>
-      typeof navigator !== "undefined" &&
-      /Mac|iPhone|iPad|iPod/.test(navigator.userAgent),
-    [],
-  );
+  const isMac = useMemo(() => isApplePlatform(), []);
 
   useEffect(() => {
     void appWindow.isMaximized().then(setIsMaximized);
@@ -37,22 +33,10 @@ export function TitleBar() {
     void appWindow.close();
   }
 
-  function handleDragStart(event: MouseEvent<HTMLDivElement>) {
-    if (event.button !== 0) {
-      return;
-    }
-    const target = event.target as HTMLElement;
-    if (target.closest("[data-no-drag]")) {
-      return;
-    }
-    void appWindow.startDragging();
-  }
-
   return (
     <div
       data-tauri-drag-region
-      onMouseDown={handleDragStart}
-      className="h-9 flex items-center justify-between bg-void border-b border-border select-none shrink-0"
+      className="flex h-9 shrink-0 select-none items-center justify-between border-border border-b bg-void"
     >
       <div className="flex items-center gap-2 px-2" data-tauri-drag-region>
         {isMac ? (
@@ -66,7 +50,7 @@ export function TitleBar() {
         ) : null}
         <span
           data-tauri-drag-region
-          className="text-text-dim text-[10px] font-mono uppercase tracking-[0.25em]"
+          className="font-mono text-[10px] text-text-dim uppercase tracking-[0.25em]"
         >
           LoopForge
         </span>

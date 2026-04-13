@@ -1,5 +1,5 @@
-mod command_args;
 mod codex;
+mod command_args;
 mod lifecycle;
 mod runner;
 
@@ -39,15 +39,14 @@ impl ShellProvider {
     pub(super) fn current_agent(&self) -> String {
         self.agent_name
             .lock()
-            .map(|guard| guard.clone())
-            .unwrap_or_else(|err| err.into_inner().clone())
+            .map_or_else(|err| err.into_inner().clone(), |guard| guard.clone())
     }
 
     pub(super) fn try_advance_fallback(&self) -> Option<String> {
         let mut index = self
             .fallback_index
             .lock()
-            .unwrap_or_else(|err| err.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         *index += 1;
         let agent = self.fallback_agents.get(*index)?.clone();
         if let Ok(mut name) = self.agent_name.lock() {

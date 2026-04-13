@@ -16,11 +16,7 @@ type WizardExitDialogProps = {
   onConfirm: () => void;
 };
 
-export function WizardExitDialog({
-  open,
-  onOpenChange,
-  onConfirm,
-}: WizardExitDialogProps) {
+export function WizardExitDialog({ open, onOpenChange, onConfirm }: WizardExitDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>

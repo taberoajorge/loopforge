@@ -66,7 +66,11 @@ pub(super) async fn start_fixture_plan<R: Runtime>(
                         plan_bytes: plan_markdown.len(),
                     });
                 }
-                let final_content = if plan_markdown.is_empty() { None } else { Some(plan_markdown) };
+                let final_content = if plan_markdown.is_empty() {
+                    None
+                } else {
+                    Some(plan_markdown)
+                };
                 let _ = app_handle.emit(
                     EVENT_PLAN_COMPLETE,
                     PlanTerminalPayload {

@@ -1,4 +1,7 @@
-use app_services::session::{IterationCounts, IterationSummary, LatestSessionRecord, RuntimeSessionService, SessionRepository, SessionService, StoryCounts};
+use app_services::session::{
+    IterationCounts, IterationSummary, LatestSessionRecord, RuntimeSessionService,
+    SessionRepository, SessionService, StoryCounts,
+};
 use app_services::{ServiceError, SessionStats};
 use ralph_core::prd::Prd;
 use rusqlite::{Connection, OptionalExtension};
@@ -6,6 +9,25 @@ use tauri::Manager;
 
 use crate::commands::execution::IterationRow;
 use crate::loop_manager::LoopError;
+
+fn format_duration_label(duration_secs: i64) -> String {
+    if duration_secs <= 0 {
+        return "0s".to_string();
+    }
+    if duration_secs < 60 {
+        return format!("{duration_secs}s");
+    }
+    let minutes = duration_secs / 60;
+    let seconds = duration_secs % 60;
+    format!("{minutes}m {seconds}s")
+}
+
+fn format_time_label(started_at: &str) -> String {
+    chrono::DateTime::parse_from_rfc3339(started_at).map_or_else(
+        |_| started_at.to_string(),
+        |value| value.format("%H:%M:%S").to_string(),
+    )
+}
 
 pub struct TauriSessionAdapter<'a, R: tauri::Runtime> {
     window: &'a tauri::Window<R>,
@@ -38,7 +60,10 @@ impl<R: tauri::Runtime> SessionRepository for TauriSessionAdapter<'_, R> {
         Ok(handles.contains_key(project_id))
     }
 
-    fn latest_session_record(&self, project_id: &str) -> Result<Option<LatestSessionRecord>, ServiceError> {
+    fn latest_session_record(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<LatestSessionRecord>, ServiceError> {
         self.with_connection(|conn| {
             conn.query_row(
                 "SELECT id, started_at FROM sessions WHERE project_id = ?1 ORDER BY started_at DESC LIMIT 1",
@@ -81,7 +106,7 @@ impl<R: tauri::Runtime> SessionRepository for TauriSessionAdapter<'_, R> {
 
     fn story_counts(&self, project_id: &str) -> Result<StoryCounts, ServiceError> {
         let artifact_dir =
-            crate::storage::artifacts::project_artifact_dir(&self.window.app_handle(), project_id)
+            crate::storage::artifacts::project_artifact_dir(self.window.app_handle(), project_id)
                 .map_err(ServiceError::Internal)?;
         let prd_path = artifact_dir.join("prd.json");
         if !prd_path.exists() {
@@ -97,16 +122,20 @@ impl<R: tauri::Runtime> SessionRepository for TauriSessionAdapter<'_, R> {
             .map_err(|error| ServiceError::Internal(error.to_string()))
     }
 
-    fn stories_per_hour(&self, session: Option<&LatestSessionRecord>, passed_stories: usize) -> Result<f64, ServiceError> {
+    fn stories_per_hour(
+        &self,
+        session: Option<&LatestSessionRecord>,
+        passed_stories: usize,
+    ) -> Result<f64, ServiceError> {
         let Some(started_at) = session.and_then(|record| record.started_at.as_deref()) else {
             return Ok(0.0);
         };
         let Ok(started_at) = chrono::DateTime::parse_from_rfc3339(started_at) else {
             return Ok(0.0);
         };
-        let elapsed_hours =
-            (chrono::Utc::now() - started_at.with_timezone(&chrono::Utc)).num_minutes() as f64
-                / 60.0;
+        let elapsed_hours = (chrono::Utc::now() - started_at.with_timezone(&chrono::Utc))
+            .num_minutes() as f64
+            / 60.0;
         if elapsed_hours > 0.0 {
             Ok(passed_stories as f64 / elapsed_hours)
         } else {
@@ -114,11 +143,15 @@ impl<R: tauri::Runtime> SessionRepository for TauriSessionAdapter<'_, R> {
         }
     }
 
-    fn iteration_history(&self, project_id: &str, limit: usize) -> Result<Vec<IterationSummary>, ServiceError> {
+    fn iteration_history(
+        &self,
+        project_id: &str,
+        limit: usize,
+    ) -> Result<Vec<IterationSummary>, ServiceError> {
         self.with_connection(|conn| {
             let mut statement = conn
                 .prepare(
-                "SELECT i.story_id, i.started_at, i.duration_secs, i.result, i.agent_used
+                    "SELECT i.story_id, i.started_at, i.duration_secs, i.result, i.agent_used
                  FROM iterations i
                  JOIN sessions s ON i.session_id = s.id
                  WHERE s.project_id = ?1
@@ -144,7 +177,10 @@ impl<R: tauri::Runtime> SessionRepository for TauriSessionAdapter<'_, R> {
 }
 
 #[tauri::command]
-pub async fn session_stats_command<R: tauri::Runtime>(window: tauri::Window<R>, project_id: String) -> Result<SessionStats, LoopError> {
+pub async fn session_stats_command<R: tauri::Runtime>(
+    window: tauri::Window<R>,
+    project_id: String,
+) -> Result<SessionStats, LoopError> {
     RuntimeSessionService::new(TauriSessionAdapter::new(&window))
         .session_stats(&required(project_id, "project_id").map_err(LoopError::Path)?)
         .map_err(loop_error)
@@ -156,15 +192,24 @@ pub async fn get_iteration_history_command<R: tauri::Runtime>(
     project_id: String,
 ) -> Result<Vec<IterationRow>, LoopError> {
     RuntimeSessionService::new(TauriSessionAdapter::new(&window))
-        .iteration_history(&required(project_id, "project_id").map_err(LoopError::Path)?, 200)
+        .iteration_history(
+            &required(project_id, "project_id").map_err(LoopError::Path)?,
+            200,
+        )
         .map(|rows| {
             rows.into_iter()
-                .map(|row| IterationRow {
-                    story_id: row.story_id,
-                    started_at: row.started_at,
-                    duration_secs: row.duration_secs,
-                    result: row.result,
-                    agent_used: row.agent_used,
+                .map(|row| {
+                    let started_at = row.started_at;
+                    let duration_secs = row.duration_secs;
+                    IterationRow {
+                        story_id: row.story_id,
+                        started_at: started_at.clone(),
+                        duration_secs,
+                        duration_label: format_duration_label(duration_secs),
+                        time_label: format_time_label(&started_at),
+                        result: row.result,
+                        agent_used: row.agent_used,
+                    }
                 })
                 .collect()
         })

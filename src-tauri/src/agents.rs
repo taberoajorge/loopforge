@@ -78,7 +78,8 @@ async fn probe_agent(app: &AppHandle, binary: &str) -> (bool, Option<String>) {
     {
         return (true, Some(version));
     }
-    if let Some(version) = crate::agent_runtime_env::run_version_probe(&binary_path, &path_env, "-v")
+    if let Some(version) =
+        crate::agent_runtime_env::run_version_probe(&binary_path, &path_env, "-v")
     {
         return (true, Some(version));
     }
@@ -94,7 +95,8 @@ pub struct FallbackChain {
 #[cfg(test)]
 impl FallbackChain {
     pub fn new(agents: Vec<AgentInfo>) -> Self {
-        let available: Vec<AgentInfo> = agents.into_iter().filter(|agent| agent.available).collect();
+        let available: Vec<AgentInfo> =
+            agents.into_iter().filter(|agent| agent.available).collect();
         Self {
             agents: available,
             current_index: 0,
@@ -134,8 +136,8 @@ pub async fn detect_agents(
     for (name, binary) in KNOWN_AGENTS {
         let (available, version) = probe_agent(&app, binary).await;
         detected.push(AgentInfo {
-            name: name.to_string(),
-            binary: binary.to_string(),
+            name: (*name).to_string(),
+            binary: (*binary).to_string(),
             version,
             available,
         });
@@ -145,13 +147,21 @@ pub async fn detect_agents(
 }
 
 #[tauri::command]
+pub async fn get_known_agents() -> Result<Vec<String>, AgentError> {
+    Ok(KNOWN_AGENTS
+        .iter()
+        .map(|(name, _)| (*name).to_string())
+        .collect())
+}
+
+#[tauri::command]
 pub async fn get_agent_capabilities(
     agent: String,
 ) -> Result<crate::agent_profiles::AgentCapabilities, AgentError> {
     let normalized = agent.trim().to_lowercase();
     if let Some(runtime) = resolve_test_runtime() {
         return crate::test_support::agents::fixture_capabilities(&runtime, &normalized)
-            .ok_or_else(|| AgentError::UnknownAgent(normalized));
+            .ok_or(AgentError::UnknownAgent(normalized));
     }
     let Some(binary_name) = known_agent_binary(&normalized) else {
         return Err(AgentError::UnknownAgent(normalized));
@@ -163,6 +173,66 @@ pub async fn get_agent_capabilities(
         binary_path.as_deref(),
         &path_env,
     ))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolvedAgentSelection {
+    pub capabilities: crate::agent_profiles::AgentCapabilities,
+    pub resolved_model: Option<String>,
+    pub resolved_effort: Option<String>,
+}
+
+fn resolve_model(
+    caps: &crate::agent_profiles::AgentCapabilities,
+    current: Option<String>,
+) -> Option<String> {
+    if !caps.supports_model {
+        return None;
+    }
+    let current_trimmed = current.filter(|val| !val.trim().is_empty());
+    if let Some(ref model) = current_trimmed {
+        if caps.models.iter().any(|entry| entry.id == *model) {
+            return current_trimmed;
+        }
+    }
+    caps.default_model
+        .clone()
+        .or_else(|| caps.models.first().map(|entry| entry.id.clone()))
+}
+
+fn resolve_effort(
+    caps: &crate::agent_profiles::AgentCapabilities,
+    current: Option<String>,
+) -> Option<String> {
+    if !caps.supports_effort {
+        return None;
+    }
+    let current_trimmed = current.filter(|val| !val.trim().is_empty());
+    if let Some(ref effort) = current_trimmed {
+        if caps.efforts.iter().any(|entry| entry.id == *effort) {
+            return current_trimmed;
+        }
+    }
+    caps.default_effort
+        .clone()
+        .or_else(|| caps.efforts.first().map(|entry| entry.id.clone()))
+}
+
+#[tauri::command]
+pub async fn resolve_agent_selection(
+    agent: String,
+    current_model: Option<String>,
+    current_effort: Option<String>,
+) -> Result<ResolvedAgentSelection, AgentError> {
+    let caps = get_agent_capabilities(agent).await?;
+    let resolved_model = resolve_model(&caps, current_model);
+    let resolved_effort = resolve_effort(&caps, current_effort);
+    Ok(ResolvedAgentSelection {
+        capabilities: caps,
+        resolved_model,
+        resolved_effort,
+    })
 }
 
 #[tauri::command]

@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../../components/ui/card";
 
 type TerminalFrameProps = {
   children: ReactNode;
@@ -19,7 +25,9 @@ export function TerminalFrame({
       <Card className="flex h-full min-h-0 flex-col overflow-hidden">
         <CardHeader className="flex-row items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
-            <CardTitle className="truncate text-xs font-mono uppercase tracking-wider">{title}</CardTitle>
+            <CardTitle className="truncate font-mono text-xs uppercase tracking-wider">
+              {title}
+            </CardTitle>
             <CardDescription className="mt-1">{subtitle}</CardDescription>
           </div>
           {controls ? <div className="flex shrink-0 items-center gap-2">{controls}</div> : null}

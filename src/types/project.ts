@@ -20,5 +20,7 @@ export interface Project {
   currentAgent?: string | null;
   sessionStartedAt?: string | null;
   sessionEndedAt?: string | null;
+  durationLabel?: string | null;
+  uptimeLabel?: string | null;
   wizardStep?: string | null;
 }

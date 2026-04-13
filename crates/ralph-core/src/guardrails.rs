@@ -1,7 +1,7 @@
 use crate::errors::GuardrailError;
 use std::path::Path;
 
-const GUARDRAILS_TEMPLATE: &str = r#"# Guardrails (Signs)
+const GUARDRAILS_TEMPLATE: &str = r"# Guardrails (Signs)
 
 Lessons learned from previous iterations. The agent MUST read this FIRST.
 
@@ -19,7 +19,7 @@ When something fails repeatedly, add a sign:
 - **Trigger**: [When it applies]
 - **Instruction**: [What to do instead]
 - **Added after**: Iteration N
-"#;
+";
 
 pub fn ensure_exists(path: &Path) -> Result<(), GuardrailError> {
     if !path.exists() {

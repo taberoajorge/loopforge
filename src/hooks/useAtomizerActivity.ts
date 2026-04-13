@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import {
+  type AtomizeActivityPayload,
   getAtomizerActivityLog,
   onAtomizationActivity,
-  type AtomizeActivityPayload,
 } from "../lib/tauri";
 import type { AtomizeActivityEvent } from "../types/wizard";
 

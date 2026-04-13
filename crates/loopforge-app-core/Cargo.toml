@@ -5,3 +5,6 @@ edition = "2021"
 description = "Application core services for LoopForge backend orchestration"
 
 [dependencies]
+
+[lints]
+workspace = true

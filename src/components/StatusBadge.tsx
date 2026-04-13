@@ -1,36 +1,20 @@
-import * as React from "react";
+import type * as React from "react";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useDisplayVocabularyStore } from "@/stores/displayVocabularyStore";
 
-const STATUS_LABELS = {
-  draft: "Draft",
-  pending: "Pending",
-  current: "Current",
-  running: "Running",
-  paused: "Paused",
-  blocked: "Blocked",
-  completed: "Completed",
-  success: "Success",
-  error: "Error",
-  failed: "Failed",
-  archived: "Archived",
-} as const;
-
-const STATUS_VARIANTS: Record<StatusBadgeStatus, NonNullable<BadgeProps["variant"]>> = {
-  draft: "neutral",
-  pending: "neutral",
-  current: "info",
-  running: "info",
-  paused: "warning",
-  blocked: "danger",
-  completed: "success",
-  success: "success",
-  error: "danger",
-  failed: "danger",
-  archived: "neutral",
-};
-
-export type StatusBadgeStatus = keyof typeof STATUS_LABELS;
+export type StatusBadgeStatus =
+  | "draft"
+  | "pending"
+  | "current"
+  | "running"
+  | "paused"
+  | "blocked"
+  | "completed"
+  | "success"
+  | "error"
+  | "failed"
+  | "archived";
 
 export type StatusBadgeProps = Omit<BadgeProps, "children" | "variant"> & {
   status: StatusBadgeStatus;
@@ -50,13 +34,26 @@ export function StatusBadge({
   uppercase = false,
   ...props
 }: StatusBadgeProps) {
-  const content = label ?? STATUS_LABELS[status];
+  const vocabulary = useDisplayVocabularyStore((state) => state.vocabulary);
+  const variant =
+    vocabulary?.statusVariants[status] ??
+    (status === "paused"
+      ? "warning"
+      : status === "blocked" || status === "error" || status === "failed"
+        ? "danger"
+        : status === "completed" || status === "success"
+          ? "success"
+          : status === "running" || status === "current"
+            ? "info"
+            : "neutral");
+  const fallbackLabel = `${status.slice(0, 1).toUpperCase()}${status.slice(1)}`;
+  const content = label ?? vocabulary?.statusLabels[status] ?? fallbackLabel;
 
   return (
     <Badge
-      variant={STATUS_VARIANTS[status]}
+      variant={variant as NonNullable<BadgeProps["variant"]>}
       emphasis={emphasis}
-      className={cn(uppercase ? "tracking-wide uppercase" : "", className)}
+      className={cn(uppercase ? "uppercase tracking-wide" : "", className)}
       {...props}
     >
       {leading}

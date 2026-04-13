@@ -1,5 +1,5 @@
 use crate::commands::validation::required_trimmed;
-use crate::projects::{ProjectError, WizardResumeState};
+use crate::projects::{ProjectError, WizardHydrationResult, WizardResumeState};
 use crate::storage::db::DbState;
 use tauri::{AppHandle, State};
 
@@ -78,4 +78,15 @@ pub async fn resume_wizard(
     let normalized_project_id =
         required_trimmed(project_id, "project_id").map_err(ProjectError::Path)?;
     crate::projects::wizard::resume_wizard(app, db, normalized_project_id).await
+}
+
+#[tauri::command]
+pub async fn hydrate_wizard(
+    app: AppHandle,
+    db: State<'_, DbState>,
+    project_id: String,
+) -> Result<WizardHydrationResult, ProjectError> {
+    let normalized_project_id =
+        required_trimmed(project_id, "project_id").map_err(ProjectError::Path)?;
+    crate::projects::wizard::hydrate_wizard(app, db, normalized_project_id).await
 }

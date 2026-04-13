@@ -1,31 +1,32 @@
-import type {
-  AtomizeArgs,
-  AtomizeProgress,
-} from "../../lib/tauri";
-import { mergeFixture, type DeepPartial } from "./shared";
+import type { AtomizeArgs, AtomizeProgress } from "../../lib/tauri";
+import { type DeepPartial, mergeFixture } from "./shared";
 import { createPrd, createUserStory } from "./wizard";
 
 export function createAtomizeArgs(overrides?: DeepPartial<AtomizeArgs>): AtomizeArgs {
-  return mergeFixture<AtomizeArgs>({
-    projectId: "project-001",
-    projectName: "LoopForge",
-    projectDir: "/work/loopforge",
-    agent: "codex",
-    model: "gpt-5.4",
-    effort: "medium",
-  }, overrides);
+  return mergeFixture<AtomizeArgs>(
+    {
+      projectId: "project-001",
+      projectName: "LoopForge",
+      projectDir: "/work/loopforge",
+      agent: "codex",
+      model: "gpt-5.4",
+      effort: "medium",
+    },
+    overrides,
+  );
 }
 
-export function createAtomizeProgress(
-  overrides?: DeepPartial<AtomizeProgress>,
-): AtomizeProgress {
-  return mergeFixture<AtomizeProgress>({
-    stage: 2,
-    stageName: "Chunk",
-    message: "Chunking plan",
-    projectId: "project-001",
-    elapsedMs: 0,
-  }, overrides);
+export function createAtomizeProgress(overrides?: DeepPartial<AtomizeProgress>): AtomizeProgress {
+  return mergeFixture<AtomizeProgress>(
+    {
+      stage: 2,
+      stageName: "Chunk",
+      message: "Chunking plan",
+      projectId: "project-001",
+      elapsedMs: 0,
+    },
+    overrides,
+  );
 }
 
 export function createAtomizedPrd() {

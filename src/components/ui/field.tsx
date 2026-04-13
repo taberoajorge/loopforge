@@ -1,14 +1,14 @@
-import * as React from "react";
 import { cva } from "class-variance-authority";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { Label } from "./label";
 
 const fieldControlVariants = cva(
-  "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm font-sans text-text shadow-sm transition-[border-color,box-shadow,color,background-color] outline-none placeholder:text-text-dim focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-elevated disabled:text-text-dim aria-[invalid=true]:border-destructive aria-[invalid=true]:focus-visible:border-destructive aria-[invalid=true]:focus-visible:ring-destructive/30",
+  "w-full rounded-md border border-border bg-surface px-3 py-2 font-sans text-sm text-text shadow-sm outline-none transition-[border-color,box-shadow,color,background-color] placeholder:text-text-dim focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-elevated disabled:text-text-dim aria-[invalid=true]:border-destructive aria-[invalid=true]:focus-visible:border-destructive aria-[invalid=true]:focus-visible:ring-destructive/30",
 );
 
-const fieldMessageVariants = cva("text-xs font-sans leading-relaxed", {
+const fieldMessageVariants = cva("font-sans text-xs leading-relaxed", {
   variants: {
     tone: {
       default: "text-text-muted",
@@ -49,9 +49,9 @@ export function getFieldControlProps({
     ariaInvalid === undefined
       ? invalid
       : ariaInvalid === true ||
-          ariaInvalid === "true" ||
-          ariaInvalid === "grammar" ||
-          ariaInvalid === "spelling";
+        ariaInvalid === "true" ||
+        ariaInvalid === "grammar" ||
+        ariaInvalid === "spelling";
 
   return {
     disabled,
@@ -77,13 +77,7 @@ export type FieldMessageProps = React.HTMLAttributes<HTMLParagraphElement> & {
 
 const FieldMessage = React.forwardRef<HTMLParagraphElement, FieldMessageProps>(
   ({ className, tone = "default", ...props }, ref) => {
-    return (
-      <p
-        ref={ref}
-        className={cn(fieldMessageVariants({ tone }), className)}
-        {...props}
-      />
-    );
+    return <p ref={ref} className={cn(fieldMessageVariants({ tone }), className)} {...props} />;
   },
 );
 
@@ -135,19 +129,18 @@ const Field = React.forwardRef<HTMLDivElement, FieldProps>(
       generatedId;
     const message = errorText ?? helperText;
     const messageId = message ? `${controlId}-message` : undefined;
-    const enhancedChild =
-      childElement
-        ? React.cloneElement(childElement, {
-            id: controlId,
-            ...getFieldControlProps({
-              describedBy: messageId,
-              disabled: childElement.props.disabled ?? disabled,
-              invalid,
-              ariaDescribedBy: childElement.props["aria-describedby"],
-              ariaInvalid: childElement.props["aria-invalid"],
-            }),
-          })
-        : child;
+    const enhancedChild = childElement
+      ? React.cloneElement(childElement, {
+          id: controlId,
+          ...getFieldControlProps({
+            describedBy: messageId,
+            disabled: childElement.props.disabled ?? disabled,
+            invalid,
+            ariaDescribedBy: childElement.props["aria-describedby"],
+            ariaInvalid: childElement.props["aria-invalid"],
+          }),
+        })
+      : child;
 
     return (
       <FieldControl ref={ref} className={className} {...props}>

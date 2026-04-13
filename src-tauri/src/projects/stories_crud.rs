@@ -9,9 +9,8 @@ fn load_prd<R: Runtime>(app: &AppHandle<R>, project_id: &str) -> Result<Prd, Pro
     let dir = artifact_dir(app, project_id)?;
     let prd_path = dir.join("prd.json");
     if prd_path.exists() {
-        Prd::load(&prd_path).map_err(|_| {
-            ProjectError::Path(format!("Failed to load prd.json for {project_id}"))
-        })
+        Prd::load(&prd_path)
+            .map_err(|_| ProjectError::Path(format!("Failed to load prd.json for {project_id}")))
     } else {
         Ok(Prd {
             project_name: String::new(),
@@ -24,7 +23,11 @@ fn load_prd<R: Runtime>(app: &AppHandle<R>, project_id: &str) -> Result<Prd, Pro
     }
 }
 
-fn save_prd<R: Runtime>(app: &AppHandle<R>, project_id: &str, prd: &Prd) -> Result<(), ProjectError> {
+fn save_prd<R: Runtime>(
+    app: &AppHandle<R>,
+    project_id: &str,
+    prd: &Prd,
+) -> Result<(), ProjectError> {
     let dir = artifact_dir(app, project_id)?;
     std::fs::create_dir_all(&dir)?;
     let json = serde_json::to_string_pretty(prd)?;
@@ -33,7 +36,10 @@ fn save_prd<R: Runtime>(app: &AppHandle<R>, project_id: &str, prd: &Prd) -> Resu
 }
 
 fn total_estimated_minutes(prd: &Prd) -> u32 {
-    prd.stories.iter().map(|story| story.estimated_minutes).sum()
+    prd.stories
+        .iter()
+        .map(|story| story.estimated_minutes)
+        .sum()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,14 +113,20 @@ pub fn update_story<R: Runtime>(
             story.priority = parsed;
         }
     }
-    if let Some(complexity) = patch.get("estimatedComplexity").and_then(|val| val.as_str()) {
+    if let Some(complexity) = patch
+        .get("estimatedComplexity")
+        .and_then(|val| val.as_str())
+    {
         if let Ok(parsed) = serde_json::from_value::<ralph_core::prd::Complexity>(
             serde_json::Value::String(complexity.to_string()),
         ) {
             story.estimated_complexity = parsed;
         }
     }
-    if let Some(minutes) = patch.get("estimatedMinutes").and_then(|val| val.as_u64()) {
+    if let Some(minutes) = patch
+        .get("estimatedMinutes")
+        .and_then(serde_json::Value::as_u64)
+    {
         story.estimated_minutes = minutes as u32;
     }
 

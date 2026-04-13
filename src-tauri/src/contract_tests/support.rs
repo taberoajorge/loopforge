@@ -121,8 +121,8 @@ pub async fn start_ask(harness: &TestHarness, project_id: &str, question: &str) 
     let project_dir = {
         let db = harness.app.state::<DbState>();
         let conn = db.0.lock().unwrap();
-        let conversation = crate::ask_engine::storage::get_or_create_conversation(&conn, project_id)
-            .unwrap();
+        let conversation =
+            crate::ask_engine::storage::get_or_create_conversation(&conn, project_id).unwrap();
         crate::ask_engine::storage::insert_message(
             &conn,
             &conversation.id,

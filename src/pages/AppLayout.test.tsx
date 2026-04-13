@@ -1,6 +1,8 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
+import { useNotificationStore } from "../stores/notificationStore";
+import { useProjectStore } from "../stores/projectStore";
 import { createProject } from "../test/fixtures";
 import {
   mockNotificationPermission,
@@ -8,20 +10,20 @@ import {
   requestPermissionMock,
 } from "../test/mocks";
 import { renderRoute } from "../test/renderRoute";
-import { useNotificationStore } from "../stores/notificationStore";
-import { useProjectStore } from "../stores/projectStore";
 import { AppLayout } from "./AppLayout";
 
 function renderAppLayout() {
   return renderRoute(
-    [{
-      path: "/",
-      element: <AppLayout />,
-      children: [
-        { index: true, element: <div data-testid="home-route">home</div> },
-        { path: "monitor/:id", element: <div data-testid="monitor-route">monitor</div> },
-      ],
-    }],
+    [
+      {
+        path: "/",
+        element: <AppLayout />,
+        children: [
+          { index: true, element: <div data-testid="home-route">home</div> },
+          { path: "monitor/:id", element: <div data-testid="monitor-route">monitor</div> },
+        ],
+      },
+    ],
     ["/"],
   );
 }

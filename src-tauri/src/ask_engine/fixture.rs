@@ -1,4 +1,4 @@
-use crate::ask_engine::types::{AskCompletePayload, AskStreamPayload};
+use crate::ask_engine::types::{AskCompletePayload, AskMessage, AskStreamPayload};
 use crate::events::{EVENT_ASK_COMPLETE, EVENT_ASK_STREAM};
 use crate::test_support::runtime::{FixtureSet, TestRuntime};
 use std::path::Path;
@@ -38,11 +38,20 @@ pub async fn spawn_fixture_ask<R: tauri::Runtime>(
     let _ = app.emit(
         EVENT_ASK_COMPLETE,
         AskCompletePayload {
-            project_id,
-            message_id,
-            full_content: response,
+            project_id: project_id.clone(),
+            message_id: message_id.clone(),
+            full_content: response.clone(),
             agent: "fixture".to_string(),
             model: Some("deterministic".to_string()),
+            message: AskMessage {
+                id: message_id,
+                conversation_id: String::new(),
+                role: "assistant".to_string(),
+                content: response,
+                agent: Some("fixture".to_string()),
+                model: Some("deterministic".to_string()),
+                created_at: chrono::Utc::now().to_rfc3339(),
+            },
         },
     );
 }

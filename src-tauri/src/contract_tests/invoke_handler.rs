@@ -30,7 +30,8 @@ async fn invoke_handler_covers_lifecycle_and_runtime_commands() {
         harness.invoke_ok("query_plan_status", json!({ "projectId": project.id }));
     assert!(status.is_some());
     harness.wait_for_plan_idle(&project.id).await;
-    let plan: Option<String> = harness.invoke_ok("load_existing_plan", json!({ "projectId": project.id }));
+    let plan: Option<String> =
+        harness.invoke_ok("load_existing_plan", json!({ "projectId": project.id }));
     assert!(plan.is_some());
 
     let prd: Prd = harness.invoke_ok(

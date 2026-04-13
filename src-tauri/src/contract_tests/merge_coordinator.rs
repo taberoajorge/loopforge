@@ -9,7 +9,15 @@ fn parallel_completions_produce_one_ordered_write_sequence() {
     seed_prd(&root);
 
     let actions = ordered_merge_actions(vec![
-        completion("S-002", "wt-b", false, true, 1, Some("guardrail from wt-b"), Some("bbb222")),
+        completion(
+            "S-002",
+            "wt-b",
+            false,
+            true,
+            1,
+            Some("guardrail from wt-b"),
+            Some("bbb222"),
+        ),
         completion("S-001", "wt-a", true, false, 0, None, Some("aaa111")),
     ]);
 
@@ -31,8 +39,18 @@ fn parallel_completions_produce_one_ordered_write_sequence() {
     );
 
     let prd = Prd::load(&root.join("prd.json")).unwrap();
-    assert!(prd.stories.iter().find(|story| story.id == "S-001").unwrap().passes);
-    let blocked = prd.stories.iter().find(|story| story.id == "S-002").unwrap();
+    assert!(
+        prd.stories
+            .iter()
+            .find(|story| story.id == "S-001")
+            .unwrap()
+            .passes
+    );
+    let blocked = prd
+        .stories
+        .iter()
+        .find(|story| story.id == "S-002")
+        .unwrap();
     assert!(!blocked.passes);
     assert!(blocked.blocked);
     assert_eq!(
@@ -64,7 +82,9 @@ fn merge_targets_keep_contract_artifact_filenames() {
         .collect();
 
     assert!(targets.iter().any(|target| target.ends_with("prd.json")));
-    assert!(targets.iter().any(|target| target.ends_with("guardrails.md")));
+    assert!(targets
+        .iter()
+        .any(|target| target.ends_with("guardrails.md")));
     assert!(targets.iter().any(|target| target == "session:wt-c"));
 
     let _ = std::fs::remove_dir_all(root);

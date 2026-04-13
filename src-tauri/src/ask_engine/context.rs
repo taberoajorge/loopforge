@@ -15,8 +15,10 @@ pub fn build_ask_context(
 ) -> String {
     let mut sections: Vec<String> = Vec::new();
 
-    sections.push("You are a project assistant for a software project managed by LoopForge.".into());
-    sections.push("Answer questions about the project state, progress, blockers, and stories.".into());
+    sections
+        .push("You are a project assistant for a software project managed by LoopForge.".into());
+    sections
+        .push("Answer questions about the project state, progress, blockers, and stories.".into());
     sections.push("Be concise and direct. Reference story IDs when relevant.\n".into());
 
     if let Some(stories_section) = build_stories_section(artifact_dir) {
@@ -51,10 +53,22 @@ fn build_stories_section(artifact_dir: &Path) -> Option<String> {
     let mut lines = vec!["## PRD Stories".to_string()];
     for story in stories {
         let story_id = story.get("id").and_then(|val| val.as_str()).unwrap_or("?");
-        let title = story.get("title").and_then(|val| val.as_str()).unwrap_or("untitled");
-        let passes = story.get("passes").and_then(|val| val.as_bool()).unwrap_or(false);
-        let blocked = story.get("blocked").and_then(|val| val.as_bool()).unwrap_or(false);
-        let attempts = story.get("attempts").and_then(|val| val.as_u64()).unwrap_or(0);
+        let title = story
+            .get("title")
+            .and_then(|val| val.as_str())
+            .unwrap_or("untitled");
+        let passes = story
+            .get("passes")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+        let blocked = story
+            .get("blocked")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+        let attempts = story
+            .get("attempts")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
         let status = if passes {
             "done"
         } else if blocked {
@@ -62,7 +76,9 @@ fn build_stories_section(artifact_dir: &Path) -> Option<String> {
         } else {
             "pending"
         };
-        lines.push(format!("- {story_id}: {title} [{status}, {attempts} attempts]"));
+        lines.push(format!(
+            "- {story_id}: {title} [{status}, {attempts} attempts]"
+        ));
     }
     lines.push(String::new());
     Some(lines.join("\n"))
@@ -111,15 +127,20 @@ fn build_iterations_section(conn: &Connection, project_id: &str) -> Option<Strin
         .ok()?;
 
     let rows: Vec<String> = stmt
-        .query_map(rusqlite::params![project_id, MAX_ITERATIONS as i64], |row| {
-            let story_id: String = row.get(0)?;
-            let result: String = row.get(1)?;
-            let agent: String = row.get(2)?;
-            let duration: i64 = row.get(3)?;
-            Ok(format!("- {story_id}: {result} (agent: {agent}, {duration}s)"))
-        })
+        .query_map(
+            rusqlite::params![project_id, MAX_ITERATIONS as i64],
+            |row| {
+                let story_id: String = row.get(0)?;
+                let result: String = row.get(1)?;
+                let agent: String = row.get(2)?;
+                let duration: i64 = row.get(3)?;
+                Ok(format!(
+                    "- {story_id}: {result} (agent: {agent}, {duration}s)"
+                ))
+            },
+        )
         .ok()?
-        .filter_map(|row| row.ok())
+        .filter_map(Result::ok)
         .collect();
 
     if rows.is_empty() {
@@ -140,7 +161,11 @@ fn build_history_section(history: &[AskMessage]) -> String {
     };
     let mut lines = vec!["## Conversation History".to_string()];
     for msg in &history[start..] {
-        let role_label = if msg.role == "user" { "User" } else { "Assistant" };
+        let role_label = if msg.role == "user" {
+            "User"
+        } else {
+            "Assistant"
+        };
         lines.push(format!("{role_label}: {}", msg.content));
     }
     lines.push(String::new());

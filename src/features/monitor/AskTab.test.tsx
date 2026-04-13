@@ -1,15 +1,16 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useAskStore } from "../../stores/askStore";
 import {
   createAgentCapabilities,
   createAskCompletePayload,
   createAskErrorPayload,
   createAskMessage,
+  createAskQuestionResult,
   createAskStreamPayload,
 } from "../../test/fixtures";
 import { emitTauriEvent, mockTauriCommands } from "../../test/mocks";
-import { useAskStore } from "../../stores/askStore";
 import { AskTab } from "./AskTab";
 
 function resetAskStore() {
@@ -30,14 +31,28 @@ describe("AskTab", () => {
     resetAskStore();
     Element.prototype.scrollTo ??= () => {};
     vi.spyOn(Element.prototype, "scrollTo").mockImplementation(() => {});
-    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("00000000-0000-4000-8000-000000000000");
+    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(
+      "00000000-0000-4000-8000-000000000000",
+    );
   });
 
   it("submits prompts and renders streamed and completed answers", async () => {
-    const askQuestion = vi.fn(async () => "message-002");
+    const askQuestion = vi.fn(async () =>
+      createAskQuestionResult({
+        messageId: "message-002",
+        userMessage: createAskMessage({
+          id: "message-user-002",
+          role: "user",
+          content: "What changed?",
+          agent: null,
+          model: null,
+        }),
+      }),
+    );
     mockTauriCommands({
       ask_history: [],
       ask_question: askQuestion,
+      get_known_agents: ["claude", "codex", "cursor", "gemini", "opencode"],
       get_agent_capabilities: createAgentCapabilities({
         supportsModel: false,
         supportsEffort: false,
@@ -51,7 +66,10 @@ describe("AskTab", () => {
 
     renderAskTab();
 
-    await user.type(screen.getByPlaceholderText("Ask about your project..."), "What changed?{enter}");
+    await user.type(
+      screen.getByPlaceholderText("Ask about your project..."),
+      "What changed?{enter}",
+    );
 
     await waitFor(() =>
       expect(askQuestion).toHaveBeenCalledWith({
@@ -87,7 +105,19 @@ describe("AskTab", () => {
   it("renders history and error responses from mocked ask events", async () => {
     mockTauriCommands({
       ask_history: [createAskMessage({ role: "assistant", content: "Existing answer" })],
-      ask_question: vi.fn(async () => "message-003"),
+      ask_question: vi.fn(async () =>
+        createAskQuestionResult({
+          messageId: "message-003",
+          userMessage: createAskMessage({
+            id: "message-user-003",
+            role: "user",
+            content: "Need help",
+            agent: null,
+            model: null,
+          }),
+        }),
+      ),
+      get_known_agents: ["claude", "codex", "cursor", "gemini", "opencode"],
       get_agent_capabilities: createAgentCapabilities({
         supportsModel: false,
         supportsEffort: false,

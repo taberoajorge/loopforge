@@ -29,15 +29,11 @@ export const CONFIG_DEFAULTS = {
   configLoaded: false,
 };
 
-export const createConfigSlice: StateCreator<
-  WizardConfigSlice,
-  [],
-  [],
-  WizardConfigSlice
-> = (set) => ({
+export const createConfigSlice: StateCreator<WizardConfigSlice, [], [], WizardConfigSlice> = (
+  set,
+) => ({
   ...CONFIG_DEFAULTS,
-  setConfig: (config) =>
-    set((state) => ({ config: { ...state.config, ...config } })),
+  setConfig: (config) => set((state) => ({ config: { ...state.config, ...config } })),
   setFullConfig: (config) => set({ config, configLoaded: true }),
   setConfigLoaded: (loaded) => set({ configLoaded: loaded }),
 });

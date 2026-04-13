@@ -42,8 +42,7 @@ export const useAskStore = create<AskState>()((set, get) => ({
     set({ ...INITIAL_STATE, activeProjectId: projectId, selectedAgent: get().selectedAgent });
   },
   setMessages: (messages) => set({ messages }),
-  addMessage: (message) =>
-    set((state) => ({ messages: [...state.messages, message] })),
+  addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
   setStreamingContent: (content) => set({ streamingContent: content }),
   appendStreamChunk: (chunk) =>
     set((state) => ({ streamingContent: state.streamingContent + chunk })),

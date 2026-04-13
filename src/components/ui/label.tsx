@@ -1,10 +1,10 @@
-import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
 const labelVariants = cva(
-  "flex items-center gap-2 text-xs font-sans font-medium uppercase tracking-[0.16em] text-text-muted",
+  "flex items-center gap-2 font-medium font-sans text-text-muted text-xs uppercase tracking-[0.16em]",
   {
     variants: {
       disabled: {
@@ -30,21 +30,39 @@ export type LabelProps = React.LabelHTMLAttributes<HTMLLabelElement> &
   };
 
 const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
-  ({ children, className, disabled, invalid, optionalText, required, ...props }, ref) => {
-    return (
-      <label
-        ref={ref}
-        className={cn(labelVariants({ disabled, invalid }), className)}
-        {...props}
-      >
+  ({ children, className, disabled, htmlFor, invalid, optionalText, required, ...props }, ref) => {
+    const content = (
+      <>
         <span className="min-w-0">{children}</span>
         {required ? <span className="text-primary">*</span> : null}
         {optionalText ? (
-          <span className="text-[10px] font-mono tracking-[0.24em] text-text-dim">
+          <span className="font-mono text-[10px] text-text-dim tracking-[0.24em]">
             {optionalText}
           </span>
         ) : null}
-      </label>
+      </>
+    );
+
+    if (htmlFor) {
+      return (
+        <label
+          ref={ref}
+          htmlFor={htmlFor}
+          className={cn(labelVariants({ disabled, invalid }), className)}
+          {...props}
+        >
+          {content}
+        </label>
+      );
+    }
+
+    return (
+      <div
+        ref={ref as React.Ref<HTMLDivElement>}
+        className={cn(labelVariants({ disabled, invalid }), className)}
+      >
+        {content}
+      </div>
     );
   },
 );

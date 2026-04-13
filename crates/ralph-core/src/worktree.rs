@@ -32,7 +32,11 @@ pub struct WorktreeDiff {
     pub deletions: u32,
 }
 
-pub async fn create(work_dir: &Path, worktree_path: &str, branch: &str) -> Result<WorktreeInfo, WorktreeError> {
+pub async fn create(
+    work_dir: &Path,
+    worktree_path: &str,
+    branch: &str,
+) -> Result<WorktreeInfo, WorktreeError> {
     let create_branch = ["worktree", "add", worktree_path, "-b", branch];
     if run_git(work_dir, &create_branch).await.is_err() {
         let existing_branch = ["worktree", "add", worktree_path, branch];
@@ -46,7 +50,11 @@ pub async fn list(work_dir: &Path) -> Result<Vec<WorktreeInfo>, WorktreeError> {
     Ok(parse_worktree_list(&output))
 }
 
-pub async fn remove(work_dir: &Path, worktree_path: &Path, branch: Option<&str>) -> Result<(), WorktreeError> {
+pub async fn remove(
+    work_dir: &Path,
+    worktree_path: &Path,
+    branch: Option<&str>,
+) -> Result<(), WorktreeError> {
     let target = worktree_path.to_string_lossy().into_owned();
     run_git(work_dir, &["worktree", "remove", &target, "--force"]).await?;
     if let Some(branch_name) = branch {
@@ -64,7 +72,11 @@ pub async fn inspect(work_dir: &Path, worktree_path: &Path) -> Result<WorktreeIn
         .ok_or(WorktreeError::NotFound(target))
 }
 
-pub async fn diff(work_dir: &Path, from_ref: &str, to_ref: &str) -> Result<WorktreeDiff, WorktreeError> {
+pub async fn diff(
+    work_dir: &Path,
+    from_ref: &str,
+    to_ref: &str,
+) -> Result<WorktreeDiff, WorktreeError> {
     let range = format!("{from_ref}..{to_ref}");
     let output = run_git(work_dir, &["diff", "--numstat", &range]).await?;
     Ok(parse_diff_numstat(&output))
@@ -78,7 +90,10 @@ pub fn parse_worktree_list(raw: &str) -> Vec<WorktreeInfo> {
             if !current.path.is_empty() {
                 worktrees.push(current);
             }
-            current = WorktreeInfo { path: path.to_string(), ..WorktreeInfo::default() };
+            current = WorktreeInfo {
+                path: path.to_string(),
+                ..WorktreeInfo::default()
+            };
             continue;
         }
         if let Some(head) = line.strip_prefix("HEAD ") {
@@ -178,6 +193,13 @@ mod tests {
     #[test]
     fn parses_numstat_safely() {
         let raw = "10\t2\ta.rs\n-\t-\tb.bin\n";
-        assert_eq!(parse_diff_numstat(raw), WorktreeDiff { files_changed: 2, insertions: 10, deletions: 2 });
+        assert_eq!(
+            parse_diff_numstat(raw),
+            WorktreeDiff {
+                files_changed: 2,
+                insertions: 10,
+                deletions: 2
+            }
+        );
     }
 }

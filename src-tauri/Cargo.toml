@@ -41,3 +41,6 @@ frozen = []
 
 [target.'cfg(windows)'.dependencies]
 junction = "1"
+
+[lints]
+workspace = true

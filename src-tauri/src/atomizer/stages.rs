@@ -3,7 +3,9 @@ use crate::atomizer::agent_invoke::{invoke_agent, invoke_agent_with_heartbeat};
 use crate::atomizer::chunking::chunk_large_plan;
 use crate::atomizer::json_parse::parse_json_from_candidates;
 use crate::atomizer::progress::emit_progress;
-use crate::atomizer::types::{AtomizeActivityKind, AtomizedStoryDraft, AtomizerError, ChunkSection};
+use crate::atomizer::types::{
+    AtomizeActivityKind, AtomizedStoryDraft, AtomizerError, ChunkSection,
+};
 use minijinja::{context, Environment};
 use ralph_core::prd::Prd;
 use std::path::Path;
@@ -22,7 +24,12 @@ pub(super) async fn stage_summarize<R: Runtime>(
     let plan_chunks = chunk_large_plan(plan_content);
     if plan_chunks.len() > 1 {
         let count = plan_chunks.len();
-        emit_activity(app, project_id, AtomizeActivityKind::PlanLoaded, &format!("Large plan split into {count} chunks"));
+        emit_activity(
+            app,
+            project_id,
+            AtomizeActivityKind::PlanLoaded,
+            &format!("Large plan split into {count} chunks"),
+        );
     }
     let mut condensed_parts = Vec::with_capacity(plan_chunks.len());
 
@@ -33,12 +40,22 @@ pub(super) async fn stage_summarize<R: Runtime>(
         let prompt = tmpl
             .render(context! { plan_content => chunk })
             .map_err(|err| AtomizerError::Template(err.to_string()))?;
-        emit_activity(app, project_id, AtomizeActivityKind::AgentStart, &format!("Invoking {agent} for summarization"));
+        emit_activity(
+            app,
+            project_id,
+            AtomizeActivityKind::AgentStart,
+            &format!("Invoking {agent} for summarization"),
+        );
         let hb = Some((project_id.to_string(), 1, "summarize".to_string()));
         let result =
             invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb)
                 .await?;
-        emit_activity(app, project_id, AtomizeActivityKind::AgentComplete, &format!("Summary chunk: {} chars", result.len()));
+        emit_activity(
+            app,
+            project_id,
+            AtomizeActivityKind::AgentComplete,
+            &format!("Summary chunk: {} chars", result.len()),
+        );
         condensed_parts.push(result);
     }
 
@@ -62,10 +79,21 @@ pub(super) async fn stage_chunk<R: Runtime>(
         .render(context! { condensed_plan => condensed_plan })
         .map_err(|err| AtomizerError::Template(err.to_string()))?;
 
-    emit_activity(app, project_id, AtomizeActivityKind::AgentStart, &format!("Invoking {agent} for chunking"));
+    emit_activity(
+        app,
+        project_id,
+        AtomizeActivityKind::AgentStart,
+        &format!("Invoking {agent} for chunking"),
+    );
     let hb = Some((project_id.to_string(), 2, "chunk".to_string()));
-    let raw = invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb).await?;
-    emit_activity(app, project_id, AtomizeActivityKind::AgentComplete, "Chunk response received, parsing JSON");
+    let raw =
+        invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb).await?;
+    emit_activity(
+        app,
+        project_id,
+        AtomizeActivityKind::AgentComplete,
+        "Chunk response received, parsing JSON",
+    );
     parse_json_from_candidates::<Vec<ChunkSection>>(&raw, '[').map_err(|(err, candidate)| {
         AtomizerError::JsonParse {
             stage: "chunk",
@@ -100,7 +128,12 @@ pub(super) async fn stage_atomize<R: Runtime>(
     let total = sections.len();
     for (idx, section) in sections.iter().enumerate() {
         let section_label = format!("[{}/{}] '{}'", idx + 1, total, section.title);
-        emit_activity(app, project_id, AtomizeActivityKind::SectionProcess, &format!("Processing {section_label}"));
+        emit_activity(
+            app,
+            project_id,
+            AtomizeActivityKind::SectionProcess,
+            &format!("Processing {section_label}"),
+        );
         let tmpl = env
             .get_template("stories")
             .map_err(|err| AtomizerError::Template(err.to_string()))?;
@@ -112,7 +145,12 @@ pub(super) async fn stage_atomize<R: Runtime>(
             })
             .map_err(|err| AtomizerError::Template(err.to_string()))?;
 
-        emit_activity(app, project_id, AtomizeActivityKind::AgentStart, &format!("Invoking {agent} for {section_label}"));
+        emit_activity(
+            app,
+            project_id,
+            AtomizeActivityKind::AgentStart,
+            &format!("Invoking {agent} for {section_label}"),
+        );
         let hb = Some((project_id.to_string(), 3, "atomize".to_string()));
         let raw = invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb)
             .await?;
@@ -120,7 +158,12 @@ pub(super) async fn stage_atomize<R: Runtime>(
         let stories: Vec<AtomizedStoryDraft> = match parse_json_from_candidates(&raw, '[') {
             Ok(stories) => stories,
             Err((_first_err, first_candidate)) => {
-                emit_activity(app, project_id, AtomizeActivityKind::Retry, &format!("JSON parse failed for {section_label}"));
+                emit_activity(
+                    app,
+                    project_id,
+                    AtomizeActivityKind::Retry,
+                    &format!("JSON parse failed for {section_label}"),
+                );
                 emit_progress(
                     app,
                     project_id,
@@ -151,7 +194,12 @@ pub(super) async fn stage_atomize<R: Runtime>(
         };
 
         let extracted = stories.len();
-        emit_activity(app, project_id, AtomizeActivityKind::StoryExtracted, &format!("{extracted} stories from {section_label}"));
+        emit_activity(
+            app,
+            project_id,
+            AtomizeActivityKind::StoryExtracted,
+            &format!("{extracted} stories from {section_label}"),
+        );
         all_stories.extend(stories);
     }
 
@@ -187,10 +235,21 @@ pub(super) async fn stage_merge<R: Runtime>(
         })
         .map_err(|err| AtomizerError::Template(err.to_string()))?;
 
-    emit_activity(app, project_id, AtomizeActivityKind::AgentStart, &format!("Invoking {agent} for merge"));
+    emit_activity(
+        app,
+        project_id,
+        AtomizeActivityKind::AgentStart,
+        &format!("Invoking {agent} for merge"),
+    );
     let hb = Some((project_id.to_string(), 4, "merge".to_string()));
-    let raw = invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb).await?;
-    emit_activity(app, project_id, AtomizeActivityKind::AgentComplete, "Merge received, parsing PRD");
+    let raw =
+        invoke_agent_with_heartbeat(app, agent, model, effort, &prompt, project_dir, hb).await?;
+    emit_activity(
+        app,
+        project_id,
+        AtomizeActivityKind::AgentComplete,
+        "Merge received, parsing PRD",
+    );
     parse_json_from_candidates::<Prd>(&raw, '{').map_err(|(err, candidate)| {
         AtomizerError::JsonParse {
             stage: "merge",

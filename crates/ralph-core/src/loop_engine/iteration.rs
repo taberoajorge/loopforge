@@ -87,8 +87,7 @@ pub async fn run_with_verification<P: Provider>(
             break agent_result;
         }
 
-        let error_sig =
-            verification::classify_error_signature(&verification_result.diagnostics);
+        let error_sig = verification::classify_error_signature(&verification_result.diagnostics);
 
         if last_error_signature.as_ref() == Some(&error_sig) {
             consecutive_same_error += 1;
@@ -99,8 +98,14 @@ pub async fn run_with_verification<P: Provider>(
 
         if consecutive_same_error >= CIRCUIT_BREAKER_THRESHOLD {
             handle_circuit_breaker(
-                config, &story.id, &error_sig, consecutive_same_error,
-                iteration, event_sink, failure_memory, verification_attempt,
+                config,
+                &story.id,
+                &error_sig,
+                consecutive_same_error,
+                iteration,
+                event_sink,
+                failure_memory,
+                verification_attempt,
                 verification_result.diagnostics.len(),
             );
             break agent_result;
@@ -121,21 +126,32 @@ pub async fn run_with_verification<P: Provider>(
 
         if verification_attempt >= max_retries {
             handle_retry_exhausted(
-                config, &story.id, max_retries, &verification_result,
-                iteration, failure_memory,
+                config,
+                &story.id,
+                max_retries,
+                &verification_result,
+                iteration,
+                failure_memory,
             );
             break agent_result;
         }
 
         let retry_prompt = verification::build_retry_prompt(
-            story, &verification_result.diagnostics,
-            verification_attempt, max_retries, &config.paths.work_dir,
+            story,
+            &verification_result.diagnostics,
+            verification_attempt,
+            max_retries,
+            &config.paths.work_dir,
         );
 
         let retry_hash = crate::prompt::prompt_content_hash(&retry_prompt);
         if let Some(prev) = prev_prompt_hash {
             if retry_hash != prev {
-                tracing::info!(prev_hash = prev, new_hash = retry_hash, "prompt changed between attempts");
+                tracing::info!(
+                    prev_hash = prev,
+                    new_hash = retry_hash,
+                    "prompt changed between attempts"
+                );
             }
         }
         prev_prompt_hash = Some(retry_hash);
@@ -173,7 +189,9 @@ fn handle_circuit_breaker(
         circuit_breaker: true,
     });
     tracing::warn!(
-        story_id, signature = error_sig, consecutive = consecutive_same_error,
+        story_id,
+        signature = error_sig,
+        consecutive = consecutive_same_error,
         "circuit breaker: same error signature repeated"
     );
     logger::log_warning(&format!(
@@ -181,13 +199,17 @@ fn handle_circuit_breaker(
     ));
 
     failure_memory.record_failure(
-        story_id, iteration, "circuit_breaker", vec![],
+        story_id,
+        iteration,
+        "circuit_breaker",
+        vec![],
         &format!("Same error signature {error_sig} repeated {consecutive_same_error}x"),
     );
     prd_lifecycle::mark_story_blocked(config, story_id);
 
     if let Err(guardrail_err) = crate::guardrails::add_guardrail(
-        &config.paths.guardrails_file, story_id,
+        &config.paths.guardrails_file,
+        story_id,
         &format!("Circuit breaker: same verification error {consecutive_same_error}x"),
         iteration,
     ) {
@@ -204,17 +226,26 @@ fn handle_retry_exhausted(
     failure_memory: &mut FailureMemory,
 ) {
     logger::log_error(
-        &format!("Story {story_id} exceeded max verification retries ({max_retries}), marking blocked"),
+        &format!(
+            "Story {story_id} exceeded max verification retries ({max_retries}), marking blocked"
+        ),
         Some(&config.paths.error_log),
     );
     failure_memory.record_failure(
-        story_id, iteration, "verification_exhausted", vec![],
-        &format!("{} diagnostics after {max_retries} retries", verification_result.diagnostics.len()),
+        story_id,
+        iteration,
+        "verification_exhausted",
+        vec![],
+        &format!(
+            "{} diagnostics after {max_retries} retries",
+            verification_result.diagnostics.len()
+        ),
     );
     prd_lifecycle::mark_story_blocked(config, story_id);
 
     if let Err(guardrail_err) = crate::guardrails::add_guardrail(
-        &config.paths.guardrails_file, story_id,
+        &config.paths.guardrails_file,
+        story_id,
         &format!(
             "Verification failed after {max_retries} retries with {} diagnostics",
             verification_result.diagnostics.len()

@@ -16,7 +16,8 @@ pub async fn create_project<R: Runtime>(
     wizard_step: Option<String>,
 ) -> Result<Project, ProjectError> {
     let normalized_name = required(name, "name").map_err(ProjectError::Path)?;
-    let normalized_description = required(description, "description").map_err(ProjectError::Path)?;
+    let normalized_description =
+        required(description, "description").map_err(ProjectError::Path)?;
     let normalized_directory =
         required(working_directory, "working_directory").map_err(ProjectError::Path)?;
     crate::projects::catalog::create_project(
@@ -83,9 +84,9 @@ pub async fn query_plan_status(
     project_id: String,
 ) -> Result<Option<serde_json::Value>, PlanEngineError> {
     let project_id = required(project_id, "project_id").map_err(PlanEngineError::Path)?;
-    crate::plan_engine::query_plan_status(state, project_id).await.map(|value| {
-        value.map(|info| serde_json::to_value(info).expect("plan session info"))
-    })
+    crate::plan_engine::query_plan_status(state, project_id)
+        .await
+        .map(|value| value.map(|info| serde_json::to_value(info).expect("plan session info")))
 }
 
 #[tauri::command]

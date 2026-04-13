@@ -138,10 +138,11 @@ async fn resume_wizard_succeeds_with_canonical_draft_payload() {
     )
     .await
     .expect("resume wizard");
-    let loaded_draft = crate::projects::wizard::load_draft(harness.app.handle().clone(), project.id)
-        .await
-        .expect("load draft")
-        .expect("draft content");
+    let loaded_draft =
+        crate::projects::wizard::load_draft(harness.app.handle().clone(), project.id)
+            .await
+            .expect("load draft")
+            .expect("draft content");
 
     assert_eq!(resume_state.wizard_step, "configure");
     assert_eq!(

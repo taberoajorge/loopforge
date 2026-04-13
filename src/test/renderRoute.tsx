@@ -1,17 +1,10 @@
 import { render } from "@testing-library/react";
-import {
-  MemoryRouter,
-  Route,
-  Routes,
-  type RouteObject,
-} from "react-router";
+import { MemoryRouter, Route, type RouteObject, Routes } from "react-router";
 
 function renderRoutes(routes: RouteObject[], parentKey: string = "route") {
   return routes.map((route, index) => {
     const routeKey = `${parentKey}-${route.path ?? "index"}-${index}`;
-    const routeElement =
-      route.element ??
-      (route.Component ? <route.Component /> : undefined);
+    const routeElement = route.element ?? (route.Component ? <route.Component /> : undefined);
     if (route.index) {
       return <Route key={routeKey} index element={routeElement} />;
     }
@@ -23,10 +16,7 @@ function renderRoutes(routes: RouteObject[], parentKey: string = "route") {
   });
 }
 
-export function renderRoute(
-  routes: RouteObject[],
-  initialEntries: string[] = ["/"],
-) {
+export function renderRoute(routes: RouteObject[], initialEntries: string[] = ["/"]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <Routes>{renderRoutes(routes)}</Routes>

@@ -1,12 +1,31 @@
 use crate::commands::validation::required_trimmed;
 #[cfg(not(test))]
 use crate::commands::validation::{non_empty_trimmed_list, optional_trimmed};
-use crate::loop_manager::{LoopError, LoopManagerState, SessionStats};
 #[cfg(not(test))]
 use crate::loop_manager::StartLoopArgs;
+use crate::loop_manager::{LoopError, LoopManagerState, SessionStats};
 use crate::storage::db::DbState;
 use serde::Serialize;
 use tauri::{AppHandle, State};
+
+fn format_duration_label(duration_secs: i64) -> String {
+    if duration_secs <= 0 {
+        return "0s".to_string();
+    }
+    if duration_secs < 60 {
+        return format!("{duration_secs}s");
+    }
+    let minutes = duration_secs / 60;
+    let seconds = duration_secs % 60;
+    format!("{minutes}m {seconds}s")
+}
+
+fn format_time_label(started_at: &str) -> String {
+    chrono::DateTime::parse_from_rfc3339(started_at).map_or_else(
+        |_| started_at.to_string(),
+        |value| value.format("%H:%M:%S").to_string(),
+    )
+}
 
 #[cfg(not(test))]
 #[tauri::command]
@@ -36,6 +55,9 @@ pub async fn start_loop(app: AppHandle, args: StartLoopArgs) -> Result<String, L
         cooldown_seconds: args.cooldown_seconds,
         test_command: optional_trimmed(args.test_command),
         max_verification_retries: args.max_verification_retries,
+        scm_provider: optional_trimmed(args.scm_provider),
+        review_polling_interval: args.review_polling_interval,
+        review_timeout: args.review_timeout,
     };
     crate::loop_manager::start_loop(app, normalized_args).await
 }
@@ -69,6 +91,8 @@ pub struct IterationRow {
     pub story_id: String,
     pub started_at: String,
     pub duration_secs: i64,
+    pub duration_label: String,
+    pub time_label: String,
     pub result: String,
     pub agent_used: String,
 }
@@ -94,10 +118,14 @@ pub async fn get_iteration_history(
         .map_err(|err| LoopError::Internal(err.to_string()))?;
     let rows = stmt
         .query_map(rusqlite::params![pid], |row| {
+            let started_at: String = row.get(1)?;
+            let duration_secs: i64 = row.get(2)?;
             Ok(IterationRow {
                 story_id: row.get(0)?,
-                started_at: row.get(1)?,
-                duration_secs: row.get(2)?,
+                started_at: started_at.clone(),
+                duration_secs,
+                duration_label: format_duration_label(duration_secs),
+                time_label: format_time_label(&started_at),
                 result: row.get(3)?,
                 agent_used: row.get(4)?,
             })
@@ -108,4 +136,12 @@ pub async fn get_iteration_history(
         result.push(row.map_err(|err| LoopError::Internal(err.to_string()))?);
     }
     Ok(result)
+}
+
+#[tauri::command]
+pub async fn get_activity_feed(
+    db: State<'_, DbState>,
+    project_id: String,
+) -> Result<Vec<IterationRow>, LoopError> {
+    get_iteration_history(db, project_id).await
 }

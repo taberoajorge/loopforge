@@ -1,7 +1,23 @@
 import { useState } from "react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../../../components/ui/alert-dialog";
 import { Button } from "../../../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../../components/ui/card";
 
 type LaunchActionsProps = {
   launchDisabled: boolean;
@@ -11,7 +27,13 @@ type LaunchActionsProps = {
   onLaunch: () => void;
 };
 
-export function LaunchActions({ launchDisabled, launching, onBack, onCancel, onLaunch }: LaunchActionsProps) {
+export function LaunchActions({
+  launchDisabled,
+  launching,
+  onBack,
+  onCancel,
+  onLaunch,
+}: LaunchActionsProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
@@ -54,7 +76,12 @@ export function LaunchActions({ launchDisabled, launching, onBack, onCancel, onL
         <Button variant="secondary" onClick={onBack} disabled={launching}>
           Back
         </Button>
-        <Button variant="primary" className="flex-1" disabled={launching || launchDisabled} onClick={onLaunch}>
+        <Button
+          variant="primary"
+          className="flex-1"
+          disabled={launching || launchDisabled}
+          onClick={onLaunch}
+        >
           {launching ? "Initializing..." : "Launch loop"}
         </Button>
       </CardContent>

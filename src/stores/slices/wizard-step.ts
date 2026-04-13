@@ -32,20 +32,15 @@ export const STEP_DEFAULTS = {
   projectData: DEFAULT_PROJECT_DATA,
 };
 
-export const createStepSlice: StateCreator<
-  WizardStepSlice,
-  [],
-  [],
-  WizardStepSlice
-> = (set) => ({
+export const createStepSlice: StateCreator<WizardStepSlice, [], [], WizardStepSlice> = (set) => ({
   ...STEP_DEFAULTS,
   setStep: (step) => set({ currentStep: step }),
-  setHighestStep: (step) => set((state) => ({
-    highestStep: Math.max(state.highestStep, step),
-  })),
+  setHighestStep: (step) =>
+    set((state) => ({
+      highestStep: Math.max(state.highestStep, step),
+    })),
   markStale: (fromStep) => set({ staleFromStep: fromStep }),
   clearStale: () => set({ staleFromStep: null }),
   setProjectId: (id) => set({ projectId: id }),
-  setProjectData: (data) =>
-    set((state) => ({ projectData: { ...state.projectData, ...data } })),
+  setProjectData: (data) => set((state) => ({ projectData: { ...state.projectData, ...data } })),
 });

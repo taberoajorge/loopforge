@@ -65,9 +65,7 @@ pub async fn count_commits_between(work_dir: &Path, from_hash: &str, to_hash: &s
         .current_dir(work_dir)
         .output()
         .await?;
-    let count = String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .count() as u32;
+    let count = String::from_utf8_lossy(&output.stdout).lines().count() as u32;
     Ok(count)
 }
 

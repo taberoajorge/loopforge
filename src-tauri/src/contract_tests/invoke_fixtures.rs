@@ -122,9 +122,7 @@ fn install_script(bin_dir: &Path, name: &str, content: &str) {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(&script)
-            .expect("metadata")
-            .permissions();
+        let mut perms = std::fs::metadata(&script).expect("metadata").permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&script, perms).expect("permissions");
     }
