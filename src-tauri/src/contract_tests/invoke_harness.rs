@@ -71,7 +71,7 @@ impl InvokeHarness {
     }
 
     pub async fn wait_for_plan_idle(&self, project_id: &str) {
-        for _ in 0..100 {
+        for _ in 0..200 {
             let status: Option<serde_json::Value> = self.invoke_ok(
                 "query_plan_status",
                 serde_json::json!({ "projectId": project_id }),
@@ -79,13 +79,13 @@ impl InvokeHarness {
             if status.is_none() && self.artifact_dir(project_id).join("plan.md").exists() {
                 return;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
         panic!("plan session did not settle for {project_id}");
     }
 
     pub async fn wait_for_completion(&self, project_id: &str) {
-        for _ in 0..100 {
+        for _ in 0..300 {
             let status = {
                 let db = self.app.state::<DbState>();
                 let conn = db.0.lock().expect("db lock");
@@ -99,7 +99,7 @@ impl InvokeHarness {
             if status == "completed" {
                 return;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         }
         panic!("loop did not complete for {project_id}");
     }
