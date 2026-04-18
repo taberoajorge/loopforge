@@ -23,6 +23,7 @@ ralph/
 ralph 2/
 
 openspec/
+.loopforge/
 .claude/prompts/
 .claude/worktrees/
 
