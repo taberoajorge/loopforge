@@ -139,6 +139,7 @@ fn completion(
         blocked,
         head_commit: head_commit.map(str::to_string),
         guardrail_append: guardrail_append.map(str::to_string),
+        branch: None,
         sequence,
     }
 }

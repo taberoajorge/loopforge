@@ -177,6 +177,9 @@ pub(crate) fn merge_action_target(project_dir: &Path, action: &MergeAction) -> S
             project_dir.join("guardrails.md").display().to_string()
         }
         MergeAction::UpdateSessionHead { worktree_id, .. } => format!("session:{worktree_id}"),
+        MergeAction::MergeIntoMain { worktree_id, .. }
+        | MergeAction::TeardownWorktree { worktree_id, .. }
+        | MergeAction::MergeConflict { worktree_id, .. } => format!("worktree:{worktree_id}"),
     }
 }
 #[cfg(test)]
@@ -191,7 +194,10 @@ pub(crate) fn apply_merge_action(
             blocked,
         } => with_merge_gate(|| update_story_status(project_dir, story_id, *passed, *blocked)),
         MergeAction::AppendGuardrail { content, .. } => append_guardrails(project_dir, content),
-        MergeAction::UpdateSessionHead { .. } => Ok(()),
+        MergeAction::UpdateSessionHead { .. }
+        | MergeAction::MergeIntoMain { .. }
+        | MergeAction::TeardownWorktree { .. }
+        | MergeAction::MergeConflict { .. } => Ok(()),
     }
 }
 fn with_merge_gate<T>(write: impl FnOnce() -> Result<T, ProjectError>) -> Result<T, ProjectError> {

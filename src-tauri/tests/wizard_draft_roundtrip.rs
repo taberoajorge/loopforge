@@ -107,10 +107,14 @@ async fn wizard_draft_roundtrip_preserves_nested_and_optional_fields() {
         "plan": {
             "completed": true
         },
+        "highestStep": 4,
+        "staleFromStep": serde_json::Value::Null,
         "atomize": {
+            "stories": [],
             "storiesCount": 3
         },
         "configure": {
+            "schemaVersion": 1,
             "executeAgent": "codex",
             "executeModel": serde_json::Value::Null,
             "executeEffort": "medium",
@@ -153,8 +157,8 @@ async fn wizard_draft_roundtrip_preserves_nested_and_optional_fields() {
     );
     assert_eq!(resume_state.project.working_directory, working_directory);
     assert_eq!(resume_state.wizard_step, "configure");
-    assert_eq!(resume_state.wizard_state_json, None);
-    assert!(!resume_state.has_plan);
+    assert!(resume_state.wizard_state_json.is_some());
+    assert!(resume_state.has_plan);
     assert!(!resume_state.has_prd);
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&loaded_draft).expect("draft json"),
