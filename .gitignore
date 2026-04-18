@@ -31,6 +31,7 @@ openspec/
 .opencode/
 .cursor/commands/
 .cursor/skills/
+.cursor/mcp.json
 
 plan.md
 prd.json
