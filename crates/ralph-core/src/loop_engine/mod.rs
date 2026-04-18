@@ -297,8 +297,8 @@ async fn run_parallel_ready_stories<P: Provider>(
             .await
             .map_err(|err| LoopError::Other(anyhow::anyhow!(err.to_string())))?;
     }
-    for report in reports {
-        merge_failure_record(failure_memory, report.failure_record);
+    for report in &reports {
+        merge_failure_record(failure_memory, report.failure_record.clone());
         if let Some(story) = prd
             .stories
             .iter_mut()
@@ -317,8 +317,43 @@ async fn run_parallel_ready_stories<P: Provider>(
         )
         .await;
     }
+    for report in &reports {
+        process_worktree_lifecycle(config, report).await;
+    }
     failure_memory.save(&config.paths.failure_memory_file)?;
     Ok(())
+}
+
+async fn process_worktree_lifecycle(config: &RalphConfig, report: &WorkerReport) {
+    let completion = &report.completion;
+    if !completion.passed || completion.blocked {
+        return;
+    }
+    let Some(branch) = &completion.branch else {
+        return;
+    };
+    let work_dir = &config.paths.work_dir;
+    match crate::worktree::merge_into_main(work_dir, branch).await {
+        Ok(true) => {
+            let wt_path = crate::scheduler::worktree_runner::worktree_path_for(
+                work_dir,
+                &completion.story_id,
+            );
+            if let Err(err) = crate::worktree::remove(work_dir, &wt_path, Some(branch)).await {
+                tracing::warn!(story_id = %completion.story_id, err = %err, "worktree teardown failed");
+            }
+        }
+        Ok(false) => {
+            tracing::warn!(
+                story_id = %completion.story_id,
+                branch = %branch,
+                "fast-forward merge failed, keeping worktree for manual inspection"
+            );
+        }
+        Err(err) => {
+            tracing::error!(story_id = %completion.story_id, err = %err, "merge attempt failed");
+        }
+    }
 }
 
 async fn collect_worker_reports(

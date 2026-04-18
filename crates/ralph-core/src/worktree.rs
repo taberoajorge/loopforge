@@ -136,6 +136,15 @@ pub fn parse_diff_numstat(raw: &str) -> WorktreeDiff {
     })
 }
 
+pub async fn merge_into_main(work_dir: &Path, branch: &str) -> Result<bool, WorktreeError> {
+    let merge_result = run_git(work_dir, &["merge", "--ff-only", branch]).await;
+    match merge_result {
+        Ok(_) => Ok(true),
+        Err(WorktreeError::Git(msg)) if msg.contains("Not possible to fast-forward") => Ok(false),
+        Err(err) => Err(err),
+    }
+}
+
 async fn run_git(work_dir: &Path, args: &[&str]) -> Result<String, WorktreeError> {
     let output = Command::new("git")
         .args(args)
