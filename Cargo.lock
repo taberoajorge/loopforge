@@ -2492,6 +2492,9 @@ dependencies = [
 [[package]]
 name = "loopforge-app-core"
 version = "0.1.0"
+dependencies = [
+ "app-services",
+]
 
 [[package]]
 name = "lru-slab"
