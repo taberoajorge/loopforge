@@ -461,6 +461,7 @@ fn worker_report(
             blocked: state.is_some_and(|story| story.blocked),
             head_commit: None,
             guardrail_append,
+            branch: Some(worktree_id.to_string()),
             sequence,
         },
         failure_record,

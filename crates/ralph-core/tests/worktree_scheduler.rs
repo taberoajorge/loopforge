@@ -15,6 +15,7 @@ fn completion(
         blocked: false,
         head_commit: None,
         guardrail_append: None,
+        branch: None,
         sequence,
     }
 }
@@ -215,5 +216,88 @@ fn serialization_roundtrip_preserves_merge_action() {
     };
     let json = serde_json::to_string(&action).expect("should serialize");
     let restored: MergeAction = serde_json::from_str(&json).expect("should deserialize");
+    assert_eq!(action, restored);
+}
+
+#[test]
+fn passed_story_with_branch_emits_merge_and_teardown() {
+    let mut comp = completion("S-001", "wt-a", true, 0);
+    comp.branch = Some("loopforge/s-001".into());
+    let actions = scheduler::schedule(vec![comp]);
+    assert_eq!(actions.len(), 3);
+    assert_eq!(
+        actions[0],
+        MergeAction::UpdateStoryStatus {
+            story_id: "S-001".into(),
+            passed: true,
+            blocked: false,
+        }
+    );
+    assert_eq!(
+        actions[1],
+        MergeAction::MergeIntoMain {
+            worktree_id: "wt-a".into(),
+            story_id: "S-001".into(),
+            branch: "loopforge/s-001".into(),
+        }
+    );
+    assert_eq!(
+        actions[2],
+        MergeAction::TeardownWorktree {
+            worktree_id: "wt-a".into(),
+            branch: "loopforge/s-001".into(),
+        }
+    );
+}
+
+#[test]
+fn failed_story_with_branch_omits_merge_and_teardown() {
+    let mut comp = completion("S-002", "wt-b", false, 0);
+    comp.branch = Some("loopforge/s-002".into());
+    let actions = scheduler::schedule(vec![comp]);
+    assert_eq!(actions.len(), 1);
+    assert_eq!(
+        actions[0],
+        MergeAction::UpdateStoryStatus {
+            story_id: "S-002".into(),
+            passed: false,
+            blocked: false,
+        }
+    );
+}
+
+#[test]
+fn blocked_story_with_branch_omits_merge_and_teardown() {
+    let mut comp = completion("S-003", "wt-c", false, 0);
+    comp.blocked = true;
+    comp.branch = Some("loopforge/s-003".into());
+    let actions = scheduler::schedule(vec![comp]);
+    assert_eq!(actions.len(), 1);
+    assert!(matches!(
+        &actions[0],
+        MergeAction::UpdateStoryStatus { blocked: true, .. }
+    ));
+}
+
+#[test]
+fn passed_story_without_branch_omits_merge_and_teardown() {
+    let comp = completion("S-004", "wt-d", true, 0);
+    let actions = scheduler::schedule(vec![comp]);
+    assert_eq!(actions.len(), 1);
+    assert!(matches!(
+        &actions[0],
+        MergeAction::UpdateStoryStatus { passed: true, .. }
+    ));
+}
+
+#[test]
+fn merge_conflict_action_serialization_roundtrip() {
+    let action = MergeAction::MergeConflict {
+        worktree_id: "wt-a".into(),
+        story_id: "S-001".into(),
+        branch: "loopforge/s-001".into(),
+    };
+    let json = serde_json::to_string(&action).expect("serialize");
+    let restored: MergeAction = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(action, restored);
 }
