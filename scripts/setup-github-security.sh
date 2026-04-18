@@ -68,7 +68,6 @@ payload=$(cat <<JSON
     { "type": "deletion" },
     { "type": "non_fast_forward" },
     { "type": "required_linear_history" },
-    { "type": "required_signatures" },
     {
       "type": "pull_request",
       "parameters": {
