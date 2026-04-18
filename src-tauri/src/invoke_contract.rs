@@ -2,7 +2,8 @@ use crate::atomizer::{AtomizeArgs, AtomizerError};
 use crate::db::DbState;
 use crate::loop_manager::{LoopError, StartLoopArgs};
 use crate::plan_engine::{PlanEngineError, PlanSessionsState, StartPlanArgs};
-use crate::projects::{Project, ProjectDetail, ProjectError};
+use crate::projects::ProjectError;
+use crate::services::{self, InvokeProjectDetail, InvokeProjectRecord};
 use ralph_core::prd::Prd;
 use tauri::{AppHandle, Runtime, State};
 
@@ -14,7 +15,7 @@ pub async fn create_project<R: Runtime>(
     description: String,
     working_directory: String,
     wizard_step: Option<String>,
-) -> Result<Project, ProjectError> {
+) -> Result<InvokeProjectRecord, ProjectError> {
     let normalized_name = required(name, "name").map_err(ProjectError::Path)?;
     let normalized_description =
         required(description, "description").map_err(ProjectError::Path)?;
@@ -29,6 +30,7 @@ pub async fn create_project<R: Runtime>(
         optional(wizard_step),
     )
     .await
+    .map(services::into_project_record)
 }
 
 #[tauri::command]
@@ -37,8 +39,11 @@ pub async fn save_draft<R: Runtime>(
     project_id: String,
     draft_json: String,
 ) -> Result<(), ProjectError> {
-    let project_id = required(project_id, "project_id").map_err(ProjectError::Path)?;
-    crate::projects::wizard::save_draft(app, project_id, draft_json).await
+    let command = services::save_draft_command(
+        required(project_id, "project_id").map_err(ProjectError::Path)?,
+        draft_json,
+    );
+    crate::projects::wizard::save_draft(app, command.project_id, command.draft_json).await
 }
 
 #[tauri::command]
@@ -165,9 +170,11 @@ pub async fn get_project_detail<R: Runtime>(
     app: AppHandle<R>,
     db: State<'_, DbState>,
     project_id: String,
-) -> Result<ProjectDetail, ProjectError> {
+) -> Result<InvokeProjectDetail, ProjectError> {
     let project_id = required(project_id, "project_id").map_err(ProjectError::Path)?;
-    crate::projects::catalog::get_project_detail(app, db, project_id).await
+    crate::projects::catalog::get_project_detail(app, db, project_id)
+        .await
+        .map(services::into_project_detail)
 }
 
 fn required(value: String, name: &str) -> Result<String, String> {
