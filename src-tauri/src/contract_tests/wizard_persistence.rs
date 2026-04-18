@@ -97,6 +97,8 @@ async fn resume_wizard_succeeds_with_canonical_draft_payload() {
         "version": 1,
         "projectId": project.id,
         "currentStep": "configure",
+        "highestStep": 4,
+        "staleFromStep": serde_json::Value::Null,
         "describe": {
             "name": "Roundtrip Project",
             "description": "Persist wizard draft values",
@@ -106,7 +108,7 @@ async fn resume_wizard_succeeds_with_canonical_draft_payload() {
             "planEffort": "high"
         },
         "plan": { "completed": true },
-        "atomize": { "storiesCount": 3 },
+        "atomize": { "stories": [], "storiesCount": 3 },
         "configure": {
             "executeAgent": "codex",
             "executeModel": serde_json::Value::Null,
@@ -117,6 +119,7 @@ async fn resume_wizard_succeeds_with_canonical_draft_payload() {
             "cooldownSeconds": 15,
             "testCommand": "cargo test wizard_draft_roundtrip",
             "maxVerificationRetries": 2,
+            "schemaVersion": 1,
             "scmProvider": "auto",
             "reviewPollingInterval": 90,
             "reviewTimeout": 900
