@@ -160,9 +160,7 @@ pub fn monitor_snapshot(
     })
 }
 
-fn entry(key: &str) -> (String, Vec<HomeListing>) {
-    (key.to_string(), Vec::new())
-}
+fn entry(key: &str) -> (String, Vec<HomeListing>) { (key.to_string(), Vec::new()) }
 fn bucket(status: ProjectStatus) -> Option<&'static str> {
     match status {
         ProjectStatus::Draft => Some("draft"),
@@ -198,6 +196,4 @@ fn recent_output(dir: &Path, project_id: &str) -> Vec<OutputEntry> {
         .collect()
 }
 
-fn db(error: rusqlite::Error) -> ServiceError {
-    ServiceError::Internal(error.to_string())
-}
+fn db(error: rusqlite::Error) -> ServiceError { ServiceError::Internal(error.to_string()) }

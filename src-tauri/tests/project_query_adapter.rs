@@ -1,15 +1,6 @@
 mod models {
     #[derive(Debug, Clone)]
-    pub enum ProjectStatus {
-        Draft,
-        Ready,
-        Running,
-        Paused,
-        Blocked,
-        Failed,
-        Completed,
-        Archived,
-    }
+    pub enum ProjectStatus { Draft, Ready, Running, Paused, Blocked, Failed, Completed, Archived }
     impl ProjectStatus {
         pub fn from_db_status(status: &str) -> Self {
             match status {
@@ -30,26 +21,16 @@ mod models {
             has_active_session: bool,
         ) -> Self {
             let base_status = Self::from_db_status(db_status);
-            if has_active_session {
-                return Self::Running;
-            }
-            if matches!(base_status, Self::Running | Self::Paused) {
-                return Self::Paused;
-            }
+            if has_active_session { return Self::Running; }
+            if matches!(base_status, Self::Running | Self::Paused) { return Self::Paused; }
             if matches!(
                 base_status,
                 Self::Blocked | Self::Failed | Self::Completed | Self::Archived
             ) {
                 return base_status;
             }
-            if !has_prd {
-                return Self::Draft;
-            }
-            if has_config {
-                Self::Ready
-            } else {
-                Self::Draft
-            }
+            if !has_prd { return Self::Draft; }
+            if has_config { Self::Ready } else { Self::Draft }
         }
         pub fn as_project_status(&self) -> &'static str {
             match self {
@@ -87,20 +68,8 @@ fn home_listing_groups_state_transitions() {
     insert_project(&conn, "ready-1", "Ready", "draft");
     insert_project(&conn, "paused-1", "Paused", "active");
     write_project(&root, "draft-1", None, None, None);
-    write_project(
-        &root,
-        "ready-1",
-        Some(prd_json(2, 1)),
-        Some(r#"{"executeAgent":"codex"}"#),
-        None,
-    );
-    write_project(
-        &root,
-        "paused-1",
-        Some(prd_json(1, 0)),
-        Some(r#"{"executeAgent":"codex"}"#),
-        None,
-    );
+    write_project(&root, "ready-1", Some(prd_json(2, 1)), Some(r#"{"executeAgent":"codex"}"#), None);
+    write_project(&root, "paused-1", Some(prd_json(1, 0)), Some(r#"{"executeAgent":"codex"}"#), None);
     let groups = home_listings(&conn, &HashSet::new(), |id| Ok(root.join(id))).unwrap();
     assert_eq!(groups["draft"][0].id, "draft-1");
     assert_eq!(groups["ready"][0].id, "ready-1");
@@ -115,20 +84,8 @@ fn monitor_snapshot_handles_stale_and_partial_states() {
     let conn = schema();
     let root = temp_root();
     insert_project(&conn, "project-1", "Monitor", "active");
-    insert_session(
-        &conn,
-        "session-1",
-        "project-1",
-        "2026-01-01T00:00:00Z",
-        Some("2026-01-01T00:06:00Z"),
-    );
-    insert_iteration(
-        &conn,
-        "iter-1",
-        "session-1",
-        "S-001",
-        "2026-01-01T00:05:00Z",
-    );
+    insert_session(&conn, "session-1", "project-1", "2026-01-01T00:00:00Z", Some("2026-01-01T00:06:00Z"));
+    insert_iteration(&conn, "iter-1", "session-1", "S-001", "2026-01-01T00:05:00Z");
     write_project(&root, "project-1", None, None, Some("line 1\nline 2\n"));
     let snapshot = monitor_snapshot(&conn, &root.join("project-1"), "project-1", false).unwrap();
     let value = serde_json::to_value(&snapshot).unwrap();
@@ -136,10 +93,7 @@ fn monitor_snapshot_handles_stale_and_partial_states() {
     assert!(snapshot.is_stale);
     assert!(snapshot.has_partial_progress);
     assert_eq!(snapshot.current_story.as_deref(), Some("S-001"));
-    assert_eq!(
-        snapshot.events,
-        vec!["session_started", "iteration_completed", "session_ended"]
-    );
+    assert_eq!(snapshot.events, vec!["session_started", "iteration_completed", "session_ended"]);
     assert_eq!(value["recentOutput"][1]["content"], "line 2");
     let _ = fs::remove_dir_all(root);
 }
