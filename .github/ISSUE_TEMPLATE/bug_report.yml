@@ -1,0 +1,96 @@
+name: Bug report
+description: Report a reproducible defect in LoopForge
+labels:
+  - bug
+  - triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a defect. Please fill every section so the maintainers can reproduce the issue fast.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checks
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I am running the latest release or a recent `main` build.
+          required: true
+        - label: I reviewed the troubleshooting section of the README.
+          required: true
+
+  - type: input
+    id: loopforge_version
+    attributes:
+      label: LoopForge version
+      description: Output of the `About` dialog or the release tag you are running.
+      placeholder: "v0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: Operating system version
+      placeholder: "macOS 15.2, Ubuntu 22.04, Windows 11 23H2"
+    validations:
+      required: true
+
+  - type: input
+    id: agent_cli
+    attributes:
+      label: Agent CLI and version
+      placeholder: "claude-code 1.2.3, codex 0.4.0, cursor-agent 0.9.1"
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary of the defect
+      description: What did you expect to happen and what actually happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Minimal steps that reliably reproduce the defect.
+      placeholder: |
+        1. Open LoopForge
+        2. Start the wizard and load `plan.md`
+        3. Launch the loop and observe the failure
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste the contents of `.loopforge/activity.log` and `.loopforge/error.log` from the project directory.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Screenshots, configuration snippets, or anything else that helps.
+    validations:
+      required: false
