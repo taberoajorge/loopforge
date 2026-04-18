@@ -14,6 +14,8 @@ pub struct WorktreeCompletion {
     #[serde(default)]
     pub guardrail_append: Option<String>,
     #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
     pub sequence: u64,
 }
 
@@ -32,6 +34,20 @@ pub enum MergeAction {
     UpdateSessionHead {
         worktree_id: String,
         head_commit: String,
+    },
+    MergeIntoMain {
+        worktree_id: String,
+        story_id: String,
+        branch: String,
+    },
+    TeardownWorktree {
+        worktree_id: String,
+        branch: String,
+    },
+    MergeConflict {
+        worktree_id: String,
+        story_id: String,
+        branch: String,
     },
 }
 
@@ -80,7 +96,7 @@ fn deterministic_order(left: &WorktreeCompletion, right: &WorktreeCompletion) ->
 }
 
 fn expand_actions(completion: WorktreeCompletion) -> Vec<MergeAction> {
-    let mut actions = Vec::with_capacity(3);
+    let mut actions = Vec::with_capacity(5);
     actions.push(MergeAction::UpdateStoryStatus {
         story_id: completion.story_id.clone(),
         passed: completion.passed,
@@ -92,11 +108,24 @@ fn expand_actions(completion: WorktreeCompletion) -> Vec<MergeAction> {
             content,
         });
     }
-    if let Some(head_commit) = completion.head_commit {
+    if let Some(head_commit) = completion.head_commit.clone() {
         actions.push(MergeAction::UpdateSessionHead {
-            worktree_id: completion.worktree_id,
+            worktree_id: completion.worktree_id.clone(),
             head_commit,
         });
+    }
+    if completion.passed && !completion.blocked {
+        if let Some(branch) = completion.branch {
+            actions.push(MergeAction::MergeIntoMain {
+                worktree_id: completion.worktree_id.clone(),
+                story_id: completion.story_id.clone(),
+                branch: branch.clone(),
+            });
+            actions.push(MergeAction::TeardownWorktree {
+                worktree_id: completion.worktree_id,
+                branch,
+            });
+        }
     }
     actions
 }
@@ -118,6 +147,7 @@ mod tests {
             blocked: false,
             head_commit: None,
             guardrail_append: None,
+            branch: None,
             sequence,
         }
     }

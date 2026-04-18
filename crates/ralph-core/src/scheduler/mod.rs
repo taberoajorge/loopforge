@@ -44,6 +44,13 @@ pub fn shared_updates_for(completions: Vec<WorktreeCompletion>) -> Vec<SharedArt
             MergeAction::AppendGuardrail { story_id, content } => {
                 Some(SharedArtifactUpdate::AppendGuardrailContent { story_id, content })
             }
+            MergeAction::TeardownWorktree {
+                worktree_id,
+                branch,
+            } => Some(SharedArtifactUpdate::TeardownWorktree {
+                worktree_id,
+                branch,
+            }),
             _ => None,
         })
         .collect()

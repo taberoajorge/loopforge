@@ -27,6 +27,10 @@ pub enum SharedArtifactUpdate {
         error_message: String,
         iteration: u32,
     },
+    TeardownWorktree {
+        worktree_id: String,
+        branch: String,
+    },
 }
 
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
@@ -100,6 +104,7 @@ fn apply_update(
             append_guardrail(config, &story_id, &error_message, iteration)?;
             update_story_state(config, &story_id, false, true)
         }
+        SharedArtifactUpdate::TeardownWorktree { .. } => Ok(()),
     }
 }
 
