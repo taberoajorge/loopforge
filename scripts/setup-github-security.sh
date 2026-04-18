@@ -84,9 +84,9 @@ payload=$(cat <<JSON
       "parameters": {
         "strict_required_status_checks_policy": true,
         "required_status_checks": [
+          { "context": "typecheck" },
           { "context": "lint" },
-          { "context": "rust-tests" },
-          { "context": "frontend-tests" }
+          { "context": "rust-tests" }
         ]
       }
     }
