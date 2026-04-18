@@ -12,6 +12,7 @@ use crate::loop_manager::LoopError;
 
 #[path = "project_query_adapter.rs"]
 pub mod project_query_adapter;
+use project_query_adapter::{HomeListingGroups, MonitorSnapshot};
 
 pub struct ProjectQueryAdapter<'a, R: tauri::Runtime> {
     app: &'a tauri::AppHandle<R>,
@@ -22,7 +23,7 @@ impl<'a, R: tauri::Runtime> ProjectQueryAdapter<'a, R> {
         Self { app }
     }
 
-    pub fn home_listings(&self) -> Result<project_query_adapter::HomeListingGroups, ServiceError> {
+    pub fn home_listings(&self) -> Result<HomeListingGroups, ServiceError> {
         let loop_state = self.app.state::<crate::loop_manager::LoopManagerState>();
         let active = loop_state
             .0
@@ -38,10 +39,7 @@ impl<'a, R: tauri::Runtime> ProjectQueryAdapter<'a, R> {
         })
     }
 
-    pub fn monitor_snapshot(
-        &self,
-        project_id: &str,
-    ) -> Result<project_query_adapter::MonitorSnapshot, ServiceError> {
+    pub fn monitor_snapshot(&self, project_id: &str) -> Result<MonitorSnapshot, ServiceError> {
         let loop_state = self.app.state::<crate::loop_manager::LoopManagerState>();
         let active = loop_state
             .0
