@@ -1,17 +1,18 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useParams } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useAgentStore } from "../../stores/agentStore";
+import { useWizardStore } from "../../stores/wizardStore";
 import {
   createAgentCapabilities,
   createAgentInfo,
+  createProjectConfig,
   createWizardConfig,
   createWizardProjectData,
 } from "../../test/fixtures";
 import { invokeMock, mockTauriCommands, type TauriCommandArgs } from "../../test/mocks";
 import { renderRoute } from "../../test/renderRoute";
-import { useAgentStore } from "../../stores/agentStore";
-import { useWizardStore } from "../../stores/wizardStore";
 import { Configure } from "./Configure";
 
 function resetConfigureStores() {
@@ -21,6 +22,7 @@ function resetConfigureStores() {
     projectId: "project-010",
     projectData: createWizardProjectData(),
     stories: [],
+    configLoaded: true,
     config: createWizardConfig({
       executeAgent: "codex",
       executeModel: "gpt-5.4",
@@ -50,16 +52,34 @@ describe("Configure", () => {
 
   it("loads existing config values and persists edits before advancing", async () => {
     const user = userEvent.setup();
-    let savedConfigArgs: TauriCommandArgs<"save_config"> | undefined;
-    let savedDraftArgs: TauriCommandArgs<"save_draft"> | undefined;
+    let savedConfigArgs: TauriCommandArgs<"complete_configure_step"> | undefined;
     mockTauriCommands({
       detect_agents: [createAgentInfo()],
-      get_agent_capabilities: createAgentCapabilities(),
-      save_config: vi.fn((args: TauriCommandArgs<"save_config">) => {
+      resolve_agent_selection: {
+        resolvedModel: "gpt-5.4",
+        resolvedEffort: "medium",
+        capabilities: createAgentCapabilities(),
+      },
+      complete_configure_step: vi.fn((args: TauriCommandArgs<"complete_configure_step">) => {
         savedConfigArgs = args;
-      }),
-      save_draft: vi.fn((args: TauriCommandArgs<"save_draft">) => {
-        savedDraftArgs = args;
+        return {
+          errors: {},
+          nextRoute: `/new/launch/${args.projectId}`,
+          config: createProjectConfig({
+            executeAgent: args.raw.executeAgent,
+            executeModel: args.raw.executeModel,
+            executeEffort: args.raw.executeEffort,
+            fallbackChain: args.raw.fallbackChain,
+            gutterThreshold: args.raw.gutterThreshold,
+            maxIterations: args.raw.maxIterations,
+            cooldownSeconds: args.raw.cooldownSeconds,
+            testCommand: args.raw.testCommand,
+            maxVerificationRetries: args.raw.maxVerificationRetries,
+            scmProvider: args.raw.scmProvider,
+            reviewPollingInterval: args.raw.reviewPollingInterval,
+            reviewTimeout: args.raw.reviewTimeout,
+          }),
+        };
       }),
     });
 
@@ -73,7 +93,11 @@ describe("Configure", () => {
 
     await waitFor(() => {
       expect(invokeMock).toHaveBeenCalledWith("detect_agents");
-      expect(invokeMock).toHaveBeenCalledWith("get_agent_capabilities", { agent: "codex" });
+      expect(invokeMock).toHaveBeenCalledWith("resolve_agent_selection", {
+        agent: "codex",
+        currentModel: "gpt-5.4",
+        currentEffort: "medium",
+      });
     });
 
     expect(screen.getByLabelText("Gutter threshold")).toHaveValue(8);
@@ -94,43 +118,33 @@ describe("Configure", () => {
 
     expect(await screen.findByTestId("launch-route")).toHaveTextContent("project-010");
     expect(savedConfigArgs).toBeDefined();
-    expect(savedDraftArgs).toBeDefined();
 
-    const savedConfig = JSON.parse((savedConfigArgs as TauriCommandArgs<"save_config">).configJson);
-    expect(savedConfig).toMatchObject({
+    expect((savedConfigArgs as TauriCommandArgs<"complete_configure_step">).raw).toMatchObject({
       executeAgent: "codex",
       executeModel: "gpt-5.4",
       executeEffort: "medium",
-      fallbackChain: ["claude"],
+      fallbackChain: ["claude", "codex"],
       maxIterations: 120,
       testCommand: "bun run test -- --run",
       reviewTimeout: 1800,
     });
-
-    const savedDraft = JSON.parse((savedDraftArgs as TauriCommandArgs<"save_draft">).draftJson);
-    expect(savedDraft).toMatchObject({
-      projectId: "project-010",
-      currentStep: "launch",
-      configure: {
-        fallbackChain: ["claude"],
-        maxIterations: 120,
-        testCommand: "bun run test -- --run",
-        reviewTimeout: 1800,
-      },
-    });
-    expect(useWizardStore.getState().currentStep).toBe(5);
     expect(useWizardStore.getState().config.maxIterations).toBe(120);
   });
 
   it("blocks saving and navigation when numeric config is invalid", async () => {
     const user = userEvent.setup();
-    const saveConfigCommand = vi.fn();
-    const saveDraftCommand = vi.fn();
     mockTauriCommands({
       detect_agents: [createAgentInfo()],
-      get_agent_capabilities: createAgentCapabilities(),
-      save_config: saveConfigCommand,
-      save_draft: saveDraftCommand,
+      resolve_agent_selection: {
+        resolvedModel: "gpt-5.4",
+        resolvedEffort: "medium",
+        capabilities: createAgentCapabilities(),
+      },
+      complete_configure_step: {
+        errors: { maxIterations: "Max iterations must be between 1 and 500" },
+        nextRoute: "/new/launch/project-010",
+        config: createProjectConfig(),
+      },
     });
 
     renderRoute(
@@ -148,8 +162,6 @@ describe("Configure", () => {
     await user.click(screen.getByRole("button", { name: "Next" }));
 
     expect(await screen.findByText("Max iterations must be between 1 and 500")).toBeInTheDocument();
-    expect(saveConfigCommand).not.toHaveBeenCalled();
-    expect(saveDraftCommand).not.toHaveBeenCalled();
     expect(screen.queryByTestId("launch-route")).not.toBeInTheDocument();
     expect(useWizardStore.getState().currentStep).toBe(1);
   });

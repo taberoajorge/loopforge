@@ -1,6 +1,6 @@
 use std::sync::{mpsc, Arc, Mutex};
 
-use crate::{AtomizerEvent, LoopSessionEvent, PlanSessionEvent};
+use crate::{atomizer::AtomizerProgress, AtomizerEvent, LoopSessionEvent, PlanSessionEvent};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppEvent {
@@ -23,7 +23,7 @@ impl EventFanout {
         let (sender, receiver) = mpsc::channel();
         self.subscribers
             .lock()
-            .expect("event fanout lock poisoned")
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .push(sender);
         receiver
     }
@@ -32,9 +32,16 @@ impl EventFanout {
         let mut subscribers = self
             .subscribers
             .lock()
-            .expect("event fanout lock poisoned");
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         subscribers.retain(|subscriber| subscriber.send(event.clone()).is_ok());
     }
+}
+
+pub fn atomizer_progress_payloads(events: &[AtomizerEvent]) -> Vec<AtomizerProgress> {
+    events
+        .iter()
+        .map(AtomizerEvent::as_progress_payload)
+        .collect::<Vec<_>>()
 }
 
 #[cfg(test)]
@@ -52,5 +59,17 @@ mod tests {
         fanout.publish(event.clone());
         assert_eq!(first.recv().unwrap(), event);
         assert_eq!(second.recv().unwrap(), event);
+    }
+
+    #[test]
+    fn converts_atomizer_events_into_progress_payloads() {
+        let events = vec![AtomizerEvent::StageStarted {
+            project_id: String::from("project-1"),
+            stage: crate::AtomizerStage::CollectPlan,
+        }];
+        let payloads = atomizer_progress_payloads(&events);
+        assert_eq!(payloads.len(), 1);
+        assert_eq!(payloads[0].stage, 1);
+        assert_eq!(payloads[0].stage_name, "summarize");
     }
 }

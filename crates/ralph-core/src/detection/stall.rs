@@ -18,12 +18,11 @@ pub async fn monitor_child_with_stall_detection(
     shutdown_flag: &Arc<AtomicBool>,
     output_sender: Option<mpsc::UnboundedSender<String>>,
 ) -> StallVerdict {
-    let stdout = match child.stdout.take() {
-        Some(stdout) => stdout,
-        None => {
-            let _ = child.wait().await;
-            return StallVerdict::Completed;
-        }
+    let stdout = if let Some(stdout) = child.stdout.take() {
+        stdout
+    } else {
+        let _ = child.wait().await;
+        return StallVerdict::Completed;
     };
 
     let stderr = child.stderr.take();

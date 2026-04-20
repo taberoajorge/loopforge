@@ -1,9 +1,8 @@
-use crate::commands::validation::required_trimmed;
 #[cfg(not(test))]
 use crate::commands::validation::optional_trimmed;
+use crate::commands::validation::required_trimmed;
 use crate::projects::{
-    IterationStory, NotificationPrefs, ProjectConfig, ProjectError,
-    ProjectsByStatus,
+    IterationStory, NotificationPrefs, ProjectConfig, ProjectError, ProjectsByStatus,
 };
 #[cfg(not(test))]
 use crate::projects::{Project, ProjectDetail};

@@ -12,13 +12,19 @@ pub struct AskSessionsState(pub Arc<Mutex<AskSessions>>);
 
 impl AskSessionsState {
     pub fn insert(&self, project_id: &str, child: CommandChild) -> Result<(), String> {
-        let mut sessions = self.0.lock().map_err(|_| "Ask session lock poisoned".to_string())?;
+        let mut sessions = self
+            .0
+            .lock()
+            .map_err(|_| "Ask session lock poisoned".to_string())?;
         sessions.sessions.insert(project_id.to_string(), child);
         Ok(())
     }
 
     pub fn remove_and_kill(&self, project_id: &str) -> Result<bool, String> {
-        let mut sessions = self.0.lock().map_err(|_| "Ask session lock poisoned".to_string())?;
+        let mut sessions = self
+            .0
+            .lock()
+            .map_err(|_| "Ask session lock poisoned".to_string())?;
         if let Some(child) = sessions.sessions.remove(project_id) {
             let _ = child.kill();
             Ok(true)

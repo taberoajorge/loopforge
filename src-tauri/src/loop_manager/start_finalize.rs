@@ -1,15 +1,15 @@
-use super::helpers::{artifact_dir, close_session};
+use super::helpers::close_session;
 use super::state::LoopManagerState;
 use crate::db::DbState;
-use std::path::PathBuf;
-use tauri::{AppHandle, Emitter, Manager};
+use crate::projects::notifications::{create_notification_and_emit, NotificationCreateInput};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-pub(super) async fn finalize_loop_run(
-    app: &AppHandle,
+pub(super) async fn finalize_loop_run<R: Runtime>(
+    app: &AppHandle<R>,
     project_id: &str,
-    project_name: &str,
+    _project_name: &str,
     session_id: &str,
-    working_directory: &str,
+    _working_directory: &str,
     outcome: &str,
 ) {
     let db_state = app.state::<DbState>();
@@ -65,6 +65,15 @@ pub(super) async fn finalize_loop_run(
         "failed" => crate::notifications::notify_loop_error(app, project_name),
         _ => {}
     }
+    let _ = create_notification_and_emit(
+        app,
+        NotificationCreateInput {
+            project_id: project_id.to_string(),
+            notification_type: "loop_completed".to_string(),
+            title: "Loop finished".to_string(),
+            message: "Session completed.".to_string(),
+        },
+    );
 
     let _ = app.emit(
         crate::events::EVENT_SESSION_ENDED,
@@ -74,4 +83,25 @@ pub(super) async fn finalize_loop_run(
             "outcome": outcome,
         }),
     );
+    let _ = app.emit(
+        crate::events::EVENT_STORIES_UPDATED,
+        serde_json::json!({ "projectId": project_id }),
+    );
+    let snapshot = crate::commands::projects::get_project_snapshot(
+        app.clone(),
+        app.state::<DbState>(),
+        app.state::<LoopManagerState>(),
+        project_id.to_string(),
+    )
+    .await
+    .ok();
+    let payload = if let Some(snapshot) = snapshot {
+        serde_json::json!({
+            "projectId": project_id,
+            "snapshot": snapshot,
+        })
+    } else {
+        serde_json::json!({ "projectId": project_id })
+    };
+    let _ = app.emit(crate::events::EVENT_PROJECT_STATE_CHANGED, payload);
 }

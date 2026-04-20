@@ -1,31 +1,32 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { useWizardStore } from "../stores/wizardStore";
+import { reportError } from "../lib/reportError";
 import {
-  loadExistingPlan, queryPlanStatus, saveDraft,
-  savePlan, startPlan, stopPlan, writeToPlan,
+  advanceWizardStep,
+  planUserAction,
+  resolvePlanAction,
+  savePlan,
+  saveWizardDraft,
+  startPlan,
 } from "../lib/tauri";
-import { buildDraftPayload } from "../lib/draft-payload";
+import { useWizardStore } from "../stores/wizardStore";
 
 export function usePlanOrchestration(projectId: string | undefined) {
   const navigate = useNavigate();
   const projectData = useWizardStore((state) => state.projectData);
-  const advanceStep = useWizardStore((state) => state.advanceStep);
 
   const [userInput, setUserInput] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editedPlan, setEditedPlan] = useState("");
   const [initDone, setInitDone] = useState(false);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const feedbackPromptRef = useRef<string | null>(null);
+  const launchingRef = useRef(false);
 
   async function launchPlan() {
     const storeRunning = useWizardStore.getState().planRunning;
-    if (!projectId || !projectData.name || storeRunning) return;
+    if (!projectId || !projectData.name || storeRunning || launchingRef.current) return;
+    launchingRef.current = true;
     useWizardStore.getState().setPlanRunning(true);
-
-    const effectivePrompt = feedbackPromptRef.current ?? projectData.description;
-    feedbackPromptRef.current = null;
 
     try {
       await startPlan({
@@ -34,10 +35,12 @@ export function usePlanOrchestration(projectId: string | undefined) {
         agent: projectData.planAgent,
         model: projectData.planModel,
         effort: projectData.planEffort,
-        initialPrompt: effectivePrompt,
+        initialPrompt: projectData.description,
       });
     } catch {
       useWizardStore.getState().setPlanRunning(false);
+    } finally {
+      launchingRef.current = false;
     }
   }
 
@@ -47,28 +50,20 @@ export function usePlanOrchestration(projectId: string | undefined) {
     const { planComplete, planContent } = useWizardStore.getState();
     if (planComplete && planContent.length > 0) return;
 
-    queryPlanStatus(projectId)
-      .then((info) => {
-        if (info && info.status === "running") {
+    resolvePlanAction(projectId)
+      .then((resolved) => {
+        if (resolved.action === "resume") {
           useWizardStore.getState().setPlanRunning(true);
-          return;
+        } else if (resolved.action === "prompt_existing") {
+          useWizardStore.getState().setPlanContent(resolved.planContent ?? "");
+          setShowResumePrompt(true);
+        } else {
+          void launchPlan();
         }
-        loadExistingPlan(projectId)
-          .then((existingPlan) => {
-            if (!existingPlan) return launchPlan();
-            useWizardStore.getState().appendPlanContent(existingPlan);
-            setShowResumePrompt(true);
-          })
-          .catch(() => launchPlan());
       })
-      .catch(() => {
-        loadExistingPlan(projectId)
-          .then((existingPlan) => {
-            if (!existingPlan) return launchPlan();
-            useWizardStore.getState().appendPlanContent(existingPlan);
-            setShowResumePrompt(true);
-          })
-          .catch(() => launchPlan());
+      .catch((caughtError: unknown) => {
+        reportError("usePlanOrchestration.resolvePlanAction", caughtError);
+        void launchPlan();
       });
   }
 
@@ -85,27 +80,28 @@ export function usePlanOrchestration(projectId: string | undefined) {
 
   async function handleSendInput() {
     if (!userInput.trim() || !projectId) return;
-    const { planComplete, planContent } = useWizardStore.getState();
+    const input = userInput.trim();
+    setUserInput("");
+    const { planComplete } = useWizardStore.getState();
     if (planComplete) {
-      const feedback = userInput.trim();
-      setUserInput("");
-      feedbackPromptRef.current =
-        `${projectData.description}\n\nPrevious plan:\n${planContent}\n\nUser feedback:\n${feedback}`;
-      await stopPlan(projectId).catch(() => {});
-      useWizardStore.getState().setPlanRunning(false);
+      useWizardStore.getState().setPlanRunning(true);
       useWizardStore.getState().setPlanComplete(false);
       useWizardStore.setState({ planEvents: [], planContent: "", stories: [] });
-      void launchPlan();
-      return;
     }
-    await writeToPlan(projectId, userInput.trim()).catch(() => {});
-    setUserInput("");
+    await planUserAction(projectId, input, "feedback").catch((caughtError: unknown) => {
+      reportError("usePlanOrchestration.planUserAction.feedback", caughtError);
+      if (planComplete) {
+        useWizardStore.getState().setPlanRunning(false);
+      }
+    });
   }
 
   async function handleEditToggle() {
     const planContent = useWizardStore.getState().planContent;
     if (isEditing && projectId && editedPlan !== planContent) {
-      await savePlan(projectId, editedPlan).catch(() => {});
+      await savePlan(projectId, editedPlan).catch((caughtError: unknown) => {
+        reportError("usePlanOrchestration.savePlan.edit", caughtError);
+      });
       useWizardStore.setState({ planContent: editedPlan });
     }
     if (!isEditing) setEditedPlan(planContent);
@@ -114,32 +110,48 @@ export function usePlanOrchestration(projectId: string | undefined) {
 
   async function handleRePlan() {
     if (!projectId) return;
-    await stopPlan(projectId).catch(() => {});
-    useWizardStore.getState().setPlanRunning(false);
+    useWizardStore.getState().setPlanRunning(true);
     useWizardStore.getState().setPlanComplete(false);
     setIsEditing(false);
     setEditedPlan("");
-    feedbackPromptRef.current = null;
     useWizardStore.setState({ planEvents: [], planContent: "", stories: [] });
-    void launchPlan();
+    await planUserAction(projectId, "regenerate plan", "replan").catch((caughtError: unknown) => {
+      reportError("usePlanOrchestration.planUserAction.replan", caughtError);
+      useWizardStore.getState().setPlanRunning(false);
+    });
   }
 
   async function handleNext() {
     if (!projectId) return;
     const { planContent } = useWizardStore.getState();
     const contentToSave = isEditing ? editedPlan : planContent;
-    if (contentToSave) await savePlan(projectId, contentToSave).catch(() => {});
-    await saveDraft(projectId, buildDraftPayload(projectId, "atomize")).catch(() => {});
-    advanceStep(3);
+    if (contentToSave) {
+      await savePlan(projectId, contentToSave).catch((caughtError: unknown) => {
+        reportError("usePlanOrchestration.savePlan.next", caughtError);
+      });
+    }
+    await saveWizardDraft(projectId, "atomize").catch((caughtError: unknown) => {
+      reportError("usePlanOrchestration.saveWizardDraft.next", caughtError);
+    });
+    await advanceWizardStep(3).catch((caughtError: unknown) => {
+      reportError("usePlanOrchestration.advanceWizardStep.next", caughtError);
+    });
     navigate(`/new/atomize/${projectId}`);
   }
 
   return {
-    userInput, setUserInput,
-    isEditing, editedPlan, setEditedPlan,
+    userInput,
+    setUserInput,
+    isEditing,
+    editedPlan,
+    setEditedPlan,
     showResumePrompt,
     initializePlan,
-    handleAcceptExisting, handleRestartPlan,
-    handleSendInput, handleEditToggle, handleRePlan, handleNext,
+    handleAcceptExisting,
+    handleRestartPlan,
+    handleSendInput,
+    handleEditToggle,
+    handleRePlan,
+    handleNext,
   };
 }

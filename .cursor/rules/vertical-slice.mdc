@@ -1,0 +1,19 @@
+---
+description: Apply when adding new features or extending IPC flows
+alwaysApply: false
+---
+
+# Vertical Slice Workflow
+
+Implement feature changes in this exact order:
+
+1. Storage schema or artifact contract
+2. Rust models with serde support
+3. Service logic in backend
+4. Tauri command wrapper
+5. Event and stream wiring if needed
+6. Frontend IPC binding in `src/lib/tauri.ts`
+7. UI integration
+8. Tests proving end to end behavior
+
+Do not ship partial scaffolding. Each step depends on the previous step being wired and verified.

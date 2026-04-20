@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
-import { getAgentCapabilities, saveConfig, type AgentCapabilities, type ProjectConfig } from "../../../lib/tauri";
-
-const AGENT_NAMES = ["cursor", "codex", "claude", "gemini", "opencode"];
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
+import {
+  type AgentCapabilities,
+  type ProjectConfig,
+  resolveAgentSelection,
+  saveConfig,
+} from "../../../lib/tauri";
+import { useDisplayVocabularyStore } from "../../../stores/displayVocabularyStore";
 
 type ExecutionProfilePanelProps = {
   projectId: string;
@@ -13,7 +23,13 @@ type ExecutionProfilePanelProps = {
   onSaved: () => Promise<void>;
 };
 
-export function ExecutionProfilePanel({ projectId, config, isPaused, onSaved }: ExecutionProfilePanelProps) {
+export function ExecutionProfilePanel({
+  projectId,
+  config,
+  isPaused,
+  onSaved,
+}: ExecutionProfilePanelProps) {
+  const vocabulary = useDisplayVocabularyStore((state) => state.vocabulary);
   const [executeAgent, setExecuteAgent] = useState(config.executeAgent);
   const [executeModel, setExecuteModel] = useState<string | null>(config.executeModel ?? null);
   const [executeEffort, setExecuteEffort] = useState<string | null>(config.executeEffort ?? null);
@@ -38,31 +54,25 @@ export function ExecutionProfilePanel({ projectId, config, isPaused, onSaved }: 
 
   useEffect(() => {
     let cancelled = false;
-    getAgentCapabilities(executeAgent)
-      .then((nextCapabilities) => {
+    resolveAgentSelection(executeAgent, executeModel, executeEffort)
+      .then((result) => {
         if (cancelled) return;
-        setCapabilities(nextCapabilities);
-        if (nextCapabilities.supportsModel) {
-          const keepModel = nextCapabilities.models.some((entry) => entry.id === executeModel);
-          if (!keepModel) setExecuteModel(nextCapabilities.defaultModel ?? nextCapabilities.models[0]?.id ?? null);
-        } else {
-          setExecuteModel(null);
-        }
-        if (nextCapabilities.supportsEffort) {
-          const keepEffort = nextCapabilities.efforts.some((entry) => entry.id === executeEffort);
-          if (!keepEffort) setExecuteEffort(nextCapabilities.defaultEffort ?? nextCapabilities.efforts[0]?.id ?? null);
-        } else {
-          setExecuteEffort(null);
-        }
+        setCapabilities(result.capabilities);
+        setExecuteModel(result.resolvedModel);
+        setExecuteEffort(result.resolvedEffort);
       })
       .catch(() => setCapabilities(null));
     return () => {
       cancelled = true;
     };
-  }, [executeAgent]);
+  }, [executeAgent, executeModel, executeEffort]);
 
   const dirty = useMemo(() => {
-    return executeAgent !== config.executeAgent || executeModel !== (config.executeModel ?? null) || executeEffort !== (config.executeEffort ?? null);
+    return (
+      executeAgent !== config.executeAgent ||
+      executeModel !== (config.executeModel ?? null) ||
+      executeEffort !== (config.executeEffort ?? null)
+    );
   }, [config, executeAgent, executeModel, executeEffort]);
 
   async function handleSave() {
@@ -84,37 +94,86 @@ export function ExecutionProfilePanel({ projectId, config, isPaused, onSaved }: 
     }
   }
 
-  const showModel = capabilities !== null && capabilities.supportsModel;
-  const showEffort = capabilities !== null && capabilities.supportsEffort;
+  const showModel = capabilities?.supportsModel;
+  const showEffort = capabilities?.supportsEffort;
   const loading = capabilities === null;
+  const agentNames = vocabulary?.agentNames.length ? vocabulary.agentNames : [executeAgent];
 
   return (
-    <div className="px-6 py-4" role="region" aria-label="Execution profile" data-testid="execution-profile-panel">
+    <section
+      className="px-6 py-4"
+      aria-label="Execution profile"
+      data-testid="execution-profile-panel"
+    >
       <div className="grid grid-cols-[11rem_1fr_8rem_auto] items-end gap-3">
         <Field label="Execute agent">
           <Select value={executeAgent} onValueChange={setExecuteAgent} disabled={!isPaused}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{AGENT_NAMES.map((agentName) => <SelectItem key={agentName} value={agentName}>{agentName}</SelectItem>)}</SelectContent>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {agentNames.map((agentName) => (
+                <SelectItem key={agentName} value={agentName}>
+                  {agentName}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </Field>
         <Field label="Model" className={showModel ? "" : "invisible"}>
-          <Select value={executeModel ?? ""} onValueChange={(val) => setExecuteModel(val || null)} disabled={!isPaused || loading}>
-            <SelectTrigger><SelectValue placeholder={loading ? "Loading..." : "—"} /></SelectTrigger>
-            <SelectContent>{(capabilities?.models ?? []).map((model) => <SelectItem key={model.id} value={model.id}>{model.label}</SelectItem>)}</SelectContent>
+          <Select
+            value={executeModel ?? ""}
+            onValueChange={(val) => setExecuteModel(val || null)}
+            disabled={!isPaused || loading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={loading ? "Loading..." : "—"} />
+            </SelectTrigger>
+            <SelectContent>
+              {(capabilities?.models ?? []).map((model) => (
+                <SelectItem key={model.id} value={model.id}>
+                  {model.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </Field>
         <Field label="Effort" className={showEffort ? "" : "invisible"}>
-          <Select value={executeEffort ?? ""} onValueChange={(val) => setExecuteEffort(val || null)} disabled={!isPaused || loading}>
-            <SelectTrigger><SelectValue placeholder={loading ? "Loading..." : "—"} /></SelectTrigger>
-            <SelectContent>{(capabilities?.efforts ?? []).map((effort) => <SelectItem key={effort.id} value={effort.id}>{effort.label}</SelectItem>)}</SelectContent>
+          <Select
+            value={executeEffort ?? ""}
+            onValueChange={(val) => setExecuteEffort(val || null)}
+            disabled={!isPaused || loading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={loading ? "Loading..." : "—"} />
+            </SelectTrigger>
+            <SelectContent>
+              {(capabilities?.efforts ?? []).map((effort) => (
+                <SelectItem key={effort.id} value={effort.id}>
+                  {effort.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </Field>
-        <Button variant="secondary" size="md" data-testid="execution-profile-save-button" disabled={!isPaused || !dirty || saving} onClick={() => { void handleSave(); }}>
+        <Button
+          variant="secondary"
+          size="md"
+          data-testid="execution-profile-save-button"
+          disabled={!isPaused || !dirty || saving}
+          onClick={() => {
+            void handleSave();
+          }}
+        >
           {saving ? "Saving..." : "Save profile"}
         </Button>
       </div>
-      {saveError ? <p className="mt-2 text-xs font-sans text-blocked">{saveError}</p> : null}
-      {!isPaused ? <p className="mt-2 text-xs font-sans text-text-dim">Pause loop to edit execution profile, then resume to apply.</p> : null}
-    </div>
+      {saveError ? <p className="mt-2 font-sans text-blocked text-xs">{saveError}</p> : null}
+      {!isPaused ? (
+        <p className="mt-2 font-sans text-text-dim text-xs">
+          Pause loop to edit execution profile, then resume to apply.
+        </p>
+      ) : null}
+    </section>
   );
 }

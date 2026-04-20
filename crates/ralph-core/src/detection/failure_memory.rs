@@ -39,7 +39,9 @@ impl FailureMemory {
     }
 
     pub fn get_record(&self, story_id: &str) -> Option<&StoryFailureRecord> {
-        self.stories.iter().find(|record| record.story_id == story_id)
+        self.stories
+            .iter()
+            .find(|record| record.story_id == story_id)
     }
 
     pub fn record_failure(
@@ -80,15 +82,18 @@ impl FailureMemory {
                     .map(|attempt| attempt.approach_summary.as_str())
                     .collect();
                 let all_same = recent_approaches.len() >= 2
-                    && recent_approaches.windows(2).all(|window| window[0] == window[1]);
+                    && recent_approaches
+                        .windows(2)
+                        .all(|window| window[0] == window[1]);
 
                 if all_same {
                     existing.diversity_required = true;
                     if let Some(last_approach) = recent_approaches.first() {
-                        if !existing.banned_approaches.contains(&last_approach.to_string()) {
-                            existing
-                                .banned_approaches
-                                .push(last_approach.to_string());
+                        if !existing
+                            .banned_approaches
+                            .contains(&last_approach.to_string())
+                        {
+                            existing.banned_approaches.push(last_approach.to_string());
                         }
                     }
                 }
@@ -107,8 +112,7 @@ impl FailureMemory {
 
     pub fn is_in_gutter(&self, story_id: &str, threshold: u32) -> bool {
         self.get_record(story_id)
-            .map(|record| record.gutter_score >= threshold)
-            .unwrap_or(false)
+            .is_some_and(|record| record.gutter_score >= threshold)
     }
 
     pub fn build_diversity_prompt(&self, story_id: &str) -> Option<String> {
@@ -130,10 +134,7 @@ impl FailureMemory {
             }
         }
 
-        prompt.push_str(&format!(
-            "\nPrevious attempts: {}\n",
-            record.attempts.len()
-        ));
+        prompt.push_str(&format!("\nPrevious attempts: {}\n", record.attempts.len()));
 
         for attempt in record.attempts.iter().rev().take(3) {
             prompt.push_str(&format!(

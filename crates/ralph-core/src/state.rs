@@ -1,6 +1,6 @@
 use crate::logger;
 use std::path::Path;
-use tokio::time::{Duration, sleep};
+use tokio::time::{sleep, Duration};
 
 pub fn is_paused(pause_file: &Path) -> bool {
     pause_file.exists()

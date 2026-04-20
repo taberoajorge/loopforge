@@ -5,7 +5,45 @@ members = [
     "crates/loopforge-api",
     "crates/loopforge-app",
     "crates/loopforge-app-core",
+    "crates/native-shell",
     "crates/ralph-core",
     "src-tauri",
 ]
 resolver = "2"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+unused_async = "allow"
+format_push_string = "allow"
+needless_pass_by_value = "allow"
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+too_many_lines = "allow"
+too_many_arguments = "allow"
+assigning_clones = "allow"
+match_same_arms = "allow"
+manual_let_else = "allow"
+ref_option = "allow"
+similar_names = "allow"
+items_after_statements = "allow"
+unused_self = "allow"
+trivially_copy_pass_by_ref = "allow"
+struct_field_names = "allow"
+struct_excessive_bools = "allow"
+should_implement_trait = "allow"
+option_map_unit_fn = "allow"
+missing_fields_in_debug = "allow"
+let_underscore_future = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+doc_markdown = "allow"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unused_qualifications = "warn"
+dead_code = "allow"

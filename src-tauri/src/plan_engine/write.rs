@@ -18,7 +18,7 @@ pub async fn write_to_plan(
     entry
         .handle
         .write(&payload)
-        .map_err(|err| PlanEngineError::Shell(err.to_string()))?;
+        .map_err(|err| PlanEngineError::Shell(err.clone()))?;
     if let Ok(mut last_activity) = entry.last_activity_at.lock() {
         *last_activity = Instant::now();
     }
@@ -35,7 +35,7 @@ pub async fn stop_plan(
         entry
             .handle
             .kill()
-            .map_err(|err| PlanEngineError::Shell(err.to_string()))?;
+            .map_err(|err| PlanEngineError::Shell(err.clone()))?;
     }
     Ok(())
 }

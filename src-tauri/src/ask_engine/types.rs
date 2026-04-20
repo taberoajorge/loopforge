@@ -32,6 +32,13 @@ pub struct StartAskArgs {
     pub model: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AskQuestionResult {
+    pub message_id: String,
+    pub user_message: AskMessage,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AskStreamPayload {
@@ -49,6 +56,7 @@ pub struct AskCompletePayload {
     pub agent: String,
     #[serde(default)]
     pub model: Option<String>,
+    pub message: AskMessage,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -57,4 +65,5 @@ pub struct AskErrorPayload {
     pub project_id: String,
     pub message_id: String,
     pub error: String,
+    pub message: AskMessage,
 }

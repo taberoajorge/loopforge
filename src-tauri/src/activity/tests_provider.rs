@@ -45,6 +45,14 @@ fn codex_exec_line_starts_tool_output() {
 }
 
 #[test]
+fn codex_exec_cmd_line_starts_tool_output() {
+    let mut classifier = ActivityClassifier::new("codex");
+    let event = classifier.classify(r#"exec cmd.exe /C "rg -n foo" in C:\repo"#);
+    assert_eq!(event.kind, PlanEventKind::McpCall);
+    assert!(classifier.is_in_tool_output());
+}
+
+#[test]
 fn codex_tool_output_absorbed_until_narration() {
     let mut classifier = ActivityClassifier::new("codex");
     classifier.classify(r#"exec /bin/zsh -lc "rg foo" in /path"#);
@@ -65,6 +73,9 @@ fn codex_plan_content_only_after_tool_output_ends() {
     classifier.classify("line 1 of file");
     classifier.classify("line 2 of file");
     classifier.classify("codex I've reviewed the file.");
+    for idx in 0..30 {
+        classifier.classify(&format!("codex filler line {idx}"));
+    }
     let plan_line = classifier.classify("## Implementation Plan");
     assert_eq!(plan_line.kind, PlanEventKind::PlanContent);
     assert!(classifier
@@ -104,6 +115,9 @@ fn codex_no_tool_output_leak_into_plan_buffer() {
     classifier.classify("main.rs");
     classifier.classify("lib.rs");
     classifier.classify("codex Found the source files.");
+    for idx in 0..30 {
+        classifier.classify(&format!("codex padding {idx}"));
+    }
     classifier.classify("## My Plan");
     classifier.classify("Step 1: Do the thing");
     let plan = classifier.accumulated_plan();

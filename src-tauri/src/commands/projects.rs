@@ -8,7 +8,7 @@ use crate::projects::{ProjectConfig, ProjectError};
 use crate::storage;
 use crate::storage::db::DbState;
 use rusqlite::OptionalExtension;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, Runtime, State};
 
 fn to_snapshot_config(config: ProjectConfig) -> SnapshotConfig {
     SnapshotConfig {
@@ -28,14 +28,38 @@ fn to_snapshot_config(config: ProjectConfig) -> SnapshotConfig {
     }
 }
 
+fn build_duration_label(started_at: Option<&str>, ended_at: Option<&str>) -> String {
+    let Some(start_value) = started_at else {
+        return String::new();
+    };
+    let Ok(start_time) = chrono::DateTime::parse_from_rfc3339(start_value) else {
+        return String::new();
+    };
+    let end_time = ended_at
+        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
+        .unwrap_or_else(|| chrono::Utc::now().fixed_offset());
+    let elapsed_secs = (end_time - start_time).num_seconds().max(0);
+    if elapsed_secs < 60 {
+        return format!("{elapsed_secs}s");
+    }
+    let elapsed_minutes = elapsed_secs / 60;
+    if elapsed_minutes < 60 {
+        return format!("{elapsed_minutes}m");
+    }
+    let elapsed_hours = elapsed_minutes / 60;
+    let remaining_minutes = elapsed_minutes % 60;
+    format!("{elapsed_hours}h {remaining_minutes}m")
+}
+
 #[tauri::command]
-pub async fn get_project_snapshot(
-    app: AppHandle,
+pub async fn get_project_snapshot<R: Runtime>(
+    app: AppHandle<R>,
     db: State<'_, DbState>,
     loop_state: State<'_, LoopManagerState>,
     project_id: String,
 ) -> Result<ProjectSnapshot, ProjectError> {
-    let normalized_project_id = required_trimmed(project_id, "project_id").map_err(ProjectError::Path)?;
+    let normalized_project_id =
+        required_trimmed(project_id, "project_id").map_err(ProjectError::Path)?;
     let has_loop_handle = loop_state
         .0
         .lock()
@@ -52,8 +76,8 @@ pub async fn get_project_snapshot(
         app.clone(),
         normalized_project_id.clone(),
     )
-        .await
-        .unwrap_or(None);
+    .await
+    .unwrap_or(None);
 
     let db_state = app.state::<DbState>();
     let conn = db_state
@@ -105,10 +129,7 @@ pub async fn get_project_snapshot(
     } else if matches!(status, ProjectStatus::Running) {
         status = ProjectStatus::Paused;
     }
-    if matches!(status, ProjectStatus::Draft)
-        && detail.total_stories > 0
-        && config.is_some()
-    {
+    if matches!(status, ProjectStatus::Draft) && detail.total_stories > 0 && config.is_some() {
         status = ProjectStatus::Ready;
     }
 
@@ -124,6 +145,19 @@ pub async fn get_project_snapshot(
         prompt: paths[4].to_string_lossy().to_string(),
         guardrails: paths[5].to_string_lossy().to_string(),
     };
+    let progress_percent = if detail.total_stories == 0 {
+        0
+    } else {
+        ((detail.passed_count as f64 / detail.total_stories as f64) * 100.0).round() as u32
+    };
+    let uptime_label = build_duration_label(
+        active_session
+            .as_ref()
+            .and_then(|session| session.started_at.as_deref()),
+        active_session
+            .as_ref()
+            .and_then(|session| session.ended_at.as_deref()),
+    );
 
     Ok(ProjectSnapshot {
         project: detail.project,
@@ -136,5 +170,7 @@ pub async fn get_project_snapshot(
         },
         config: config.map(to_snapshot_config),
         artifact_paths,
+        progress_percent,
+        uptime_label,
     })
 }

@@ -95,10 +95,10 @@ fn copy_db_bundle(source_db: &Path, target_db: &Path) -> Result<(), String> {
 }
 
 fn sidecar_path(db_path: &Path, suffix: &str) -> PathBuf {
-    let file_name = db_path
-        .file_name()
-        .map(|name| name.to_string_lossy().to_string())
-        .unwrap_or_else(|| "loopforge.db".to_string());
+    let file_name = db_path.file_name().map_or_else(
+        || "loopforge.db".to_string(),
+        |name| name.to_string_lossy().to_string(),
+    );
     db_path.with_file_name(format!("{file_name}{suffix}"))
 }
 

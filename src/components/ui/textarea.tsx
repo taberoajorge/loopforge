@@ -19,11 +19,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           ariaDescribedBy: props["aria-describedby"],
           ariaInvalid: props["aria-invalid"],
         })}
-        className={cn(
-          getFieldControlClassName(),
-          "min-h-28 resize-y leading-relaxed",
-          className,
-        )}
+        className={cn(getFieldControlClassName(), "min-h-28 resize-y leading-relaxed", className)}
         {...props}
       />
     );

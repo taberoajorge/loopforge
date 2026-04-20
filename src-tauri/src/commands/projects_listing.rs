@@ -5,7 +5,7 @@ use crate::projects::ProjectError;
 use crate::storage::db::DbState;
 use ralph_core::prd::Prd;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,6 +29,8 @@ pub struct EnrichedProject {
     pub session_started_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_ended_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_label: Option<String>,
 }
 
 fn frontend_status(status: &ProjectStatus) -> &'static str {
@@ -41,6 +43,25 @@ fn frontend_status(status: &ProjectStatus) -> &'static str {
         ProjectStatus::Completed => "completed",
         ProjectStatus::Archived => "archived",
     }
+}
+
+fn build_duration_label(started_at: Option<&str>, ended_at: Option<&str>) -> Option<String> {
+    let started = started_at?;
+    let start_time = chrono::DateTime::parse_from_rfc3339(started).ok()?;
+    let end_time = ended_at
+        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
+        .unwrap_or_else(|| chrono::Utc::now().fixed_offset());
+    let elapsed_secs = (end_time - start_time).num_seconds().max(0);
+    if elapsed_secs < 60 {
+        return Some(format!("{elapsed_secs}s"));
+    }
+    let elapsed_minutes = elapsed_secs / 60;
+    if elapsed_minutes < 60 {
+        return Some(format!("{elapsed_minutes}m"));
+    }
+    let elapsed_hours = elapsed_minutes / 60;
+    let remaining_minutes = elapsed_minutes % 60;
+    Some(format!("{elapsed_hours}h {remaining_minutes}m"))
 }
 
 #[tauri::command]
@@ -56,10 +77,9 @@ pub async fn list_projects_enriched(
         .unwrap_or_default();
 
     let mut projects = {
-        let conn = db
-            .0
-            .lock()
-            .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
+        let conn =
+            db.0.lock()
+                .map_err(|_| ProjectError::Db("Lock poisoned".to_string()))?;
 
         let query = "\
             SELECT p.id, p.name, p.description, p.status, p.working_directory, \
@@ -82,12 +102,13 @@ pub async fn list_projects_enriched(
                     wizard_step: row.get(7).unwrap_or(None),
                     session_started_at: row.get(8).unwrap_or(None),
                     session_ended_at: row.get(9).unwrap_or(None),
+                    duration_label: None,
                     stories_completed: None,
                     total_stories: None,
                     current_agent: None,
                 })
             })?
-            .filter_map(|result| result.ok())
+            .filter_map(Result::ok)
             .collect();
         rows
     };
@@ -136,7 +157,50 @@ pub async fn list_projects_enriched(
         }
 
         project.status = frontend_status(&status).to_string();
+        project.duration_label = build_duration_label(
+            project.session_started_at.as_deref(),
+            project.session_ended_at.as_deref(),
+        );
     }
 
     Ok(projects)
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupedProjects {
+    pub active: Vec<EnrichedProject>,
+    pub drafts: Vec<EnrichedProject>,
+    pub finished: Vec<EnrichedProject>,
+    pub archived: Vec<EnrichedProject>,
+}
+
+#[tauri::command]
+pub async fn list_projects_grouped(
+    app: AppHandle,
+    db: State<'_, DbState>,
+    loop_state: State<'_, LoopManagerState>,
+) -> Result<GroupedProjects, ProjectError> {
+    let all = list_projects_enriched(app, db, loop_state).await?;
+    let mut active = Vec::new();
+    let mut drafts = Vec::new();
+    let mut finished = Vec::new();
+    let mut archived = Vec::new();
+
+    for project in all {
+        match project.status.as_str() {
+            "draft" => drafts.push(project),
+            "active" | "paused" | "blocked" => active.push(project),
+            "completed" | "failed" => finished.push(project),
+            "archived" => archived.push(project),
+            _ => active.push(project),
+        }
+    }
+
+    Ok(GroupedProjects {
+        active,
+        drafts,
+        finished,
+        archived,
+    })
 }

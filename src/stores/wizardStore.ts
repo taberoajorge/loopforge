@@ -1,14 +1,27 @@
 import { create } from "zustand";
-import { createStepSlice, STEP_DEFAULTS, type WizardStepSlice } from "./slices/wizard-step";
+import { CONFIG_DEFAULTS, createConfigSlice, type WizardConfigSlice } from "./slices/wizard-config";
 import { createPlanSlice, PLAN_DEFAULTS, type WizardPlanSlice } from "./slices/wizard-plan";
-import { createStoriesSlice, STORIES_DEFAULTS, type WizardStoriesSlice } from "./slices/wizard-stories";
-import { createConfigSlice, CONFIG_DEFAULTS, type WizardConfigSlice } from "./slices/wizard-config";
+import { createStepSlice, STEP_DEFAULTS, type WizardStepSlice } from "./slices/wizard-step";
+import {
+  createStoriesSlice,
+  STORIES_DEFAULTS,
+  type WizardStoriesSlice,
+} from "./slices/wizard-stories";
 
-export type { PlanEvent, PlanEventKind, UserStory, WizardProjectData, WizardConfig } from "../types/wizard";
+export type {
+  PlanEvent,
+  PlanEventKind,
+  UserStory,
+  WizardConfig,
+  WizardProjectData,
+} from "../types/wizard";
 
-type WizardState = WizardStepSlice & WizardPlanSlice & WizardStoriesSlice & WizardConfigSlice & {
-  reset: () => void;
-};
+type WizardState = WizardStepSlice &
+  WizardPlanSlice &
+  WizardStoriesSlice &
+  WizardConfigSlice & {
+    reset: () => void;
+  };
 
 export const useWizardStore = create<WizardState>()((...args) => ({
   ...createStepSlice(...args),
@@ -21,7 +34,7 @@ export const useWizardStore = create<WizardState>()((...args) => ({
       ...STEP_DEFAULTS,
       ...PLAN_DEFAULTS,
       ...STORIES_DEFAULTS,
-      config: CONFIG_DEFAULTS.config,
+      ...CONFIG_DEFAULTS,
     });
   },
 }));

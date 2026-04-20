@@ -102,9 +102,7 @@ fn collect_agent_usage(conn: &rusqlite::Connection, session_id: &str) -> Vec<Age
              WHERE session_id = ?1 AND result = 'success'
              GROUP BY agent_used",
         )
-        .unwrap_or_else(|_| {
-            conn.prepare("SELECT '', 0 WHERE 0").unwrap()
-        });
+        .unwrap_or_else(|_| conn.prepare("SELECT '', 0 WHERE 0").unwrap());
 
     stmt.query_map(rusqlite::params![session_id], |row| {
         Ok(AgentUsage {
@@ -146,7 +144,11 @@ fn collect_diff_stats(work_dir: &Path) -> Vec<DiffStat> {
         .collect()
 }
 
-pub(crate) fn classify_complexity_for_test(files_changed: usize, total_lines: i64, story_count: usize) -> &'static str {
+pub(crate) fn classify_complexity_for_test(
+    files_changed: usize,
+    total_lines: i64,
+    story_count: usize,
+) -> &'static str {
     classify_complexity(files_changed, total_lines, story_count)
 }
 
@@ -184,16 +186,30 @@ pub fn generate_summary(
     let diff_stats = collect_diff_stats(work_dir);
     let exec_secs = total_execution_time(conn, session_id);
 
-    let passed = stories.iter().filter(|story| story.status == "success").count();
-    let blocked = stories.iter().filter(|story| story.status == "failed" || story.status == "blocked").count();
-    let skipped = stories.iter().filter(|story| story.status == "pending").count();
+    let passed = stories
+        .iter()
+        .filter(|story| story.status == "success")
+        .count();
+    let blocked = stories
+        .iter()
+        .filter(|story| story.status == "failed" || story.status == "blocked")
+        .count();
+    let skipped = stories
+        .iter()
+        .filter(|story| story.status == "pending")
+        .count();
 
     let total_insertions: i64 = diff_stats.iter().map(|stat| stat.insertions).sum();
     let total_deletions: i64 = diff_stats.iter().map(|stat| stat.deletions).sum();
     let files_changed = diff_stats.len();
 
     let total_stories = stories.len();
-    let complexity = classify_complexity(files_changed, total_insertions + total_deletions, total_stories).to_string();
+    let complexity = classify_complexity(
+        files_changed,
+        total_insertions + total_deletions,
+        total_stories,
+    )
+    .to_string();
 
     let completion_status = if blocked == 0 && skipped == 0 {
         "SUCCESS".to_string()
@@ -289,10 +305,7 @@ fn fallback_narrative(summary: &LoopSummary) -> String {
 }
 
 fn artifact_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, String> {
-    let data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|err| err.to_string())?;
+    let data_dir = app.path().app_data_dir().map_err(|err| err.to_string())?;
     Ok(data_dir.join("projects").join(project_id))
 }
 
@@ -312,7 +325,14 @@ pub async fn generate_loop_summary(
     let prd = Prd::load(&prd_path).map_err(|err| err.to_string())?;
     let work_dir = PathBuf::from(&working_directory);
 
-    let mut summary = generate_summary(&conn, &project_id, &project_name, &session_id, &prd, &work_dir);
+    let mut summary = generate_summary(
+        &conn,
+        &project_id,
+        &project_name,
+        &session_id,
+        &prd,
+        &work_dir,
+    );
     summary.narrative = render_narrative(&summary);
 
     let summary_path = artifact_path.join("summary.json");

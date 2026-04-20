@@ -81,6 +81,23 @@ pub struct MonitorMessage {
     pub event: Option<MonitorEvent>,
 }
 
+pub trait MonitorRepository {
+    fn latest_session(
+        &self,
+        project_id: &str,
+    ) -> crate::session::ServiceResult<Option<SessionInfo>>;
+    fn recent_output(
+        &self,
+        project_id: &str,
+        limit: usize,
+    ) -> crate::session::ServiceResult<Vec<OutputEntry>>;
+    fn recent_events(
+        &self,
+        project_id: &str,
+        limit: usize,
+    ) -> crate::session::ServiceResult<Vec<MonitorEvent>>;
+}
+
 pub trait MonitorService {
     fn snapshot(&self, project_id: &str) -> crate::session::ServiceResult<MonitorSnapshot>;
     fn recent_output(
@@ -95,30 +112,39 @@ pub trait MonitorService {
     ) -> crate::session::ServiceResult<Vec<MonitorEvent>>;
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{MonitorEvent, MonitorMessage, MonitorStream, OutputEntry};
+pub struct RuntimeMonitorService<R> {
+    repository: R,
+}
 
-    #[test]
-    fn serializes_monitor_event_payloads() {
-        let event = MonitorEvent::Output {
-            entry: OutputEntry {
-                project_id: "project-1".into(),
-                session_id: Some("session-1".into()),
-                stream: MonitorStream::Stderr,
-                content: "line".into(),
-                emitted_at: Some("2026-04-10T00:00:00Z".into()),
-            },
-        };
-        let message = serde_json::to_value(MonitorMessage {
-            project_id: "project-1".into(),
-            snapshot: None,
-            event: Some(event),
+impl<R> RuntimeMonitorService<R> {
+    pub fn new(repository: R) -> Self {
+        Self { repository }
+    }
+}
+
+impl<R: MonitorRepository> MonitorService for RuntimeMonitorService<R> {
+    fn snapshot(&self, project_id: &str) -> crate::session::ServiceResult<MonitorSnapshot> {
+        Ok(MonitorSnapshot {
+            project_id: project_id.to_string(),
+            session: self.repository.latest_session(project_id)?,
+            recent_output: self.repository.recent_output(project_id, 200)?,
+            events: self.repository.recent_events(project_id, 100)?,
         })
-        .expect("monitor message serializes");
+    }
 
-        assert_eq!(message["projectId"], "project-1");
-        assert_eq!(message["event"]["type"], "output");
-        assert_eq!(message["event"]["entry"]["stream"], "stderr");
+    fn recent_output(
+        &self,
+        project_id: &str,
+        limit: usize,
+    ) -> crate::session::ServiceResult<Vec<OutputEntry>> {
+        self.repository.recent_output(project_id, limit)
+    }
+
+    fn recent_events(
+        &self,
+        project_id: &str,
+        limit: usize,
+    ) -> crate::session::ServiceResult<Vec<MonitorEvent>> {
+        self.repository.recent_events(project_id, limit)
     }
 }

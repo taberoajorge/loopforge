@@ -6,7 +6,8 @@ pub async fn check_health(url: &str) -> bool {
         .build()
         .unwrap_or_default();
 
-    match client.post(url)
+    match client
+        .post(url)
         .header("Content-Type", "application/json")
         .body("{}")
         .send()
@@ -26,9 +27,7 @@ pub async fn wait_for_health(service_name: &str, url: &str, max_wait_secs: u64) 
 
     while elapsed < max_wait_secs {
         if check_health(url).await {
-            crate::logger::log_success(&format!(
-                "{service_name} is healthy after {elapsed}s"
-            ));
+            crate::logger::log_success(&format!("{service_name} is healthy after {elapsed}s"));
             return true;
         }
         tokio::time::sleep(interval).await;

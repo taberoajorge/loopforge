@@ -104,10 +104,20 @@ impl ActivityClassifier {
         if self.patterns.error.iter().any(|regex| regex.is_match(line)) {
             return PlanEventKind::Error;
         }
-        if self.patterns.mcp_call.iter().any(|regex| regex.is_match(line)) {
+        if self
+            .patterns
+            .mcp_call
+            .iter()
+            .any(|regex| regex.is_match(line))
+        {
             return PlanEventKind::McpCall;
         }
-        if self.patterns.search.iter().any(|regex| regex.is_match(line)) {
+        if self
+            .patterns
+            .search
+            .iter()
+            .any(|regex| regex.is_match(line))
+        {
             return PlanEventKind::Search;
         }
         if self
@@ -118,7 +128,12 @@ impl ActivityClassifier {
         {
             return PlanEventKind::DocsLookup;
         }
-        if self.patterns.thinking.iter().any(|regex| regex.is_match(line)) {
+        if self
+            .patterns
+            .thinking
+            .iter()
+            .any(|regex| regex.is_match(line))
+        {
             return PlanEventKind::Thinking;
         }
         PlanEventKind::PlanContent
@@ -142,7 +157,10 @@ impl ActivityClassifier {
         let mut start = token_line + 1;
         if start < self.content_buffer.len() {
             let next = self.content_buffer[start].trim();
-            if next.chars().all(|ch| ch.is_ascii_digit() || ch == ',' || ch == '.') {
+            if next
+                .chars()
+                .all(|ch| ch.is_ascii_digit() || ch == ',' || ch == '.')
+            {
                 start += 1;
             }
         }

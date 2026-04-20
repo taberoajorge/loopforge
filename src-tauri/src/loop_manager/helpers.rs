@@ -1,8 +1,10 @@
 use super::{LoopError, StartLoopArgs};
 use crate::db::DbState;
+use crate::projects::documents;
+use crate::projects::ProjectError;
 use ralph_core::config::RalphConfig;
 use std::path::{Path, PathBuf};
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 use uuid::Uuid;
 
 pub(super) fn build_ralph_config(
@@ -31,7 +33,7 @@ pub(super) fn build_ralph_config(
         config.tuning.gutter_threshold = gutter;
     }
     if let Some(cooldown) = args.cooldown_seconds {
-        config.tuning.cooldown_secs = cooldown as u64;
+        config.tuning.cooldown_secs = u64::from(cooldown);
     }
     if let Some(ref test_cmd) = args.test_command {
         config.tuning.test_command = Some(test_cmd.clone());
@@ -52,7 +54,10 @@ pub(super) fn ensure_execution_prompt(
         .unwrap_or(true);
 
     if needs_default {
-        std::fs::write(&prompt_path, default_execution_prompt(project_name, artifact_dir))?;
+        std::fs::write(
+            &prompt_path,
+            default_execution_prompt(project_name, artifact_dir),
+        )?;
     }
 
     Ok(())
@@ -73,24 +78,28 @@ When a story passes verification, update only this artifact PRD and preserve exi
 pub(super) fn create_session(db: &DbState, project_id: &str) -> Result<String, LoopError> {
     let session_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = db.0.lock().map_err(|_| LoopError::LockPoisoned)?;
-    conn.execute(
-        "INSERT INTO sessions (id, project_id, started_at) VALUES (?1, ?2, ?3)",
-        rusqlite::params![session_id, project_id, now],
-    )?;
+    documents::insert_session(db, project_id, &session_id, &now).map_err(project_error)?;
     Ok(session_id)
 }
 
 pub(super) fn close_session(db: &DbState, session_id: &str) {
     let now = chrono::Utc::now().to_rfc3339();
-    if let Ok(conn) = db.0.lock() {
-        let _ = conn.execute(
-            "UPDATE sessions SET ended_at = ?1 WHERE id = ?2",
-            rusqlite::params![now, session_id],
-        );
-    }
+    let _ = documents::close_session(db, session_id, &now).map_err(project_error);
 }
 
-pub(super) fn artifact_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, LoopError> {
+pub(super) fn artifact_dir<R: Runtime>(
+    app: &AppHandle<R>,
+    project_id: &str,
+) -> Result<PathBuf, LoopError> {
     crate::storage::artifacts::project_artifact_dir(app, project_id).map_err(LoopError::Path)
+}
+
+fn project_error(error: ProjectError) -> LoopError {
+    match error {
+        ProjectError::Db(message) => LoopError::Db(message),
+        ProjectError::Io(source) => LoopError::Io(source),
+        ProjectError::Json(source) => LoopError::Internal(source.to_string()),
+        ProjectError::NotFound(project_id) => LoopError::Path(project_id),
+        ProjectError::Path(message) => LoopError::Path(message),
+    }
 }

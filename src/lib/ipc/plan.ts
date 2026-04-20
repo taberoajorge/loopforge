@@ -1,8 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type {
-  PlanActivityBatchPayload, PlanSessionInfo, PlanTerminalPayload, Prd,
-} from "./types";
+import type { PlanActivityBatchPayload, PlanSessionInfo, PlanTerminalPayload, Prd } from "./types";
 
 export async function startPlan(args: {
   projectId: string;
@@ -25,6 +23,38 @@ export async function stopPlan(projectId: string): Promise<void> {
 
 export async function queryPlanStatus(projectId: string): Promise<PlanSessionInfo | null> {
   return invoke<PlanSessionInfo | null>("query_plan_status", { projectId });
+}
+
+export type PlanStepState =
+  | { state: "running" }
+  | { state: "hasExistingPlan"; content: string }
+  | { state: "needsFreshPlan" };
+
+export interface ResolvePlanActionResult {
+  action: "resume" | "prompt_existing" | "start";
+  planContent?: string;
+}
+
+export type PlanUserActionKind = "feedback" | "replan";
+
+export interface PlanUserActionResult {
+  mode: "sent" | "replanned";
+}
+
+export async function resolvePlanState(projectId: string): Promise<PlanStepState> {
+  return invoke<PlanStepState>("resolve_plan_state", { projectId });
+}
+
+export async function resolvePlanAction(projectId: string): Promise<ResolvePlanActionResult> {
+  return invoke<ResolvePlanActionResult>("resolve_plan_action", { projectId });
+}
+
+export async function planUserAction(
+  projectId: string,
+  input: string,
+  action: PlanUserActionKind,
+): Promise<PlanUserActionResult> {
+  return invoke<PlanUserActionResult>("plan_user_action", { projectId, input, action });
 }
 
 export async function loadExistingPlan(projectId: string): Promise<string | null> {
@@ -50,7 +80,9 @@ export async function saveConfig(projectId: string, configJson: string): Promise
 export function onPlanActivityBatch(
   callback: (payload: PlanActivityBatchPayload) => void,
 ): Promise<UnlistenFn> {
-  return listen<PlanActivityBatchPayload>("plan:activity-batch", (event) => callback(event.payload));
+  return listen<PlanActivityBatchPayload>("plan:activity-batch", (event) =>
+    callback(event.payload),
+  );
 }
 
 export function onPlanComplete(
@@ -59,9 +91,7 @@ export function onPlanComplete(
   return listen<PlanTerminalPayload>("plan:complete", (event) => callback(event.payload));
 }
 
-export function onPlanError(
-  callback: (payload: PlanTerminalPayload) => void,
-): Promise<UnlistenFn> {
+export function onPlanError(callback: (payload: PlanTerminalPayload) => void): Promise<UnlistenFn> {
   return listen<PlanTerminalPayload>("plan:error", (event) => callback(event.payload));
 }
 

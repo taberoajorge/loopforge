@@ -1,3 +1,5 @@
+#[path = "merge_coordinator.rs"]
+mod merge_coordinator;
 #[path = "wizard_persistence.rs"]
 mod wizard_persistence;
 
@@ -33,8 +35,9 @@ async fn happy_path_persists_artifacts_and_runtime_histories() {
         artifact_dir.to_string_lossy(),
         harness.artifact_dir(&project.id).to_string_lossy()
     );
-    for name in ["draft.json", "plan.md", "prd.json", "config.json"] {
-        assert!(artifact_dir.join(name).exists(), "{name} must exist");
+    for path in crate::storage::artifacts::file_paths(&artifact_dir) {
+        let name = path.file_name().unwrap().to_string_lossy();
+        assert!(path.exists(), "{name} must exist");
     }
 
     let _session_id = harness.start_loop(&project.id).await;

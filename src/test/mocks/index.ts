@@ -12,16 +12,6 @@ export type {
   TauriEventPayload,
 } from "./contracts";
 export {
-  emitTauriEvent,
-  getEventListenerCount,
-  invokeMock,
-  listenMock,
-  mockTauriCommand,
-  mockTauriCommands,
-  resetTauriMocks,
-  subscribeTauriEvent,
-} from "./tauri";
-export {
   currentWindowMock,
   getCurrentWindowMock,
   isPermissionGrantedMock,
@@ -32,3 +22,13 @@ export {
   requestPermissionMock,
   resetDesktopMocks,
 } from "./desktop";
+export {
+  emitTauriEvent,
+  getEventListenerCount,
+  invokeMock,
+  listenMock,
+  mockTauriCommand,
+  mockTauriCommands,
+  resetTauriMocks,
+  subscribeTauriEvent,
+} from "./tauri";

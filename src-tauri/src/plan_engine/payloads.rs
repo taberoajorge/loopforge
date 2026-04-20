@@ -20,6 +20,8 @@ pub struct PlanActivityPayload {
 pub struct PlanActivityBatchPayload {
     pub project_id: String,
     pub events: Vec<PlanActivityPayload>,
+    pub plan_content: String,
+    #[serde(default)]
     pub plan_content_delta: String,
 }
 
@@ -28,4 +30,6 @@ pub struct PlanActivityBatchPayload {
 pub struct PlanTerminalPayload {
     pub project_id: String,
     pub detail: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub final_content: Option<String>,
 }

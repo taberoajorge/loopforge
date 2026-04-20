@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 const FIXTURE_BINARIES = ["claude", "codex", "cursor", "cursor-agent", "gemini", "opencode"];
-const FIXTURE_AGENT_SCRIPT = `#!/bin/sh
+const UNIX_FIXTURE_AGENT_SCRIPT = `#!/bin/sh
 all="$*"
 fixture_set="\${LOOPFORGE_TEST_FIXTURE_SET:-happy-path}"
 if printf '%s' "$all" | grep -q "Condense the following implementation plan"; then
@@ -30,6 +30,37 @@ else
   printf '%s\\n' 'fixture agent completed'
 fi
 `;
+const WINDOWS_FIXTURE_AGENT_SCRIPT = `@echo off
+set all=%*
+set fixture_set=%LOOPFORGE_TEST_FIXTURE_SET%
+if "%fixture_set%"=="" set fixture_set=happy-path
+echo %all% | findstr /C:"Condense the following implementation plan" >nul && (echo Create the project, atomize the plan, execute the story, and archive the result.& exit /b 0)
+echo %all% | findstr /C:"Split the following implementation plan" >nul && (
+  if /I "%fixture_set%"=="atomize-error" (
+    echo {broken
+  ) else (
+    echo [{"title":"Lifecycle","content":"Create the project, atomize the plan, execute the story, and archive the result."}]
+  )
+  exit /b 0
+)
+echo %all% | findstr /C:"decomposing a plan section into atomic user stories" >nul && (
+  if /I "%fixture_set%"=="no-stories" (
+    echo []
+  ) else (
+    echo [{"title":"Exercise desktop happy path","description":"Cover the desktop happy path flow.","acceptanceCriteria":["The desktop flow completes","Artifacts are persisted"],"scope":{"filesToModify":["e2e/wdio.conf.ts"],"filesToCreate":["e2e/specs/happy-path.e2e.ts"],"filesToAvoid":[]},"verification":{"commands":["bun run e2e -- --spec e2e/specs/happy-path.e2e.ts"],"assertions":[]},"commitMessage":"test(frontend): add desktop happy path spec","priority":"critical","estimatedComplexity":"medium","estimatedMinutes":45,"dependsOn":[]}]
+  )
+  exit /b 0
+)
+echo %all% | findstr /C:"technical lead finalizing" >nul && (
+  if /I "%fixture_set%"=="no-stories" (
+    echo {"projectName":"LoopForge Desktop Empty Result","feature":"Desktop atomize empty result","workingDirectory":"","generatedAt":"2026-04-10T00:00:00.000Z","stories":[],"totalEstimatedMinutes":0}
+  ) else (
+    echo {"projectName":"LoopForge Desktop Happy Path","feature":"Desktop happy path","workingDirectory":"","generatedAt":"2026-04-10T00:00:00.000Z","stories":[{"id":"S-001","title":"Exercise desktop happy path","description":"Cover the desktop happy path flow.","acceptanceCriteria":["The desktop flow completes","Artifacts are persisted"],"scope":{"filesToModify":["e2e/wdio.conf.ts"],"filesToCreate":["e2e/specs/happy-path.e2e.ts"],"filesToAvoid":[]},"verification":{"commands":["bun run e2e -- --spec e2e/specs/happy-path.e2e.ts"],"assertions":[]},"commitMessage":"test(frontend): add desktop happy path spec","priority":"critical","estimatedComplexity":"medium","estimatedMinutes":45,"dependsOn":[],"passes":false,"blocked":false,"attempts":0,"notes":null}]}
+  )
+  exit /b 0
+)
+echo fixture agent completed
+`;
 
 export type DesktopTestEnvironment = {
   rootDir: string;
@@ -46,9 +77,14 @@ export type DesktopTestEnvironment = {
 async function installFixtureAgents(binDir: string) {
   await Promise.all(
     FIXTURE_BINARIES.map(async (binaryName) => {
-      const targetPath = path.join(binDir, binaryName);
-      await writeFile(targetPath, FIXTURE_AGENT_SCRIPT);
-      await chmod(targetPath, 0o755);
+      const commandName = process.platform === "win32" ? `${binaryName}.cmd` : binaryName;
+      const targetPath = path.join(binDir, commandName);
+      const script =
+        process.platform === "win32" ? WINDOWS_FIXTURE_AGENT_SCRIPT : UNIX_FIXTURE_AGENT_SCRIPT;
+      await writeFile(targetPath, script);
+      if (process.platform !== "win32") {
+        await chmod(targetPath, 0o755);
+      }
     }),
   );
 }

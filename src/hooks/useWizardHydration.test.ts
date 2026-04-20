@@ -1,11 +1,8 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  createAtomizedPrd,
-  createWizardResumeState,
-} from "../test/fixtures";
-import { mockTauriCommands } from "../test/mocks";
 import { useWizardStore } from "../stores/wizardStore";
+import { createAtomizedPrd, createWizardResumeState } from "../test/fixtures";
+import { mockTauriCommands } from "../test/mocks";
 import { useWizardHydration } from "./useWizardHydration";
 
 function resetWizardStore() {

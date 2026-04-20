@@ -1,17 +1,20 @@
 use super::event_sink::TauriEventSink;
 use super::helpers::{artifact_dir, build_ralph_config, create_session, ensure_execution_prompt};
 use super::provider::ShellProvider;
-use super::start_resolve::{ResolvedStartLoop, resolve_start_loop};
 use super::start_finalize::finalize_loop_run;
+use super::start_resolve::{resolve_start_loop, ResolvedStartLoop};
 use super::{LoopError, LoopHandle, LoopManagerState, StartLoopArgs};
 use crate::db::DbState;
 use ralph_core::loop_engine;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{AppHandle, Emitter, Manager};
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-pub async fn start_loop(app: AppHandle, args: StartLoopArgs) -> Result<String, LoopError> {
+pub async fn start_loop<R: Runtime>(
+    app: AppHandle<R>,
+    args: StartLoopArgs,
+) -> Result<String, LoopError> {
     let db = app.state::<DbState>();
     let loop_state = app.state::<LoopManagerState>();
     let resolved = resolve_start_loop(&app, &db, &args).await?;
@@ -47,8 +50,8 @@ pub async fn start_loop(app: AppHandle, args: StartLoopArgs) -> Result<String, L
     }
 }
 
-async fn do_start_loop(
-    app: &AppHandle,
+async fn do_start_loop<R: Runtime>(
+    app: &AppHandle<R>,
     db: &DbState,
     _loop_state: &LoopManagerState,
     resolved: ResolvedStartLoop,
@@ -66,6 +69,9 @@ async fn do_start_loop(
         cooldown_seconds: resolved.cooldown_seconds,
         test_command: resolved.test_command.clone(),
         max_verification_retries: resolved.max_verification_retries,
+        scm_provider: Some(resolved.scm_provider.clone()),
+        review_polling_interval: Some(resolved.review_polling_interval),
+        review_timeout: Some(resolved.review_timeout),
     };
     let artifacts = artifact_dir(app, &resolved.project_id)?;
     let gutter_threshold = resolved.gutter_threshold.unwrap_or(3);
@@ -120,14 +126,12 @@ async fn do_start_loop(
     let session_id_clone = session_id.clone();
     let working_dir_clone = resolved.working_directory.clone();
 
-    let event_sink = TauriEventSink::new(
-        app.clone(),
-        resolved.project_id.clone(),
-        session_id.clone(),
-    );
+    let event_sink =
+        TauriEventSink::new(app.clone(), resolved.project_id.clone(), session_id.clone());
 
     let join_handle = tokio::spawn(async move {
-        let run_result = loop_engine::run(&config, &provider, shutdown_clone.clone(), &event_sink).await;
+        let run_result =
+            loop_engine::run(&config, &provider, shutdown_clone.clone(), &event_sink).await;
         let outcome = if shutdown_clone.load(Ordering::SeqCst) {
             if pause_file.exists() {
                 "paused"
@@ -157,6 +161,23 @@ async fn do_start_loop(
             rusqlite::params![now, resolved.project_id],
         );
     }
+    let snapshot = crate::commands::projects::get_project_snapshot(
+        app.clone(),
+        app.state::<DbState>(),
+        app.state::<LoopManagerState>(),
+        resolved.project_id.clone(),
+    )
+    .await
+    .ok();
+    let payload = if let Some(snapshot) = snapshot {
+        serde_json::json!({
+            "projectId": resolved.project_id,
+            "snapshot": snapshot,
+        })
+    } else {
+        serde_json::json!({ "projectId": resolved.project_id })
+    };
+    let _ = app.emit(crate::events::EVENT_PROJECT_STATE_CHANGED, payload);
 
     Ok((
         session_id,

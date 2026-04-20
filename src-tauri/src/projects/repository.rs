@@ -1,14 +1,18 @@
+use crate::models::ProjectStatus;
 use crate::projects::{Project, ProjectsByStatus};
 
 pub const PROJECT_COLUMNS: &str =
     "id, name, description, status, working_directory, created_at, updated_at, wizard_step";
 
 pub fn row_to_project(row: &rusqlite::Row<'_>) -> rusqlite::Result<Project> {
+    let raw_status: String = row.get(3)?;
+    let status = ProjectStatus::resolve_canonical(&raw_status, false, false, false);
+
     Ok(Project {
         id: row.get(0)?,
         name: row.get(1)?,
         description: row.get(2)?,
-        status: row.get(3)?,
+        status: status.as_project_status().to_string(),
         working_directory: row.get(4)?,
         created_at: row.get(5)?,
         updated_at: row.get(6)?,

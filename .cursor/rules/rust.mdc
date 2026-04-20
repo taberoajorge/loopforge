@@ -10,6 +10,7 @@ globs: "**/*.rs"
 - `anyhow::Result` acceptable at application boundary (src-tauri commands)
 - Never `unwrap()` in `crates/ralph-core/`; acceptable in tests
 - Use `?` propagation, not `match` chains for simple forwarding
+- Keep command errors serializable for IPC boundaries
 
 ## Async
 - Runtime: tokio (multi-thread)
@@ -21,10 +22,16 @@ globs: "**/*.rs"
 - New optional fields use `#[serde(default)]`
 - JSON output: `serde_json` with `to_string_pretty` for artifact files
 
+## Persistence Contracts
+- Keep metadata in SQLite through `rusqlite` and managed `DbState`
+- Keep project workflow artifacts on filesystem under project directories
+- Do not use `tauri-plugin-sql` for project persistence
+
 ## Testing
 - Unit tests in same file (`#[cfg(test)]` module)
 - Integration tests in `tests/` directory
 - `#[tokio::test]` for async tests
+- For flow changes, test storage, service, and command layers together where possible
 
 ## Dependencies (ralph-core)
 - serde, serde_json, tokio, anyhow, thiserror, regex, chrono

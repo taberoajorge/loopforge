@@ -18,6 +18,7 @@ impl ProjectStatus {
     pub fn from_db_status(status: &str) -> Self {
         match status {
             "active" => Self::Running,
+            "running" => Self::Running,
             "paused" => Self::Paused,
             "blocked" => Self::Blocked,
             "failed" => Self::Failed,
@@ -25,6 +26,53 @@ impl ProjectStatus {
             "archived" => Self::Archived,
             "ready" => Self::Ready,
             _ => Self::Draft,
+        }
+    }
+
+    pub fn resolve_canonical(
+        db_status: &str,
+        has_prd: bool,
+        has_config: bool,
+        has_active_session: bool,
+    ) -> Self {
+        let base_status = Self::from_db_status(db_status);
+
+        if has_active_session {
+            return Self::Running;
+        }
+
+        if matches!(base_status, Self::Running | Self::Paused) {
+            return Self::Paused;
+        }
+
+        if matches!(
+            base_status,
+            Self::Blocked | Self::Failed | Self::Completed | Self::Archived
+        ) {
+            return base_status;
+        }
+
+        if !has_prd {
+            return Self::Draft;
+        }
+
+        if has_config {
+            Self::Ready
+        } else {
+            Self::Draft
+        }
+    }
+
+    pub fn as_project_status(&self) -> &'static str {
+        match self {
+            Self::Draft => "draft",
+            Self::Ready => "ready",
+            Self::Running => "active",
+            Self::Paused => "paused",
+            Self::Blocked => "blocked",
+            Self::Failed => "failed",
+            Self::Completed => "completed",
+            Self::Archived => "archived",
         }
     }
 }
@@ -114,6 +162,10 @@ pub struct ProjectSnapshot {
     pub config: Option<ProjectConfig>,
     #[serde(default)]
     pub artifact_paths: ArtifactPaths,
+    #[serde(default)]
+    pub progress_percent: u32,
+    #[serde(default)]
+    pub uptime_label: String,
 }
 
 #[allow(dead_code)]
@@ -162,4 +214,33 @@ pub enum LoopEvent {
         session_id: String,
         outcome: String,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ProjectStatus;
+
+    #[test]
+    fn canonical_project_status_resolution() {
+        assert_eq!(
+            ProjectStatus::resolve_canonical("ready", false, true, false),
+            ProjectStatus::Draft
+        );
+        assert_eq!(
+            ProjectStatus::resolve_canonical("paused", true, true, false),
+            ProjectStatus::Paused
+        );
+        assert_eq!(
+            ProjectStatus::resolve_canonical("draft", true, true, false),
+            ProjectStatus::Ready
+        );
+        assert_eq!(
+            ProjectStatus::resolve_canonical("active", true, true, false),
+            ProjectStatus::Paused
+        );
+        assert_eq!(
+            ProjectStatus::resolve_canonical("paused", true, false, true),
+            ProjectStatus::Running
+        );
+    }
 }

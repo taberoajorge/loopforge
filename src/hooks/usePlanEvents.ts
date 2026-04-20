@@ -1,37 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import { reportError } from "../lib/reportError";
 import {
-  onPlanActivityBatch, onPlanComplete, onPlanError, onPlanHeartbeat,
-  queryPlanStatus, loadExistingPlan,
-  type PlanActivityBatchPayload,
+  onPlanActivityBatch,
+  onPlanComplete,
+  onPlanError,
+  onPlanHeartbeat,
+  queryPlanStatus,
 } from "../lib/tauri";
-import { useWizardStore, type PlanEvent } from "../stores/wizardStore";
-import {
-  isNoisePlanLine, normalizePlanLine,
-} from "../lib/plan-stream-filters";
-
-function processBatch(
-  payload: PlanActivityBatchPayload,
-  lastLineRef: React.RefObject<string>,
-): PlanEvent[] {
-  const filtered: PlanEvent[] = [];
-  for (const raw of payload.events) {
-    const normalizedContent = normalizePlanLine(raw.content);
-    if (isNoisePlanLine(normalizedContent)) continue;
-    const signature = `${raw.kind}:${normalizedContent}`;
-    if (lastLineRef.current === signature) continue;
-    lastLineRef.current = signature;
-    filtered.push({
-      kind: raw.kind,
-      content: normalizedContent,
-      timestamp: raw.timestamp,
-    });
-  }
-  return filtered;
-}
+import { type PlanEvent, useWizardStore } from "../stores/wizardStore";
 
 export function usePlanEvents(projectId: string | undefined) {
   const [planError, setPlanError] = useState<string | null>(null);
-  const lastLineRef = useRef("");
   const mountIdRef = useRef(0);
 
   useEffect(() => {
@@ -52,25 +31,34 @@ export function usePlanEvents(projectId: string | undefined) {
           useWizardStore.getState().setPlanRunning(true);
         }
       })
-      .catch(() => {});
+      .catch((caughtError: unknown) => {
+        reportError("usePlanEvents.queryPlanStatus", caughtError);
+      });
 
     onPlanActivityBatch((payload) => {
       if (isCancelled() || payload.projectId !== projectId) return;
 
-      const filtered = processBatch(payload, lastLineRef);
       const current = useWizardStore.getState();
 
-      if (filtered.length > 0) {
-        current.appendPlanEvents(filtered);
+      if (payload.events.length > 0) {
+        const events: PlanEvent[] = payload.events.map((raw) => ({
+          kind: raw.kind,
+          content: raw.content,
+          timestamp: raw.timestamp,
+        }));
+        current.appendPlanEvents(events);
       }
-      if (payload.planContentDelta) {
-        current.appendPlanContentDelta(payload.planContentDelta);
+      if (payload.planContent !== undefined) {
+        current.setPlanContent(payload.planContent);
       }
       if (!current.planRunning) {
         current.setPlanRunning(true);
       }
     }).then((unlisten) => {
-      if (isCancelled()) { unlisten(); return; }
+      if (isCancelled()) {
+        unlisten();
+        return;
+      }
       unlistenFns.push(unlisten);
     });
 
@@ -79,20 +67,15 @@ export function usePlanEvents(projectId: string | undefined) {
       const current = useWizardStore.getState();
       current.setPlanRunning(false);
       setPlanError(null);
-      loadExistingPlan(projectId)
-        .then((diskContent) => {
-          if (isCancelled()) return;
-          const store = useWizardStore.getState();
-          if (diskContent && diskContent.length > 0) {
-            useWizardStore.setState({ planContent: diskContent });
-          }
-          store.setPlanComplete(true);
-        })
-        .catch(() => {
-          useWizardStore.getState().setPlanComplete(true);
-        });
+      if (payload.finalContent && payload.finalContent.length > 0) {
+        useWizardStore.setState({ planContent: payload.finalContent });
+      }
+      current.setPlanComplete(true);
     }).then((unlisten) => {
-      if (isCancelled()) { unlisten(); return; }
+      if (isCancelled()) {
+        unlisten();
+        return;
+      }
       unlistenFns.push(unlisten);
     });
 
@@ -101,14 +84,20 @@ export function usePlanEvents(projectId: string | undefined) {
       useWizardStore.getState().setPlanRunning(false);
       setPlanError(payload.detail || "Agent exited with an error");
     }).then((unlisten) => {
-      if (isCancelled()) { unlisten(); return; }
+      if (isCancelled()) {
+        unlisten();
+        return;
+      }
       unlistenFns.push(unlisten);
     });
 
     onPlanHeartbeat((payload) => {
       if (isCancelled() || payload.projectId !== projectId) return;
     }).then((unlisten) => {
-      if (isCancelled()) { unlisten(); return; }
+      if (isCancelled()) {
+        unlisten();
+        return;
+      }
       unlistenFns.push(unlisten);
     });
 
@@ -118,29 +107,6 @@ export function usePlanEvents(projectId: string | undefined) {
         unlisten();
       }
     };
-  }, [projectId]);
-
-  useEffect(() => {
-    if (!projectId) return;
-    const { planRunning } = useWizardStore.getState();
-    if (planRunning) return;
-
-    queryPlanStatus(projectId)
-      .then((info) => {
-        if (!info) {
-          loadExistingPlan(projectId)
-            .then((content) => {
-              if (!content) return;
-              const current = useWizardStore.getState();
-              if (!current.planContent && content.length > 0) {
-                current.appendPlanContent(content);
-                current.setPlanComplete(true);
-              }
-            })
-            .catch(() => {});
-        }
-      })
-      .catch(() => {});
   }, [projectId]);
 
   return { planError, clearError: () => setPlanError(null) };

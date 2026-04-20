@@ -86,18 +86,12 @@ impl<'a> PromptBuilder<'a> {
         let mut prompt = String::with_capacity(8192);
         let mut truncated = false;
 
-        let base_prompt =
-            std::fs::read_to_string(self.prompt_file).unwrap_or_else(|_| {
-                format!(
-                    "No prompt file found at {}",
-                    self.prompt_file.display()
-                )
-            });
+        let base_prompt = std::fs::read_to_string(self.prompt_file)
+            .unwrap_or_else(|_| format!("No prompt file found at {}", self.prompt_file.display()));
         prompt.push_str(&base_prompt);
 
         prompt.push_str("\n\n## GUARDRAILS (READ FIRST!)\n\n");
-        let guardrails_content = guardrails::read_content(self.guardrails_file)
-            .unwrap_or_default();
+        let guardrails_content = guardrails::read_content(self.guardrails_file).unwrap_or_default();
         let guardrails_section = truncate_section(&guardrails_content, MAX_GUARDRAILS_BYTES);
         if guardrails_section.len() < guardrails_content.len() {
             truncated = true;
@@ -129,7 +123,7 @@ impl<'a> PromptBuilder<'a> {
         prompt.push_str("Next story to implement:\n");
 
         let story_json =
-            serde_json::to_string_pretty(story).unwrap_or_else(|_| format!("{:?}", story));
+            serde_json::to_string_pretty(story).unwrap_or_else(|_| format!("{story:?}"));
         let story_trimmed = truncate_section(&story_json, MAX_STORY_JSON_BYTES);
         if story_trimmed.len() < story_json.len() {
             truncated = true;
@@ -144,22 +138,13 @@ impl<'a> PromptBuilder<'a> {
 
         prompt.push_str("\n\n---\n");
         prompt.push_str("## DYNAMIC CONTEXT (this section changes per iteration)\n\n");
-        prompt.push_str(&format!(
-            "RALPH_DIR: {}\n",
-            self.ralph_dir.display()
-        ));
-        prompt.push_str(&format!(
-            "WORK_DIR: {}\n",
-            self.work_dir.display()
-        ));
+        prompt.push_str(&format!("RALPH_DIR: {}\n", self.ralph_dir.display()));
+        prompt.push_str(&format!("WORK_DIR: {}\n", self.work_dir.display()));
         prompt.push_str(&format!(
             "Current working directory: {}\n",
             self.work_dir.display()
         ));
-        prompt.push_str(&format!(
-            "Config directory: {}\n",
-            self.ralph_dir.display()
-        ));
+        prompt.push_str(&format!("Config directory: {}\n", self.ralph_dir.display()));
         prompt.push_str(&format!("ITERATION: {}\n", self.iteration));
 
         if let Some(checkpoint) = bulk_checkpoint {

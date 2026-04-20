@@ -1,11 +1,15 @@
-import { useEffect, useState } from "react";
 import { Send, Square } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
-import { getAgentCapabilities, type AgentCapabilities } from "../../../lib/tauri";
-
-const AGENT_NAMES = ["cursor", "codex", "claude", "gemini", "opencode"];
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
+import { type AgentCapabilities, getKnownAgents, resolveAgentSelection } from "../../../lib/tauri";
 
 type AskInputProps = {
   disabled: boolean;
@@ -31,6 +35,23 @@ export function AskInput({
   onStop,
 }: AskInputProps) {
   const [question, setQuestion] = useState("");
+  const [knownAgents, setKnownAgents] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getKnownAgents()
+      .then((agentNames) => {
+        if (cancelled) return;
+        setKnownAgents(agentNames);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setKnownAgents([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (initialValue !== undefined && initialValue !== "") {
@@ -41,20 +62,17 @@ export function AskInput({
 
   useEffect(() => {
     let cancelled = false;
-    getAgentCapabilities(selectedAgent)
-      .then((caps) => {
+    resolveAgentSelection(selectedAgent, selectedModel, null)
+      .then((result) => {
         if (cancelled) return;
-        setCapabilities(caps);
-        if (caps.supportsModel) {
-          const valid = caps.models.some((entry) => entry.id === selectedModel);
-          if (!valid) onModelChange(caps.defaultModel ?? caps.models[0]?.id ?? null);
-        } else {
-          onModelChange(null);
-        }
+        setCapabilities(result.capabilities);
+        onModelChange(result.resolvedModel);
       })
       .catch(() => setCapabilities(null));
-    return () => { cancelled = true; };
-  }, [selectedAgent]);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAgent, selectedModel, onModelChange]);
 
   function handleSubmit() {
     const trimmed = question.trim();
@@ -70,18 +88,23 @@ export function AskInput({
     }
   }
 
-  const showModel = capabilities !== null && capabilities.supportsModel;
+  const showModel = capabilities?.supportsModel;
   const loading = capabilities === null;
+  const agentOptions = knownAgents.length > 0 ? knownAgents : [selectedAgent];
 
   return (
-    <div className="border-t border-border bg-surface/40 px-4 py-3">
-      <div className="grid grid-cols-[9rem_1fr] items-end gap-2 mb-2">
+    <div className="border-border border-t bg-surface/40 px-4 py-3">
+      <div className="mb-2 grid grid-cols-[9rem_1fr] items-end gap-2">
         <Field label="Agent">
           <Select value={selectedAgent} onValueChange={onAgentChange} disabled={isAsking}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {AGENT_NAMES.map((name) => (
-                <SelectItem key={name} value={name}>{name}</SelectItem>
+              {agentOptions.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -92,10 +115,14 @@ export function AskInput({
             onValueChange={(val) => onModelChange(val || null)}
             disabled={isAsking || loading}
           >
-            <SelectTrigger><SelectValue placeholder={loading ? "Loading..." : "—"} /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder={loading ? "Loading..." : "—"} />
+            </SelectTrigger>
             <SelectContent>
               {(capabilities?.models ?? []).map((model) => (
-                <SelectItem key={model.id} value={model.id}>{model.label}</SelectItem>
+                <SelectItem key={model.id} value={model.id}>
+                  {model.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -116,7 +143,12 @@ export function AskInput({
             <Square className="h-3.5 w-3.5" />
           </Button>
         ) : (
-          <Button variant="primary" size="md" onClick={handleSubmit} disabled={disabled || !question.trim()}>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={handleSubmit}
+            disabled={disabled || !question.trim()}
+          >
             <Send className="h-3.5 w-3.5" />
           </Button>
         )}

@@ -73,7 +73,9 @@ pub async fn create_connection(
     validate_repo_paths(&repos)?;
 
     let connection_id = Uuid::new_v4().to_string();
-    let conn = db.0.lock().map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
 
     conn.execute(
         "INSERT INTO connections (id, name) VALUES (?1, ?2)",
@@ -102,14 +104,13 @@ pub async fn create_connection(
 }
 
 #[tauri::command]
-pub async fn list_connections(
-    db: State<'_, DbState>,
-) -> Result<Vec<Connection>, ConnectionError> {
-    let conn = db.0.lock().map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
+pub async fn list_connections(db: State<'_, DbState>) -> Result<Vec<Connection>, ConnectionError> {
+    let conn =
+        db.0.lock()
+            .map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
 
-    let mut stmt = conn.prepare(
-        "SELECT id, name, created_at FROM connections ORDER BY created_at DESC",
-    )?;
+    let mut stmt =
+        conn.prepare("SELECT id, name, created_at FROM connections ORDER BY created_at DESC")?;
     let connections: Vec<(String, String, String)> = stmt
         .query_map([], |row| {
             Ok((
@@ -118,7 +119,7 @@ pub async fn list_connections(
                 row.get::<_, String>(2)?,
             ))
         })?
-        .filter_map(|row| row.ok())
+        .filter_map(Result::ok)
         .collect();
 
     let mut result = Vec::with_capacity(connections.len());
@@ -139,9 +140,8 @@ fn load_repos(
     conn: &rusqlite::Connection,
     connection_id: &str,
 ) -> Result<Vec<ConnectionRepo>, ConnectionError> {
-    let mut stmt = conn.prepare(
-        "SELECT repo_path, display_name FROM connection_repos WHERE connection_id = ?1",
-    )?;
+    let mut stmt = conn
+        .prepare("SELECT repo_path, display_name FROM connection_repos WHERE connection_id = ?1")?;
     let repos = stmt
         .query_map([connection_id], |row| {
             Ok(ConnectionRepo {
@@ -149,7 +149,7 @@ fn load_repos(
                 display_name: row.get(1)?,
             })
         })?
-        .filter_map(|row| row.ok())
+        .filter_map(Result::ok)
         .collect();
     Ok(repos)
 }
@@ -161,14 +161,17 @@ pub async fn update_connection(
     name: Option<String>,
     repos: Option<Vec<ConnectionRepo>>,
 ) -> Result<Connection, ConnectionError> {
-    let conn = db.0.lock().map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
 
-    let exists: bool = conn.query_row(
-        "SELECT COUNT(*) FROM connections WHERE id = ?1",
-        [&connection_id],
-        |row| row.get::<_, i64>(0),
-    )
-    .map(|count| count > 0)?;
+    let exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM connections WHERE id = ?1",
+            [&connection_id],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|count| count > 0)?;
 
     if !exists {
         return Err(ConnectionError::NotFound(connection_id));
@@ -223,11 +226,10 @@ pub async fn delete_connection(
             .map_err(|err| ConnectionError::Io(format!("Failed to remove workspace: {err}")))?;
     }
 
-    let conn = db.0.lock().map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
-    conn.execute(
-        "DELETE FROM connections WHERE id = ?1",
-        [&connection_id],
-    )?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
+    conn.execute("DELETE FROM connections WHERE id = ?1", [&connection_id])?;
 
     Ok(())
 }
@@ -251,7 +253,9 @@ pub async fn connection_merge_summary(
     base_ref: String,
 ) -> Result<Vec<RepoMergeSummary>, ConnectionError> {
     let repos = {
-        let conn = db.0.lock().map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
+        let conn =
+            db.0.lock()
+                .map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
         load_repos(&conn, &connection_id)?
     };
 
@@ -259,15 +263,12 @@ pub async fn connection_merge_summary(
     let mut summaries = Vec::with_capacity(repos.len());
 
     for repo in &repos {
-        let display = repo
-            .display_name
-            .as_deref()
-            .unwrap_or_else(|| {
-                std::path::Path::new(&repo.repo_path)
-                    .file_name()
-                    .and_then(|fname| fname.to_str())
-                    .unwrap_or("repo")
-            });
+        let display = repo.display_name.as_deref().unwrap_or_else(|| {
+            std::path::Path::new(&repo.repo_path)
+                .file_name()
+                .and_then(|fname| fname.to_str())
+                .unwrap_or("repo")
+        });
         let worktree_path = workspace_dir.join(display);
 
         let diff_output = tokio::process::Command::new("git")
@@ -290,12 +291,10 @@ pub async fn connection_merge_summary(
             .await;
 
         let commit_count = match commit_output {
-            Ok(out) if out.status.success() => {
-                String::from_utf8_lossy(&out.stdout)
-                    .trim()
-                    .parse::<u32>()
-                    .unwrap_or(0)
-            }
+            Ok(out) if out.status.success() => String::from_utf8_lossy(&out.stdout)
+                .trim()
+                .parse::<u32>()
+                .unwrap_or(0),
             _ => 0,
         };
 
@@ -354,32 +353,31 @@ pub fn build_workspace(
 
     for repo in repos {
         let source = std::path::Path::new(&repo.repo_path);
-        let link_name = repo
-            .display_name
-            .as_deref()
-            .unwrap_or_else(|| {
-                source
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .unwrap_or("repo")
-            });
+        let link_name = repo.display_name.as_deref().unwrap_or_else(|| {
+            source
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("repo")
+        });
         let link_path = workspace_dir.join(link_name);
 
         #[cfg(unix)]
-        std::os::unix::fs::symlink(source, &link_path)
-            .map_err(|err| ConnectionError::Io(format!(
+        std::os::unix::fs::symlink(source, &link_path).map_err(|err| {
+            ConnectionError::Io(format!(
                 "Failed to symlink {} -> {}: {err}",
                 link_path.display(),
                 source.display()
-            )))?;
+            ))
+        })?;
 
         #[cfg(windows)]
-        junction::create(source, &link_path)
-            .map_err(|err| ConnectionError::Io(format!(
+        junction::create(source, &link_path).map_err(|err| {
+            ConnectionError::Io(format!(
                 "Failed to create junction {} -> {}: {err}",
                 link_path.display(),
                 source.display()
-            )))?;
+            ))
+        })?;
     }
 
     Ok(())
@@ -397,15 +395,12 @@ pub fn generate_workspace_manifest(
     content.push_str("## Repositories\n\n");
 
     for repo in repos {
-        let display = repo
-            .display_name
-            .as_deref()
-            .unwrap_or_else(|| {
-                std::path::Path::new(&repo.repo_path)
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .unwrap_or("repo")
-            });
+        let display = repo.display_name.as_deref().unwrap_or_else(|| {
+            std::path::Path::new(&repo.repo_path)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("repo")
+        });
         content.push_str(&format!("### {display}\n\n"));
         content.push_str(&format!("Path: `{}`\n\n", repo.repo_path));
     }
@@ -427,12 +422,16 @@ pub async fn build_connection_workspace(
     db: State<'_, DbState>,
     connection_id: String,
 ) -> Result<String, ConnectionError> {
-    let conn = db.0.lock().map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
+    let conn =
+        db.0.lock()
+            .map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
     let repos = load_repos(&conn, &connection_id)?;
     drop(conn);
 
     let name: String = {
-        let conn2 = db.0.lock().map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
+        let conn2 =
+            db.0.lock()
+                .map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
         conn2.query_row(
             "SELECT name FROM connections WHERE id = ?1",
             [&connection_id],
@@ -455,7 +454,9 @@ pub async fn create_connection_worktrees(
     branch_name: String,
 ) -> Result<String, ConnectionError> {
     let (repos, name) = {
-        let conn = db.0.lock().map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
+        let conn =
+            db.0.lock()
+                .map_err(|_| ConnectionError::Db("Lock poisoned".into()))?;
         let repos = load_repos(&conn, &connection_id)?;
         let name: String = conn.query_row(
             "SELECT name FROM connections WHERE id = ?1",
@@ -474,28 +475,29 @@ pub async fn create_connection_worktrees(
         .map_err(|err| ConnectionError::Io(format!("Failed to create workspace: {err}")))?;
 
     for repo in &repos {
-        let display = repo
-            .display_name
-            .as_deref()
-            .unwrap_or_else(|| {
-                std::path::Path::new(&repo.repo_path)
-                    .file_name()
-                    .and_then(|fname| fname.to_str())
-                    .unwrap_or("repo")
-            });
+        let display = repo.display_name.as_deref().unwrap_or_else(|| {
+            std::path::Path::new(&repo.repo_path)
+                .file_name()
+                .and_then(|fname| fname.to_str())
+                .unwrap_or("repo")
+        });
         let worktree_path = workspace_dir.join(display);
         let worktree_branch = format!("loopforge/{branch_name}/{display}");
 
         let output = tokio::process::Command::new("git")
             .args([
-                "worktree", "add",
+                "worktree",
+                "add",
                 &worktree_path.to_string_lossy(),
-                "-b", &worktree_branch,
+                "-b",
+                &worktree_branch,
             ])
             .current_dir(&repo.repo_path)
             .output()
             .await
-            .map_err(|err| ConnectionError::Io(format!("git worktree failed for {display}: {err}")))?;
+            .map_err(|err| {
+                ConnectionError::Io(format!("git worktree failed for {display}: {err}"))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);

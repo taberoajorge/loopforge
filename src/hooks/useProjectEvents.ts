@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import {
+  type LoopEvent,
   onAgentSwitched,
   onIterationCompleted,
   onIterationStarted,
   onRateLimitDetected,
   onSessionEnded,
   onSessionStarted,
-  type LoopEvent,
 } from "../lib/tauri";
 
 function isSameProject(projectId: string, payload: unknown): boolean {
@@ -42,10 +42,7 @@ export function useProjectEvents(projectId: string | undefined) {
         if (!isSameProject(projectId, payload)) {
           return;
         }
-        setEvents((current) => [
-          ...current,
-          { type: "iteration_started", payload },
-        ]);
+        setEvents((current) => [...current, { type: "iteration_started", payload }]);
       }),
     );
 
@@ -54,10 +51,7 @@ export function useProjectEvents(projectId: string | undefined) {
         if (!isSameProject(projectId, payload)) {
           return;
         }
-        setEvents((current) => [
-          ...current,
-          { type: "iteration_completed", payload },
-        ]);
+        setEvents((current) => [...current, { type: "iteration_completed", payload }]);
       }),
     );
 
@@ -66,10 +60,7 @@ export function useProjectEvents(projectId: string | undefined) {
         if (!isSameProject(projectId, payload)) {
           return;
         }
-        setEvents((current) => [
-          ...current,
-          { type: "rate_limit_detected", payload },
-        ]);
+        setEvents((current) => [...current, { type: "rate_limit_detected", payload }]);
       }),
     );
 
@@ -78,10 +69,7 @@ export function useProjectEvents(projectId: string | undefined) {
         if (!isSameProject(projectId, payload)) {
           return;
         }
-        setEvents((current) => [
-          ...current,
-          { type: "agent_switched", payload },
-        ]);
+        setEvents((current) => [...current, { type: "agent_switched", payload }]);
       }),
     );
 
@@ -90,10 +78,7 @@ export function useProjectEvents(projectId: string | undefined) {
         if (!isSameProject(projectId, payload)) {
           return;
         }
-        setEvents((current) => [
-          ...current,
-          { type: "session_ended", payload },
-        ]);
+        setEvents((current) => [...current, { type: "session_ended", payload }]);
       }),
     );
 

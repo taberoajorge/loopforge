@@ -33,6 +33,7 @@ pub(super) fn spawn_plan_flush_task(
 
 pub(super) fn spawn_batch_flush_task<R: Runtime>(
     buffer: Arc<Mutex<Vec<PlanActivityPayload>>>,
+    classifier: Arc<Mutex<ActivityClassifier>>,
     app: AppHandle<R>,
     project_id: String,
 ) -> JoinHandle<()> {
@@ -41,7 +42,7 @@ pub(super) fn spawn_batch_flush_task<R: Runtime>(
         interval.tick().await;
         loop {
             interval.tick().await;
-            flush_event_buffer(&buffer, &app, &project_id);
+            flush_event_buffer(&buffer, &classifier, &app, &project_id);
         }
     })
 }
@@ -73,6 +74,7 @@ pub(super) fn spawn_heartbeat_task<R: Runtime>(
                 PlanTerminalPayload {
                     project_id: project_id.clone(),
                     detail: String::new(),
+                    final_content: None,
                 },
             );
 
@@ -108,6 +110,7 @@ pub(super) fn spawn_heartbeat_task<R: Runtime>(
                     PlanTerminalPayload {
                         project_id: project_id.clone(),
                         detail: "stalled".to_string(),
+                        final_content: None,
                     },
                 );
                 if let Ok(mut guard) = sessions.lock() {
@@ -129,7 +132,7 @@ pub(super) fn handle_termination<R: Runtime>(
     exit_code: i32,
     tracer: &Option<SessionTracer>,
 ) {
-    flush_event_buffer(event_buffer, app, project_id);
+    flush_event_buffer(event_buffer, classifier, app, project_id);
 
     if let Ok(guard) = classifier.lock() {
         let plan_content = guard.accumulated_plan();
@@ -154,6 +157,7 @@ pub(super) fn handle_termination<R: Runtime>(
             PlanTerminalPayload {
                 project_id: project_id.to_string(),
                 detail: format!("exit_code={exit_code}"),
+                final_content: None,
             },
         );
     } else if !has_plan {
@@ -167,21 +171,29 @@ pub(super) fn handle_termination<R: Runtime>(
             PlanTerminalPayload {
                 project_id: project_id.to_string(),
                 detail: "empty_output".to_string(),
+                final_content: None,
             },
         );
     } else {
-        let plan_bytes = classifier
+        let accumulated = classifier
             .lock()
-            .map(|g| g.accumulated_plan().len())
-            .unwrap_or(0);
+            .map(|guard| guard.accumulated_plan())
+            .unwrap_or_default();
+        let plan_bytes = accumulated.len();
         if let Some(tracer) = tracer {
             tracer.log(TraceEvent::PlanComplete { plan_bytes });
         }
+        let final_content = if accumulated.is_empty() {
+            None
+        } else {
+            Some(accumulated)
+        };
         let _ = app.emit(
             crate::events::EVENT_PLAN_COMPLETE,
             PlanTerminalPayload {
                 project_id: project_id.to_string(),
                 detail: String::new(),
+                final_content,
             },
         );
     }

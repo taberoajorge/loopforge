@@ -1,29 +1,10 @@
+import { cn } from "@/lib/utils";
+import { useDisplayVocabularyStore } from "@/stores/displayVocabularyStore";
+import type { AppNotification, NotificationType, RingColor } from "../../stores/notificationStore";
 import { Badge, type BadgeProps } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ScrollArea, ScrollContent, ScrollViewport } from "../ui/scroll-area";
 import { SheetDescription, SheetHeader, SheetTitle } from "../ui/sheet";
-import { cn } from "@/lib/utils";
-import {
-  type AppNotification,
-  type NotificationType,
-  type RingColor,
-} from "../../stores/notificationStore";
-
-const STATUS_VARIANT: Record<RingColor, NonNullable<BadgeProps["variant"]>> = {
-  red: "danger",
-  amber: "warning",
-  cyan: "info",
-  green: "success",
-};
-
-const TYPE_LABEL: Record<NotificationType, string> = {
-  story_blocked: "Blocked",
-  loop_completed: "Completed",
-  rate_limited: "Rate limit",
-  review_comment: "Review",
-  loop_error: "Error",
-  story_completed: "Story done",
-};
 
 type NotificationPanelLayoutProps = {
   notifications: AppNotification[];
@@ -45,26 +26,40 @@ function formatTimeAgo(timestamp: number): string {
 
 function NotificationRow({
   notification,
+  ringVariantMap,
+  typeLabelMap,
   onSelectNotification,
 }: {
   notification: AppNotification;
+  ringVariantMap: Record<string, string>;
+  typeLabelMap: Record<string, string>;
   onSelectNotification: (notification: AppNotification) => void;
 }) {
   return (
     <button
+      type="button"
       className={cn(
-        "w-full border-b border-border/50 px-4 py-3 text-left transition-colors hover:bg-elevated/60",
+        "w-full border-border/50 border-b px-4 py-3 text-left transition-colors hover:bg-elevated/60",
         notification.read ? "opacity-70" : "opacity-100",
       )}
       onClick={() => onSelectNotification(notification)}
     >
       <div className="flex items-center justify-between gap-2">
         <p className="truncate font-sans text-sm text-text">{notification.title}</p>
-        <Badge variant={STATUS_VARIANT[notification.ringColor]}>{TYPE_LABEL[notification.type]}</Badge>
+        <Badge
+          variant={
+            (ringVariantMap[notification.ringColor as RingColor] ?? "info") as NonNullable<
+              BadgeProps["variant"]
+            >
+          }
+        >
+          {typeLabelMap[notification.notificationType as NotificationType] ??
+            notification.notificationType}
+        </Badge>
       </div>
-      <p className="mt-1 line-clamp-2 font-sans text-xs text-text-muted">{notification.message}</p>
+      <p className="mt-1 line-clamp-2 font-sans text-text-muted text-xs">{notification.message}</p>
       <div className="mt-2 flex items-center justify-between">
-        <p className="font-mono text-xs text-text-dim">{formatTimeAgo(notification.timestamp)}</p>
+        <p className="font-mono text-text-dim text-xs">{formatTimeAgo(notification.timestamp)}</p>
         {!notification.read ? (
           <Badge variant="danger" emphasis="solid">
             New
@@ -81,9 +76,13 @@ export function NotificationPanelLayout({
   onMarkAllAsRead,
   onSelectNotification,
 }: NotificationPanelLayoutProps) {
+  const vocabulary = useDisplayVocabularyStore((state) => state.vocabulary);
+  const ringVariantMap = vocabulary?.notificationRingVariants ?? {};
+  const typeLabelMap = vocabulary?.notificationTypeLabels ?? {};
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <SheetHeader className="gap-3 border-b border-border px-4 py-3 pr-12">
+      <SheetHeader className="gap-3 border-border border-b px-4 py-3 pr-12">
         <div className="flex items-center justify-between gap-3">
           <SheetTitle className="text-base">Notifications</SheetTitle>
           {unreadCount > 0 ? (
@@ -113,6 +112,8 @@ export function NotificationPanelLayout({
                 <NotificationRow
                   key={notification.id}
                   notification={notification}
+                  ringVariantMap={ringVariantMap}
+                  typeLabelMap={typeLabelMap}
                   onSelectNotification={onSelectNotification}
                 />
               ))

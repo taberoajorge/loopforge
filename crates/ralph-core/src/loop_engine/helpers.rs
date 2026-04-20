@@ -37,11 +37,7 @@ pub async fn interruptible_sleep(
     false
 }
 
-pub async fn log_session_summary(
-    iterations: u32,
-    config: &RalphConfig,
-    initial_commit: &str,
-) {
+pub async fn log_session_summary(iterations: u32, config: &RalphConfig, initial_commit: &str) {
     let total_commits = git::count_commits_since(&config.paths.work_dir, initial_commit)
         .await
         .unwrap_or(0);

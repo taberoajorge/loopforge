@@ -24,9 +24,7 @@ pub struct DiagnosticReport {
 pub fn parse_build_output(raw_output: String) -> DiagnosticReport {
     let diagnostics = parse_diagnostics(&raw_output);
     let total = diagnostics.len();
-    let has_errors = diagnostics
-        .iter()
-        .any(|diag| diag.error_type != "warning");
+    let has_errors = diagnostics.iter().any(|diag| diag.error_type != "warning");
     DiagnosticReport {
         diagnostics,
         total,
@@ -50,10 +48,8 @@ pub fn parse_diagnostics(output: &str) -> Vec<Diagnostic> {
 }
 
 fn parse_typescript(output: &str) -> Vec<Diagnostic> {
-    let pattern = Regex::new(
-        r"(?m)^(.+?)\((\d+),(\d+)\):\s*error\s+(TS\d+):\s*(.+)$"
-    )
-    .expect("valid regex");
+    let pattern =
+        Regex::new(r"(?m)^(.+?)\((\d+),(\d+)\):\s*error\s+(TS\d+):\s*(.+)$").expect("valid regex");
 
     pattern
         .captures_iter(output)
@@ -69,10 +65,8 @@ fn parse_typescript(output: &str) -> Vec<Diagnostic> {
 }
 
 fn parse_eslint(output: &str) -> Vec<Diagnostic> {
-    let pattern = Regex::new(
-        r"(?m)^\s*(\S+?):(\d+):(\d+):\s+(\S+)\s+(.+?)(?:\s{2,}|\t)(\S+)$"
-    )
-    .expect("valid regex");
+    let pattern = Regex::new(r"(?m)^\s*(\S+?):(\d+):(\d+):\s+(\S+)\s+(.+?)(?:\s{2,}|\t)(\S+)$")
+        .expect("valid regex");
 
     pattern
         .captures_iter(output)
@@ -89,10 +83,9 @@ fn parse_eslint(output: &str) -> Vec<Diagnostic> {
 }
 
 fn parse_cargo(output: &str) -> Vec<Diagnostic> {
-    let error_pattern = Regex::new(
-        r"(?m)^error(?:\[E(\d+)\])?:\s*(.+)\n\s*-->\s*(.+?):(\d+):(\d+)"
-    )
-    .expect("valid regex");
+    let error_pattern =
+        Regex::new(r"(?m)^error(?:\[E(\d+)\])?:\s*(.+)\n\s*-->\s*(.+?):(\d+):(\d+)")
+            .expect("valid regex");
 
     error_pattern
         .captures_iter(output)
@@ -111,29 +104,21 @@ fn parse_cargo(output: &str) -> Vec<Diagnostic> {
 }
 
 fn parse_jest(output: &str) -> Vec<Diagnostic> {
-    let fail_pattern = Regex::new(
-        r"(?m)FAIL\s+(.+?)(?:\n|\r\n)"
-    )
-    .expect("valid regex");
+    let fail_pattern = Regex::new(r"(?m)FAIL\s+(.+?)(?:\n|\r\n)").expect("valid regex");
 
-    let assertion_pattern = Regex::new(
-        r"(?m)Expected:?\s*(.+)\n\s*Received:?\s*(.+)"
-    )
-    .expect("valid regex");
+    let assertion_pattern =
+        Regex::new(r"(?m)Expected:?\s*(.+)\n\s*Received:?\s*(.+)").expect("valid regex");
 
-    let location_pattern = Regex::new(
-        r"(?m)at\s+.*?\((.+?):(\d+):(\d+)\)"
-    )
-    .expect("valid regex");
+    let location_pattern = Regex::new(r"(?m)at\s+.*?\((.+?):(\d+):(\d+)\)").expect("valid regex");
 
     let mut diagnostics = Vec::new();
 
     for fail_match in fail_pattern.captures_iter(output) {
         let test_file = fail_match[1].trim().to_string();
 
-        let expected_received = assertion_pattern.captures(output).map(|cap| {
-            format!("Expected: {}, Received: {}", &cap[1], &cap[2])
-        });
+        let expected_received = assertion_pattern
+            .captures(output)
+            .map(|cap| format!("Expected: {}, Received: {}", &cap[1], &cap[2]));
 
         let (line, col) = location_pattern
             .captures(output)
@@ -176,7 +161,8 @@ mod tests {
 
     #[test]
     fn typescript_parser_extracts_error() {
-        let output = r#"src/auth.ts(42,5): error TS2322: Type 'string' is not assignable to type 'number'"#;
+        let output =
+            r#"src/auth.ts(42,5): error TS2322: Type 'string' is not assignable to type 'number'"#;
         let diags = parse_typescript(output);
         assert_eq!(diags.len(), 1);
         assert_eq!(diags[0].file.as_deref(), Some("src/auth.ts"));

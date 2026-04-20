@@ -1,7 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
-
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use std::sync::MutexGuard;
 
 const ENV_KEYS: [&str; 6] = [
     "HOME",
@@ -24,7 +22,9 @@ pub struct FixtureGuard {
 
 impl FixtureGuard {
     pub fn new(fixture_set: Option<&str>) -> Self {
-        let lock = ENV_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let lock = crate::test_env_lock::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
         let root_dir =
             std::env::temp_dir().join(format!("loopforge-invoke-{}", uuid::Uuid::new_v4()));
         let home_dir = root_dir.join("home");
@@ -45,10 +45,7 @@ impl FixtureGuard {
             .into_iter()
             .map(|key| (key, std::env::var(key).ok()))
             .collect();
-        let path = match std::env::var("PATH") {
-            Ok(existing) => format!("{}:{existing}", bin_dir.display()),
-            Err(_) => bin_dir.display().to_string(),
-        };
+        let path = prepend_path(&bin_dir);
         std::env::set_var("HOME", &home_dir);
         std::env::set_var("XDG_CONFIG_HOME", home_dir.join(".config"));
         std::env::set_var("XDG_DATA_HOME", home_dir.join(".local").join("share"));
@@ -89,12 +86,71 @@ impl Drop for FixtureGuard {
 }
 
 fn install_loop_agent(bin_dir: &Path, agent_name: &str) {
-    let script = "#!/bin/sh\nprintf 'fixture loop completed\\n'\n";
+    let script = loop_agent_script();
     install_script(bin_dir, agent_name, script);
 }
 
 fn install_atomizer_agent(bin_dir: &Path, agent_name: &str) {
-    let script = r#"#!/bin/sh
+    let script = atomizer_agent_script();
+    install_script(bin_dir, agent_name, script);
+}
+
+fn install_broken_atomizer_agent(bin_dir: &Path, agent_name: &str) {
+    let script = broken_atomizer_agent_script();
+    install_script(bin_dir, agent_name, script);
+}
+
+fn install_script(bin_dir: &Path, name: &str, content: &str) {
+    let script = bin_dir.join(script_name(name));
+    std::fs::write(&script, content).expect("script");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&script).expect("metadata").permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&script, perms).expect("permissions");
+    }
+}
+
+fn prepend_path(bin_dir: &Path) -> String {
+    let mut path_items = vec![bin_dir.to_path_buf()];
+    if let Some(existing) = std::env::var_os("PATH") {
+        path_items.extend(std::env::split_paths(&existing));
+    }
+    std::env::join_paths(path_items)
+        .ok()
+        .and_then(|value| value.into_string().ok())
+        .unwrap_or_else(|| bin_dir.display().to_string())
+}
+
+#[cfg(windows)]
+fn script_name(name: &str) -> String {
+    format!("{name}.cmd")
+}
+
+#[cfg(not(windows))]
+fn script_name(name: &str) -> String {
+    name.to_string()
+}
+
+#[cfg(windows)]
+fn loop_agent_script() -> &'static str {
+    "@echo off\r\necho fixture loop completed\r\n"
+}
+
+#[cfg(not(windows))]
+fn loop_agent_script() -> &'static str {
+    "#!/bin/sh\nprintf 'fixture loop completed\\n'\n"
+}
+
+#[cfg(windows)]
+fn atomizer_agent_script() -> &'static str {
+    "@echo off\r\nset prompt=%2\r\necho %prompt% | findstr /C:\"Condense the following implementation plan\" >nul && (echo Create the project, atomize the plan, execute the story, and archive the result.& exit /b 0)\r\necho %prompt% | findstr /C:\"Split the following implementation plan\" >nul && (echo [{\"title\":\"Lifecycle\",\"content\":\"Create the project, atomize the plan, execute the story, and archive the result.\"}]& exit /b 0)\r\necho %prompt% | findstr /C:\"decomposing a plan section into atomic user stories\" >nul && (echo [{\"title\":\"Exercise invoke contracts\",\"description\":\"Cover invoke lifecycle commands.\",\"acceptanceCriteria\":[\"Lifecycle commands succeed\",\"Runtime history is recorded\"],\"scope\":{\"filesToModify\":[\"src-tauri/src/lib.rs\"],\"filesToCreate\":[\"src-tauri/src/contract_tests/invoke_handler.rs\"],\"filesToAvoid\":[]},\"verification\":{\"commands\":[\"cargo test -p loopforge contract_tests\"],\"assertions\":[]},\"commitMessage\":\"test(tauri): cover invoke handler contracts\",\"priority\":\"critical\",\"estimatedComplexity\":\"small\",\"estimatedMinutes\":30,\"dependsOn\":[]}]& exit /b 0)\r\necho %prompt% | findstr /C:\"technical lead finalizing\" >nul && (echo {\"projectName\":\"Invoke Contract\",\"feature\":\"Lifecycle coverage\",\"workingDirectory\":\"\",\"generatedAt\":\"2026-04-09T10:10:00.000Z\",\"stories\":[{\"id\":\"S-001\",\"title\":\"Exercise invoke contracts\",\"description\":\"Cover invoke lifecycle commands.\",\"acceptanceCriteria\":[\"Lifecycle commands succeed\",\"Runtime history is recorded\"],\"scope\":{\"filesToModify\":[\"src-tauri/src/lib.rs\"],\"filesToCreate\":[\"src-tauri/src/contract_tests/invoke_handler.rs\"],\"filesToAvoid\":[]},\"verification\":{\"commands\":[\"cargo test -p loopforge contract_tests\"],\"assertions\":[]},\"commitMessage\":\"test(tauri): cover invoke handler contracts\",\"priority\":\"critical\",\"estimatedComplexity\":\"small\",\"estimatedMinutes\":30,\"dependsOn\":[],\"passes\":false,\"blocked\":false,\"attempts\":0,\"notes\":null}]}& exit /b 0)\r\necho []\r\n"
+}
+
+#[cfg(not(windows))]
+fn atomizer_agent_script() -> &'static str {
+    r#"#!/bin/sh
 prompt="$2"
 if printf '%s' "$prompt" | grep -q "Condense the following implementation plan"; then
   printf '%s\n' 'Create the project, atomize the plan, execute the story, and archive the result.'
@@ -107,25 +163,15 @@ elif printf '%s' "$prompt" | grep -q "technical lead finalizing"; then
 else
   printf '%s\n' '[]'
 fi
-"#;
-    install_script(bin_dir, agent_name, script);
+"#
 }
 
-fn install_broken_atomizer_agent(bin_dir: &Path, agent_name: &str) {
-    let script = "#!/bin/sh\nprintf '%s\\n' 'not valid json'\n";
-    install_script(bin_dir, agent_name, script);
+#[cfg(windows)]
+fn broken_atomizer_agent_script() -> &'static str {
+    "@echo off\r\necho not valid json\r\n"
 }
 
-fn install_script(bin_dir: &Path, name: &str, content: &str) {
-    let script = bin_dir.join(name);
-    std::fs::write(&script, content).expect("script");
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(&script)
-            .expect("metadata")
-            .permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(&script, perms).expect("permissions");
-    }
+#[cfg(not(windows))]
+fn broken_atomizer_agent_script() -> &'static str {
+    "#!/bin/sh\nprintf '%s\\n' 'not valid json'\n"
 }

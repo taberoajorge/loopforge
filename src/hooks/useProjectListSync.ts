@@ -1,34 +1,27 @@
 import { useEffect } from "react";
-import { onIterationCompleted, onSessionEnded, onSessionStarted } from "../lib/tauri";
+import { onProjectStateChanged } from "../lib/tauri";
 import { useProjectStore } from "../stores/projectStore";
 
 export function useProjectListSync() {
   const fetchProjects = useProjectStore((state) => state.fetchProjects);
+  const applySnapshot = useProjectStore((state) => state.applySnapshot);
 
   useEffect(() => {
     void fetchProjects();
-
-    const refreshTimer = window.setInterval(() => {
-      void fetchProjects();
-    }, 5000);
-
     const listeners = [
-      onSessionStarted(() => {
-        void fetchProjects();
-      }),
-      onIterationCompleted(() => {
-        void fetchProjects();
-      }),
-      onSessionEnded(() => {
+      onProjectStateChanged((payload) => {
+        if (payload.snapshot) {
+          applySnapshot(payload.snapshot);
+          return;
+        }
         void fetchProjects();
       }),
     ];
 
     return () => {
-      window.clearInterval(refreshTimer);
       listeners.forEach((pending) => {
         pending.then((unlisten) => unlisten());
       });
     };
-  }, [fetchProjects]);
+  }, [applySnapshot, fetchProjects]);
 }

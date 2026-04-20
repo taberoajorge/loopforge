@@ -1,0 +1,9 @@
+[package]
+name = "native-shell"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+app-services = { path = "../app-services" }
+loopforge-app-core = { path = "../loopforge-app-core" }
+

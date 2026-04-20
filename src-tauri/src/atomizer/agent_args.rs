@@ -32,13 +32,13 @@ pub(super) fn build_agent_args(
     effort: Option<&str>,
 ) -> Vec<String> {
     let selected_model = model
-        .map(|value| value.trim())
+        .map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(|value| value.to_string());
+        .map(ToString::to_string);
     let selected_effort = effort
-        .map(|value| value.trim())
+        .map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(|value| value.to_string());
+        .map(ToString::to_string);
     match agent {
         "claude" => {
             let mut args = vec![
@@ -51,7 +51,7 @@ pub(super) fn build_agent_args(
                 "--mcp-config".to_string(),
                 crate::agent_runtime::CLAUDE_EMPTY_MCP_CONFIG.to_string(),
                 "--tools".to_string(),
-                "".to_string(),
+                String::new(),
             ];
             if let Some(model_id) = selected_model {
                 args.extend(["--model".to_string(), model_id]);
@@ -127,10 +127,21 @@ pub(super) fn build_agent_args(
 }
 
 pub(super) fn shell_quote(value: &str) -> String {
-    if value.is_empty() {
-        "''".to_string()
-    } else {
-        format!("'{}'", value.replace('\'', "'\"'\"'"))
+    #[cfg(windows)]
+    {
+        if value.is_empty() {
+            "\"\"".to_string()
+        } else {
+            format!("\"{}\"", value.replace('"', "\"\""))
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        if value.is_empty() {
+            "''".to_string()
+        } else {
+            format!("'{}'", value.replace('\'', "'\"'\"'"))
+        }
     }
 }
 
@@ -140,5 +151,12 @@ pub(super) fn build_null_stdin_shell_command(agent_binary: &str, args: &[String]
     for value in args {
         command_parts.push(shell_quote(value));
     }
-    format!("{} < /dev/null", command_parts.join(" "))
+    #[cfg(windows)]
+    {
+        format!("{} < NUL", command_parts.join(" "))
+    }
+    #[cfg(not(windows))]
+    {
+        format!("{} < /dev/null", command_parts.join(" "))
+    }
 }

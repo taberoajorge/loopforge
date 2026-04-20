@@ -57,7 +57,7 @@ async fn db_snapshot_matches_canonical_draft_json() {
         conn.query_row(
             "SELECT wizard_state_json FROM projects WHERE id = ?1",
             rusqlite::params![project.id.clone()],
-            |row| row.get(0),
+            |row: &rusqlite::Row| row.get(0),
         )
         .expect("wizard state json")
     };
@@ -97,6 +97,8 @@ async fn resume_wizard_succeeds_with_canonical_draft_payload() {
         "version": 1,
         "projectId": project.id,
         "currentStep": "configure",
+        "highestStep": 4,
+        "staleFromStep": serde_json::Value::Null,
         "describe": {
             "name": "Roundtrip Project",
             "description": "Persist wizard draft values",
@@ -106,7 +108,7 @@ async fn resume_wizard_succeeds_with_canonical_draft_payload() {
             "planEffort": "high"
         },
         "plan": { "completed": true },
-        "atomize": { "storiesCount": 3 },
+        "atomize": { "stories": [], "storiesCount": 3 },
         "configure": {
             "executeAgent": "codex",
             "executeModel": serde_json::Value::Null,
@@ -117,6 +119,7 @@ async fn resume_wizard_succeeds_with_canonical_draft_payload() {
             "cooldownSeconds": 15,
             "testCommand": "cargo test wizard_draft_roundtrip",
             "maxVerificationRetries": 2,
+            "schemaVersion": 1,
             "scmProvider": "auto",
             "reviewPollingInterval": 90,
             "reviewTimeout": 900
@@ -138,10 +141,11 @@ async fn resume_wizard_succeeds_with_canonical_draft_payload() {
     )
     .await
     .expect("resume wizard");
-    let loaded_draft = crate::projects::wizard::load_draft(harness.app.handle().clone(), project.id)
-        .await
-        .expect("load draft")
-        .expect("draft content");
+    let loaded_draft =
+        crate::projects::wizard::load_draft(harness.app.handle().clone(), project.id)
+            .await
+            .expect("load draft")
+            .expect("draft content");
 
     assert_eq!(resume_state.wizard_step, "configure");
     assert_eq!(

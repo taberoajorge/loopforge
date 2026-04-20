@@ -35,13 +35,25 @@ fn chunk_large_plan_preserves_all_content() {
 
 #[test]
 fn build_agent_args_adds_codex_skip_repo_flag() {
-    let args = build_agent_args("codex", "Generate output", Path::new("/tmp/demo"), None, None);
+    let args = build_agent_args(
+        "codex",
+        "Generate output",
+        Path::new("/tmp/demo"),
+        None,
+        None,
+    );
     assert!(args.iter().any(|value| value == "--skip-git-repo-check"));
 }
 
 #[test]
 fn build_agent_args_adds_codex_bypass_flag() {
-    let args = build_agent_args("codex", "Generate output", Path::new("/tmp/demo"), None, None);
+    let args = build_agent_args(
+        "codex",
+        "Generate output",
+        Path::new("/tmp/demo"),
+        None,
+        None,
+    );
     assert!(args
         .iter()
         .any(|value| value == "--dangerously-bypass-approvals-and-sandbox"));
@@ -49,7 +61,13 @@ fn build_agent_args_adds_codex_bypass_flag() {
 
 #[test]
 fn build_agent_args_includes_codex_working_directory() {
-    let args = build_agent_args("codex", "Generate output", Path::new("/tmp/demo"), None, None);
+    let args = build_agent_args(
+        "codex",
+        "Generate output",
+        Path::new("/tmp/demo"),
+        None,
+        None,
+    );
     let has_directory_flag = args.windows(2).any(|pair| {
         pair.first().map(|value| value.as_str()) == Some("-C")
             && pair.get(1).map(|value| value.as_str()) == Some("/tmp/demo")
@@ -67,12 +85,21 @@ fn shell_quote_escapes_single_quotes() {
 fn build_null_stdin_shell_command_appends_redirection() {
     let args = vec!["exec".to_string(), "prompt body".to_string()];
     let command = build_null_stdin_shell_command("codex", &args);
+    #[cfg(windows)]
+    assert!(command.ends_with("< NUL"));
+    #[cfg(not(windows))]
     assert!(command.ends_with("< /dev/null"));
 }
 
 #[test]
 fn build_agent_args_omits_removed_opencode_auto_share_flag() {
-    let args = build_agent_args("opencode", "Generate output", Path::new("/tmp/demo"), None, None);
+    let args = build_agent_args(
+        "opencode",
+        "Generate output",
+        Path::new("/tmp/demo"),
+        None,
+        None,
+    );
     assert!(!args.iter().any(|value| value == "--no-auto-share"));
 }
 
@@ -85,8 +112,13 @@ fn build_agent_args_sets_codex_model_and_effort_when_provided() {
         Some("gpt-5.4"),
         Some("high"),
     );
-    let has_model = args.windows(2).any(|pair| pair.first().map(|v| v.as_str()) == Some("--model") && pair.get(1).map(|v| v.as_str()) == Some("gpt-5.4"));
-    let has_effort = args.windows(2).any(|pair| pair.first().map(|v| v.as_str()) == Some("--reasoning-effort"));
+    let has_model = args.windows(2).any(|pair| {
+        pair.first().map(|v| v.as_str()) == Some("--model")
+            && pair.get(1).map(|v| v.as_str()) == Some("gpt-5.4")
+    });
+    let has_effort = args
+        .windows(2)
+        .any(|pair| pair.first().map(|v| v.as_str()) == Some("--reasoning-effort"));
     assert!(has_model);
     assert!(!has_effort, "codex should not receive --reasoning-effort");
 }

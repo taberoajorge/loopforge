@@ -1,7 +1,7 @@
 use super::{LoopError, StartLoopArgs};
 use crate::db::DbState;
 use crate::projects::ProjectConfig;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 
 #[derive(Clone)]
 pub(super) struct ResolvedStartLoop {
@@ -17,12 +17,12 @@ pub(super) struct ResolvedStartLoop {
     pub(super) cooldown_seconds: Option<u32>,
     pub(super) test_command: Option<String>,
     pub(super) max_verification_retries: Option<u32>,
+    pub(super) scm_provider: String,
+    pub(super) review_polling_interval: u64,
+    pub(super) review_timeout: u64,
 }
 
-fn read_project_metadata(
-    db: &DbState,
-    project_id: &str,
-) -> Result<(String, String), LoopError> {
+fn read_project_metadata(db: &DbState, project_id: &str) -> Result<(String, String), LoopError> {
     let conn = db.0.lock().map_err(|_| LoopError::LockPoisoned)?;
     conn.query_row(
         "SELECT name, working_directory FROM projects WHERE id = ?1",
@@ -57,32 +57,39 @@ fn legacy_config_from_args(args: &StartLoopArgs) -> ProjectConfig {
     if let Some(max_retries) = args.max_verification_retries {
         runtime_config.max_verification_retries = max_retries;
     }
+    if let Some(ref scm) = args.scm_provider {
+        runtime_config.scm_provider = scm.clone();
+    }
+    if let Some(interval) = args.review_polling_interval {
+        runtime_config.review_polling_interval = interval;
+    }
+    if let Some(timeout) = args.review_timeout {
+        runtime_config.review_timeout = timeout;
+    }
     runtime_config
 }
 
-pub(super) async fn resolve_start_loop(
-    app: &AppHandle,
+pub(super) async fn resolve_start_loop<R: Runtime>(
+    app: &AppHandle<R>,
     db: &DbState,
     args: &StartLoopArgs,
 ) -> Result<ResolvedStartLoop, LoopError> {
     let (db_project_name, db_working_directory) = read_project_metadata(db, &args.project_id)?;
-    let runtime_config = match crate::projects::runtime_config::get_project_config(
-        app.clone(),
-        args.project_id.clone(),
-    )
-    .await
-    .map_err(|err| LoopError::Db(err.to_string()))? {
-        Some(config) => config,
-        None => {
-            let migrated_config = legacy_config_from_args(args);
-            crate::projects::runtime_config::save_project_config(
-                app,
-                &args.project_id,
-                &migrated_config,
-            )
-            .map_err(|err| LoopError::Db(err.to_string()))?;
-            migrated_config
-        }
+    let runtime_config = if let Some(config) =
+        crate::projects::runtime_config::get_project_config(app.clone(), args.project_id.clone())
+            .await
+            .map_err(|err| LoopError::Db(err.to_string()))?
+    {
+        config
+    } else {
+        let migrated_config = legacy_config_from_args(args);
+        crate::projects::runtime_config::save_project_config(
+            app,
+            &args.project_id,
+            &migrated_config,
+        )
+        .map_err(|err| LoopError::Db(err.to_string()))?;
+        migrated_config
     };
     let project_name = db_project_name;
     let working_directory = db_working_directory;
@@ -110,5 +117,8 @@ pub(super) async fn resolve_start_loop(
         cooldown_seconds: Some(runtime_config.cooldown_seconds),
         test_command,
         max_verification_retries: Some(runtime_config.max_verification_retries),
+        scm_provider: runtime_config.scm_provider.clone(),
+        review_polling_interval: runtime_config.review_polling_interval,
+        review_timeout: runtime_config.review_timeout,
     })
 }

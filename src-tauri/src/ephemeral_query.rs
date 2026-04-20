@@ -58,10 +58,7 @@ fn classify_question(question: &str) -> Option<InstantQuery> {
         .map(|(_, query_type)| *query_type)
 }
 
-fn answer_instant(
-    query_type: InstantQuery,
-    stats: &SessionStats,
-) -> String {
+fn answer_instant(query_type: InstantQuery, stats: &SessionStats) -> String {
     match query_type {
         InstantQuery::CurrentStory => {
             if stats.is_running {
@@ -89,24 +86,16 @@ fn answer_instant(
             )
         }
         InstantQuery::LoopConfig => {
-            let agent = stats
-                .current_agent
-                .as_deref()
-                .unwrap_or("none");
+            let agent = stats.current_agent.as_deref().unwrap_or("none");
             format!(
                 "Agent: {} | Running: {} | Stories: {}/{} completed",
-                agent,
-                stats.is_running,
-                stats.passed_stories,
-                stats.total_stories
+                agent, stats.is_running, stats.passed_stories, stats.total_stories
             )
         }
-        InstantQuery::CurrentAgent => {
-            match &stats.current_agent {
-                Some(agent) => format!("Current agent: {agent}"),
-                None => "No agent is currently active.".to_string(),
-            }
-        }
+        InstantQuery::CurrentAgent => match &stats.current_agent {
+            Some(agent) => format!("Current agent: {agent}"),
+            None => "No agent is currently active.".to_string(),
+        },
     }
 }
 
@@ -119,13 +108,8 @@ pub async fn ephemeral_query(
     use tauri::Manager;
     let db_state = app.state::<DbState>();
     let loop_state = app.state::<LoopManagerState>();
-    let stats = crate::loop_manager::session_stats(
-        app.clone(),
-        db_state,
-        loop_state,
-        project_id,
-    )
-    .await?;
+    let stats =
+        crate::loop_manager::session_stats(app.clone(), db_state, loop_state, project_id).await?;
 
     if let Some(query_type) = classify_question(&question) {
         let answer = answer_instant(query_type, &stats);

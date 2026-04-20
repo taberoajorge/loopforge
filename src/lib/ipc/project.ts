@@ -1,8 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Project } from "../../types/project";
 import type {
-  IterationStory, ProjectConfig, ProjectRecord, ProjectsByStatus,
-  ProjectSnapshot, WizardResumeState,
+  IterationStory,
+  ProjectConfig,
+  ProjectRecord,
+  ProjectSnapshot,
+  ProjectsByStatus,
+  WizardResumeState,
 } from "./types";
 
 export async function listProjects(): Promise<ProjectsByStatus> {
@@ -13,10 +17,29 @@ export async function listProjectsEnriched(): Promise<Project[]> {
   return invoke<Project[]>("list_projects_enriched");
 }
 
+export interface GroupedProjects {
+  active: Project[];
+  drafts: Project[];
+  finished: Project[];
+  archived: Project[];
+}
+
+export async function listProjectsGrouped(): Promise<GroupedProjects> {
+  return invoke<GroupedProjects>("list_projects_grouped");
+}
+
 export async function createProject(
-  name: string, description: string, workingDirectory: string, wizardStep?: string,
+  name: string,
+  description: string,
+  workingDirectory: string,
+  wizardStep?: string,
 ): Promise<ProjectRecord> {
-  return invoke<ProjectRecord>("create_project", { name, description, workingDirectory, wizardStep });
+  return invoke<ProjectRecord>("create_project", {
+    name,
+    description,
+    workingDirectory,
+    wizardStep,
+  });
 }
 
 export async function getProjectSnapshot(projectId: string): Promise<ProjectSnapshot> {
@@ -40,7 +63,9 @@ export async function getProjectConfig(projectId: string): Promise<ProjectConfig
 }
 
 export async function saveWizardState(
-  projectId: string, wizardStep: string, wizardStateJson: string,
+  projectId: string,
+  wizardStep: string,
+  wizardStateJson: string,
 ): Promise<void> {
   return invoke("save_wizard_state", { projectId, wizardStep, wizardStateJson });
 }

@@ -4,17 +4,17 @@ use ralph_core::providers::AgentResult;
 use std::io::Write;
 use std::path::Path;
 use std::process::Stdio;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::Emitter;
+use std::sync::Arc;
+use tauri::{Emitter, Runtime};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command as TokioCommand;
 
 const STDIN_WAIT_LINE: &str = "Reading additional input from stdin...";
 const STDIN_WAIT_GRACE_SECS: u64 = 2;
 
-pub(super) async fn run_codex_process(
-    provider: &ShellProvider,
+pub(super) async fn run_codex_process<R: Runtime>(
+    provider: &ShellProvider<R>,
     args: &[String],
     env_vars: &[(String, String)],
     work_dir: &Path,
@@ -99,7 +99,7 @@ pub(super) async fn run_codex_process(
                 Ok(None) => stderr_done = true,
                 Err(err) => return Err(anyhow::anyhow!("Stderr read failed: {err}")),
             },
-            _ = &mut sleep => {}
+            () = &mut sleep => {}
         }
 
         if stdout_done && stderr_done && child.try_wait().ok().flatten().is_some() {
@@ -125,8 +125,8 @@ pub(super) fn has_substantive_output(output_lines: &[String]) -> bool {
     output_lines.iter().any(|line| !is_stdin_wait_line(line))
 }
 
-fn capture_line(
-    provider: &ShellProvider,
+fn capture_line<R: Runtime>(
+    provider: &ShellProvider<R>,
     line: &str,
     stream: &str,
     last_output: &mut std::time::Instant,

@@ -39,8 +39,7 @@ pub(super) fn sanitize_codex_plan_content(raw: &str) -> String {
         }
         previous_blank = false;
 
-        if trimmed == "exec" || trimmed.starts_with("exec ") || trimmed.starts_with("/bin/zsh -lc")
-        {
+        if crate::shell_resolve::is_shell_exec_line(trimmed) {
             in_exec_output = true;
             continue;
         }

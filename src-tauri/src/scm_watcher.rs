@@ -147,10 +147,7 @@ pub async fn detect_github_pr(
 ) -> Option<u64> {
     let output = Command::new("gh")
         .args([
-            "pr", "list",
-            "--head", branch,
-            "--json", "number",
-            "--limit", "1",
+            "pr", "list", "--head", branch, "--json", "number", "--limit", "1",
         ])
         .current_dir(work_dir)
         .output()
@@ -237,11 +234,7 @@ pub async fn fetch_gitlab_comments(
     Ok(review_comments)
 }
 
-pub async fn detect_gitlab_mr(
-    project_id: &str,
-    branch: &str,
-    work_dir: &Path,
-) -> Option<u64> {
+pub async fn detect_gitlab_mr(project_id: &str, branch: &str, work_dir: &Path) -> Option<u64> {
     let endpoint = format!(
         "projects/{}/merge_requests?source_branch={branch}&state=opened&per_page=1",
         urlencoding_simple(project_id)
@@ -307,7 +300,10 @@ impl ReviewRouter {
             comment.reviewer
         ));
 
-        prompt.push_str(&format!("## Review Comment\n\n**PR #{}**\n", comment.pr_number));
+        prompt.push_str(&format!(
+            "## Review Comment\n\n**PR #{}**\n",
+            comment.pr_number
+        ));
 
         if let Some(file_path) = &comment.file_path {
             prompt.push_str(&format!("**File:** `{file_path}`"));
@@ -401,10 +397,7 @@ impl CommitWatcher {
         }
     }
 
-    pub async fn has_new_commit_since(
-        work_dir: &Path,
-        baseline_hash: &str,
-    ) -> bool {
+    pub async fn has_new_commit_since(work_dir: &Path, baseline_hash: &str) -> bool {
         let current = Self::get_head_hash(work_dir).await;
         match current {
             Some(hash) => hash != baseline_hash,
@@ -428,9 +421,7 @@ impl CommitWatcher {
             }
 
             if Self::has_new_commit_since(work_dir, baseline_hash).await {
-                let new_hash = Self::get_head_hash(work_dir)
-                    .await
-                    .unwrap_or_default();
+                let new_hash = Self::get_head_hash(work_dir).await.unwrap_or_default();
                 return CommitWatchResult::NewCommit(new_hash);
             }
 
@@ -490,22 +481,13 @@ pub async fn handle_comment_lifecycle(
         .as_deref()
         .and_then(|fp| ReviewRouter::load_file_content(work_dir, fp));
 
-    let prompt = ReviewRouter::build_prompt(
-        comment,
-        None,
-        file_content.as_deref(),
-    );
+    let prompt = ReviewRouter::build_prompt(comment, None, file_content.as_deref());
 
     comment.status = CommentStatus::Routed;
     let _ = ReviewRouter::route_to_agent(&prompt, agent_binary, work_dir).await;
 
-    let watch_result = CommitWatcher::wait_for_commit(
-        work_dir,
-        &baseline_hash,
-        timeout_secs,
-        15,
-    )
-    .await;
+    let watch_result =
+        CommitWatcher::wait_for_commit(work_dir, &baseline_hash, timeout_secs, 15).await;
 
     match watch_result {
         CommitWatchResult::NewCommit(_) => {
@@ -513,10 +495,7 @@ pub async fn handle_comment_lifecycle(
         }
         CommitWatchResult::TimedOut => {
             comment.status = CommentStatus::Escalated;
-            let file_display = comment
-                .file_path
-                .as_deref()
-                .unwrap_or("unknown file");
+            let file_display = comment.file_path.as_deref().unwrap_or("unknown file");
             crate::notifications::notify_review_escalation(
                 app,
                 project_name,

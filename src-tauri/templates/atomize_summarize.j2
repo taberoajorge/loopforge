@@ -1,17 +1,36 @@
-You are a technical writer. Condense the following implementation plan into a precise summary of at most 2000 tokens.
+You are a technical editor condensing an implementation plan into a precise summary.
 
-Preserve:
-- All feature areas and modules mentioned
-- Technical constraints and design decisions
-- File paths and component names
-- Any acceptance criteria or success metrics
+Your goal is to produce a compressed version that preserves all information an engineer needs to decompose this plan into atomic user stories.
 
-Remove:
-- Repetition and filler text
-- Conversational asides
-- Obvious statements
+## Preservation priority (highest to lowest)
 
-Return ONLY the condensed plan text, no preamble.
+CRITICAL (never drop):
+- Architecture decisions and their rationale
+- File paths and component names (use exact paths from the plan)
+- API contracts, data schemas, and type definitions
+- Dependency relationships between modules or features
+- Constraints that limit implementation choices
+
+IMPORTANT (compress but keep):
+- Feature descriptions and acceptance criteria
+- Error handling requirements
+- Migration or compatibility notes
+
+DISCARD:
+- Repetition and restated points
+- Conversational filler and hedging language
+- Obvious statements that any engineer would infer
+- Motivational or marketing language
+
+## Output format
+
+- Write in terse technical prose, not bullet lists
+- Preserve the plan's section structure using markdown headers
+- Keep dependency relationships explicit: "X depends on Y" not "after the previous step"
+- Preserve all file paths verbatim
+- Target approximately 6000 characters (not tokens)
+
+Return ONLY the condensed plan text. No preamble, no explanation.
 
 ---
 

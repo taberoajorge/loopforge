@@ -1,81 +1,109 @@
+use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo};
 use std::path::Path;
-use tokio::process::Command;
+use std::process::Stdio;
+use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, Signal, System};
 
 pub async fn run_shell_command(command: &str, work_dir: Option<&Path>) -> bool {
-    let mut cmd = Command::new("sh");
-    cmd.args(["-c", command]);
-    if let Some(dir) = work_dir {
-        cmd.current_dir(dir);
+    let mut process = crate::platform::shell_command(command);
+    if let Some(directory) = work_dir {
+        process.current_dir(directory);
     }
-    match cmd.output().await {
+    match process.output().await {
         Ok(output) => output.status.success(),
         Err(_) => false,
     }
 }
 
 pub async fn run_shell_command_background(command: &str, work_dir: Option<&Path>) {
-    let nohup_cmd = format!("nohup {command} > /dev/null 2>&1 &");
-    let mut cmd = Command::new("sh");
-    cmd.args(["-c", &nohup_cmd]);
-    if let Some(dir) = work_dir {
-        cmd.current_dir(dir);
+    let mut process = crate::platform::shell_command(command);
+    process
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    if let Some(directory) = work_dir {
+        process.current_dir(directory);
     }
-    let _ = cmd.spawn();
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        process.creation_flags(0x08000000);
+    }
+    let _ = process.spawn();
 }
 
 pub async fn kill_process_on_port(port: u16) {
-    let lsof_cmd = format!("lsof -ti :{port}");
-    let output = Command::new("sh")
-        .args(["-c", &lsof_cmd])
-        .output()
-        .await;
+    let process_ids = tokio::task::spawn_blocking(move || collect_process_ids_on_port(port))
+        .await
+        .unwrap_or_default();
+    for process_id in process_ids {
+        let _ = send_signal(process_id, Signal::Term).await;
+    }
+}
 
-    if let Ok(output) = output {
-        let pids = String::from_utf8_lossy(&output.stdout);
-        for pid_str in pids.lines() {
-            if let Ok(pid) = pid_str.trim().parse::<i32>() {
-                let _ = Command::new("kill")
-                    .arg(pid.to_string())
-                    .output()
-                    .await;
-            }
+fn collect_process_ids_on_port(port: u16) -> Vec<u32> {
+    let family_flags = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
+    let protocol_flags = ProtocolFlags::TCP | ProtocolFlags::UDP;
+    let mut collected_ids = Vec::new();
+    let socket_info_list = match netstat2::get_sockets_info(family_flags, protocol_flags) {
+        Ok(items) => items,
+        Err(_) => return collected_ids,
+    };
+    for socket_info in socket_info_list {
+        let local_port = match socket_info.protocol_socket_info {
+            ProtocolSocketInfo::Tcp(tcp_socket_info) => tcp_socket_info.local_port,
+            ProtocolSocketInfo::Udp(udp_socket_info) => udp_socket_info.local_port,
+        };
+        if local_port != port {
+            continue;
         }
+        for process_id in socket_info.associated_pids {
+            collected_ids.push(process_id);
+        }
+    }
+    collected_ids.sort_unstable();
+    collected_ids.dedup();
+    collected_ids
+}
+
+fn process_exists(process_id: u32) -> bool {
+    let mut system = System::new();
+    system.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing());
+    system.process(Pid::from_u32(process_id)).is_some()
+}
+
+fn signal_process(process_id: u32, signal: Signal) -> bool {
+    let mut system = System::new();
+    system.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing());
+    match system.process(Pid::from_u32(process_id)) {
+        Some(process) => process.kill_with(signal).unwrap_or(false),
+        None => false,
     }
 }
 
 pub async fn graceful_kill(pid: u32) {
     use std::time::Duration;
-
-    let pid_str = pid.to_string();
-
-    let _ = Command::new("kill")
-        .args(["-INT", &pid_str])
-        .output()
-        .await;
+    let _ = send_signal(pid, Signal::Interrupt).await;
     tokio::time::sleep(Duration::from_secs(10)).await;
 
     if is_process_alive(pid).await {
-        let _ = Command::new("kill")
-            .args(["-TERM", &pid_str])
-            .output()
-            .await;
+        let _ = send_signal(pid, Signal::Term).await;
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
 
     if is_process_alive(pid).await {
-        let _ = Command::new("kill")
-            .args(["-9", &pid_str])
-            .output()
-            .await;
+        let _ = send_signal(pid, Signal::Kill).await;
         crate::logger::log_warning(&format!("Force killed PID {pid} (SIGKILL)"));
     }
 }
 
 async fn is_process_alive(pid: u32) -> bool {
-    Command::new("kill")
-        .args(["-0", &pid.to_string()])
-        .output()
+    tokio::task::spawn_blocking(move || process_exists(pid))
         .await
-        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+async fn send_signal(process_id: u32, signal: Signal) -> bool {
+    tokio::task::spawn_blocking(move || signal_process(process_id, signal))
+        .await
         .unwrap_or(false)
 }
