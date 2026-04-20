@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Empty, type EmptyProps } from "@/components/ui/empty";
 
@@ -15,12 +15,7 @@ export type EmptyStateProps = Omit<EmptyProps, "action"> & {
   action?: React.ReactNode;
 };
 
-export function EmptyState({
-  action,
-  primaryAction,
-  secondaryAction,
-  ...props
-}: EmptyStateProps) {
+export function EmptyState({ action, primaryAction, secondaryAction, ...props }: EmptyStateProps) {
   let actionContent = action;
 
   if (!actionContent && (primaryAction || secondaryAction)) {

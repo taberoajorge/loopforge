@@ -1,17 +1,11 @@
-import * as React from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  type CardProps,
-} from "@/components/ui/card";
-import { Progress, type ProgressProps } from "@/components/ui/progress";
+import type * as React from "react";
 import {
   StatusBadge,
   type StatusBadgeProps,
   type StatusBadgeStatus,
 } from "@/components/StatusBadge";
+import { Card, CardContent, CardHeader, type CardProps, CardTitle } from "@/components/ui/card";
+import { Progress, type ProgressProps } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 export type ProjectProgressProps = Omit<CardProps, "title"> & {

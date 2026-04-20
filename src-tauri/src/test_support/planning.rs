@@ -142,6 +142,7 @@ fn batch(
     PlanActivityBatchPayload {
         project_id: project_id.to_string(),
         events,
+        plan_content: plan_content_delta.to_string(),
         plan_content_delta: plan_content_delta.to_string(),
     }
 }

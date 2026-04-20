@@ -1,6 +1,6 @@
+import { StepIndicator, type StepIndicatorItem } from "../../../components/StepIndicator";
 import { Badge } from "../../../components/ui/badge";
 import { Separator } from "../../../components/ui/separator";
-import { StepIndicator, type StepIndicatorItem } from "../../../components/StepIndicator";
 
 type WizardStepRailProps = {
   projectName: string;
@@ -16,14 +16,14 @@ export function WizardStepRail({
   onStepSelect,
 }: WizardStepRailProps) {
   return (
-    <aside className="hidden w-56 shrink-0 border-r border-border bg-surface/40 lg:block">
+    <aside className="hidden w-56 shrink-0 border-border border-r bg-surface/40 lg:block">
       <div className="flex h-full flex-col">
         <div className="space-y-3 p-4">
           <Badge variant="info">Setup Flow</Badge>
-          <p className="truncate text-sm font-sans font-medium text-text">
+          <p className="truncate font-medium font-sans text-sm text-text">
             {projectName || "New project"}
           </p>
-          <p className="text-[11px] font-sans uppercase tracking-widest text-text-dim">
+          <p className="font-sans text-[11px] text-text-dim uppercase tracking-widest">
             Step {currentStep} of {steps.length}
           </p>
         </div>

@@ -95,25 +95,22 @@ impl RalphConfig {
     }
 
     pub fn load_toml_overlay(&mut self, config_path: &Path) -> Result<(), ConfigError> {
-        let content = std::fs::read_to_string(config_path).map_err(|source| {
-            ConfigError::ReadFailed {
+        let content =
+            std::fs::read_to_string(config_path).map_err(|source| ConfigError::ReadFailed {
                 path: config_path.to_path_buf(),
                 source,
-            }
-        })?;
-        let parsed: TomlConfig = toml::from_str(&content).map_err(|source| {
-            ConfigError::ParseFailed {
+            })?;
+        let parsed: TomlConfig =
+            toml::from_str(&content).map_err(|source| ConfigError::ParseFailed {
                 path: config_path.to_path_buf(),
                 source,
-            }
-        })?;
+            })?;
 
         let base_dir = parsed
             .project
             .as_ref()
             .and_then(|project| project.working_directory.as_deref())
-            .map(PathBuf::from)
-            .unwrap_or_else(|| self.paths.ralph_dir.clone());
+            .map_or_else(|| self.paths.ralph_dir.clone(), PathBuf::from);
 
         if let Some(prd_cfg) = &parsed.prd {
             if let Some(path) = &prd_cfg.path {
@@ -134,9 +131,14 @@ impl RalphConfig {
         }
 
         if let Some(services_cfg) = parsed.services {
-            let legacy = services_cfg.legacy.map(|svc| to_service_config(svc, "legacy"));
+            let legacy = services_cfg
+                .legacy
+                .map(|svc| to_service_config(svc, "legacy"));
             let new_service = services_cfg.new.map(|svc| to_service_config(svc, "new"));
-            self.services = Some(ServiceConfigs { legacy, new_service });
+            self.services = Some(ServiceConfigs {
+                legacy,
+                new_service,
+            });
         }
 
         if let Some(test_cfg) = parsed.test {

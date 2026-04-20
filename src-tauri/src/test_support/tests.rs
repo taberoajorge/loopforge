@@ -1,9 +1,7 @@
 use super::agents::fixture_agent_names;
 use super::runtime::{resolve_test_mode, FixtureSet, TestConfigError, TestMode};
 use std::path::PathBuf;
-use std::sync::{Mutex, MutexGuard};
-
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use std::sync::MutexGuard;
 
 const TEST_ENV_KEYS: [&str; 4] = [
     "LOOPFORGE_TEST_MODE",
@@ -19,7 +17,9 @@ struct EnvGuard {
 
 impl EnvGuard {
     fn new() -> Self {
-        let lock = ENV_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let lock = crate::test_env_lock::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
         let values = TEST_ENV_KEYS
             .into_iter()
             .map(|key| (key, std::env::var(key).ok()))

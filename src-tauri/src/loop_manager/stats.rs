@@ -67,12 +67,12 @@ pub async fn session_stats(
                 )
                 .unwrap_or(0);
             let rate_limited: i64 = conn
-                .query_row(
-                    "SELECT COUNT(*) FROM iterations WHERE session_id = ?1 AND result = 'rate_limited'",
-                    rusqlite::params![sid],
-                    |row| row.get(0),
-                )
-                .unwrap_or(0);
+            .query_row(
+                "SELECT COUNT(*) FROM iterations WHERE session_id = ?1 AND result = 'rate_limited'",
+                rusqlite::params![sid],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
             (total, success, total - success - rate_limited, rate_limited)
         } else {
             (0, 0, 0, 0)
@@ -115,17 +115,16 @@ pub async fn session_stats(
     let stories_per_hour = session_started_at
         .as_deref()
         .and_then(|started| chrono::DateTime::parse_from_rfc3339(started).ok())
-        .map(|started| {
-            let elapsed_hours =
-                (chrono::Utc::now() - started.with_timezone(&chrono::Utc)).num_minutes() as f64
-                    / 60.0;
+        .map_or(0.0, |started| {
+            let elapsed_hours = (chrono::Utc::now() - started.with_timezone(&chrono::Utc))
+                .num_minutes() as f64
+                / 60.0;
             if elapsed_hours > 0.0 {
                 passed_stories as f64 / elapsed_hours
             } else {
                 0.0
             }
-        })
-        .unwrap_or(0.0);
+        });
 
     Ok(SessionStats {
         project_id,

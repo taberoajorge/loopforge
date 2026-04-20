@@ -1,0 +1,16 @@
+---
+description: Apply when a task touches frozen or unconnected modules
+alwaysApply: false
+---
+
+# Frozen Modules
+
+Do not modify, extend, or wire these modules into new code unless the task explicitly includes a planned vertical slice for them.
+
+- `connections.rs` and `Connections.tsx`
+- `plugin_registry.rs` and `Plugins.tsx`
+- `scm_watcher.rs`
+- `ephemeral_query.rs` and `EphemeralOverlay.tsx`
+- `summary_generator.rs`
+
+If work must touch one of these files, pause and confirm the intended slice boundary before coding.

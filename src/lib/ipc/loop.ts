@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { StartLoopArgs, IterationRow, EphemeralAnswer } from "./types";
+import type { EphemeralAnswer, IterationRow, ProjectSnapshot, StartLoopArgs } from "./types";
 
 export interface HeartbeatPayload {
   projectId: string;
@@ -43,6 +43,11 @@ export interface AgentOutputPayload {
   stream: string;
 }
 
+export interface ProjectStateChangedPayload {
+  projectId: string;
+  snapshot?: ProjectSnapshot;
+}
+
 export type LoopEvent =
   | { type: "session_started"; payload: unknown }
   | { type: "iteration_started"; payload: unknown }
@@ -69,8 +74,13 @@ export async function getIterationHistory(projectId: string): Promise<IterationR
   return invoke<IterationRow[]>("get_iteration_history", { projectId });
 }
 
+export async function getActivityFeed(projectId: string): Promise<IterationRow[]> {
+  return invoke<IterationRow[]>("get_activity_feed", { projectId });
+}
+
 export async function ephemeralQuery(
-  projectId: string, question: string,
+  projectId: string,
+  question: string,
 ): Promise<EphemeralAnswer> {
   return invoke<EphemeralAnswer>("ephemeral_query", { projectId, question });
 }
@@ -97,6 +107,20 @@ export function onSessionEnded(callback: (payload: unknown) => void): Promise<Un
   return listen("loop:session-ended", (event) => callback(event.payload));
 }
 
+export function onStoriesUpdated(
+  callback: (payload: { projectId: string }) => void,
+): Promise<UnlistenFn> {
+  return listen<{ projectId: string }>("loop:stories-updated", (event) => callback(event.payload));
+}
+
+export function onProjectStateChanged(
+  callback: (payload: ProjectStateChangedPayload) => void,
+): Promise<UnlistenFn> {
+  return listen<ProjectStateChangedPayload>("project:state-changed", (event) =>
+    callback(event.payload),
+  );
+}
+
 export function onRateLimitDetected(callback: (payload: unknown) => void): Promise<UnlistenFn> {
   return listen("loop:rate-limit-detected", (event) => callback(event.payload));
 }
@@ -105,33 +129,35 @@ export function onAgentSwitched(callback: (payload: unknown) => void): Promise<U
   return listen("loop:agent-switched", (event) => callback(event.payload));
 }
 
-export function onHeartbeat(
-  callback: (payload: HeartbeatPayload) => void,
-): Promise<UnlistenFn> {
+export function onHeartbeat(callback: (payload: HeartbeatPayload) => void): Promise<UnlistenFn> {
   return listen<HeartbeatPayload>("loop:heartbeat", (event) => callback(event.payload));
 }
 
 export function onVerificationStarted(
   callback: (payload: VerificationPayload) => void,
 ): Promise<UnlistenFn> {
-  return listen<VerificationPayload>("loop:verification-started", (event) => callback(event.payload));
+  return listen<VerificationPayload>("loop:verification-started", (event) =>
+    callback(event.payload),
+  );
 }
 
 export function onVerificationFailed(
   callback: (payload: VerificationPayload) => void,
 ): Promise<UnlistenFn> {
-  return listen<VerificationPayload>("loop:verification-failed", (event) => callback(event.payload));
+  return listen<VerificationPayload>("loop:verification-failed", (event) =>
+    callback(event.payload),
+  );
 }
 
 export function onVerificationPassed(
   callback: (payload: VerificationPayload) => void,
 ): Promise<UnlistenFn> {
-  return listen<VerificationPayload>("loop:verification-passed", (event) => callback(event.payload));
+  return listen<VerificationPayload>("loop:verification-passed", (event) =>
+    callback(event.payload),
+  );
 }
 
-export function onPromptBuilt(
-  callback: (payload: PromptPayload) => void,
-): Promise<UnlistenFn> {
+export function onPromptBuilt(callback: (payload: PromptPayload) => void): Promise<UnlistenFn> {
   return listen<PromptPayload>("loop:prompt-built", (event) => callback(event.payload));
 }
 

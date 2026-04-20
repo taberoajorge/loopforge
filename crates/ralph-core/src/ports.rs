@@ -14,10 +14,7 @@ pub trait GitOps: Send + Sync {
         since_hash: &str,
     ) -> impl std::future::Future<Output = anyhow::Result<u32>> + Send;
 
-    fn remove_git_lock(
-        &self,
-        work_dir: &Path,
-    ) -> impl std::future::Future<Output = ()> + Send;
+    fn remove_git_lock(&self, work_dir: &Path) -> impl std::future::Future<Output = ()> + Send;
 
     fn load_last_rebase(&self, path: &Path) -> Option<String>;
 }
@@ -46,10 +43,7 @@ pub trait GuardrailStore: Send + Sync {
 }
 
 pub trait StateStore: Send + Sync {
-    fn wait_while_paused(
-        &self,
-        pause_file: &Path,
-    ) -> impl std::future::Future<Output = ()> + Send;
+    fn wait_while_paused(&self, pause_file: &Path) -> impl std::future::Future<Output = ()> + Send;
 
     fn check_and_clear_done(&self, done_file: &Path) -> bool;
 

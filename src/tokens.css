@@ -1,6 +1,10 @@
 :root {
-  --lf-font-mono: "SF Mono", "Cascadia Mono", "Cascadia Code", "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-  --lf-font-sans: "Inter Variable", "Inter", "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
+  --lf-font-mono:
+    "SF Mono", "Cascadia Mono", "Cascadia Code", "JetBrains Mono", "Fira Code", ui-monospace,
+    monospace;
+  --lf-font-sans:
+    "Inter Variable", "Inter", "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue",
+    ui-sans-serif, system-ui, sans-serif;
   --lf-radius-sm: 0.25rem;
   --lf-radius-md: 0.5rem;
   --lf-radius-lg: 0.75rem;

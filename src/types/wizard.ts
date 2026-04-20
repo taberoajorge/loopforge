@@ -6,6 +6,24 @@ export type PlanEventKind =
   | "thinking"
   | "error";
 
+export type AtomizeActivityKind =
+  | "planLoaded"
+  | "templateRender"
+  | "agentStart"
+  | "agentComplete"
+  | "chunkDetected"
+  | "sectionProcess"
+  | "storyExtracted"
+  | "retry"
+  | "validation"
+  | "artifactSaved";
+
+export interface AtomizeActivityEvent {
+  kind: AtomizeActivityKind;
+  content: string;
+  timestamp: string;
+}
+
 export interface PlanEvent {
   kind: PlanEventKind;
   content: string;

@@ -1,19 +1,11 @@
 import { expect, test } from "vitest";
-import {
-  detectAgents,
-  onPlanActivityBatch,
-} from "../../lib/tauri";
+import { detectAgents, onPlanActivityBatch } from "../../lib/tauri";
 import {
   createAgentInfo,
   createPlanActivityBatchPayload,
   createProjectSnapshot,
 } from "../fixtures";
-import {
-  emitTauriEvent,
-  getEventListenerCount,
-  invokeMock,
-  mockTauriCommand,
-} from "../mocks";
+import { emitTauriEvent, getEventListenerCount, invokeMock, mockTauriCommand } from "../mocks";
 
 test("mocks IPC commands through the real frontend wrappers", async () => {
   const mockedAgents = [createAgentInfo()];
@@ -26,7 +18,7 @@ test("mocks IPC commands through the real frontend wrappers", async () => {
 
 test("emits typed frontend events to subscribed listeners", async () => {
   const payload = createPlanActivityBatchPayload();
-  const received: typeof payload[] = [];
+  const received: (typeof payload)[] = [];
   const unlisten = await onPlanActivityBatch((value) => {
     received.push(value);
   });

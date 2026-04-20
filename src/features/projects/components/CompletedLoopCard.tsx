@@ -1,29 +1,19 @@
 import { Link } from "react-router";
-import { StatusBadge } from "@/components/StatusBadge";
+import { StatusBadge, type StatusBadgeStatus } from "@/components/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PROJECT_STATUS_META } from "@/lib/project-status";
+import { useDisplayVocabularyStore } from "@/stores/displayVocabularyStore";
 import type { Project } from "@/stores/projectStore";
 
-function computeDuration(startedAt: string, endedAt: string): string | null {
-  const startedAtMs = Number(new Date(startedAt));
-  const endedAtMs = Number(new Date(endedAt));
-  if (Number.isNaN(startedAtMs) || Number.isNaN(endedAtMs)) return null;
-  const elapsedMs = Math.max(0, endedAtMs - startedAtMs);
-  const elapsedHours = Math.floor(elapsedMs / 3600000);
-  const elapsedMinutes = Math.floor((elapsedMs % 3600000) / 60000);
-  if (elapsedHours > 0) return `${elapsedHours}h ${elapsedMinutes}m`;
-  return `${elapsedMinutes}m`;
-}
-
 export function CompletedLoopCard({ project }: { project: Project }) {
-  const statusMeta = PROJECT_STATUS_META[project.status];
+  const vocabulary = useDisplayVocabularyStore((state) => state.vocabulary);
+  const statusMeta = vocabulary?.projectStatusMeta[project.status] ?? {
+    badgeStatus: project.status === "active" ? "running" : project.status,
+    cardLabel: `${project.status.slice(0, 1).toUpperCase()}${project.status.slice(1)}`,
+    sidebarLabel: `${project.status.slice(0, 1).toUpperCase()}${project.status.slice(1)}`,
+  };
   const completedStories = project.storiesCompleted ?? 0;
   const totalStories = project.totalStories ?? 0;
-  const endTime = project.sessionEndedAt ?? project.updatedAt;
-  const duration =
-    project.sessionStartedAt && endTime
-      ? computeDuration(project.sessionStartedAt, endTime)
-      : null;
+  const duration = project.durationLabel ?? null;
 
   return (
     <Link to={`/monitor/${project.id}`} className="block">
@@ -39,14 +29,16 @@ export function CompletedLoopCard({ project }: { project: Project }) {
               </CardDescription>
             </div>
             <StatusBadge
-              status={statusMeta.badgeStatus}
+              status={statusMeta.badgeStatus as StatusBadgeStatus}
               label={statusMeta.cardLabel}
             />
           </div>
         </CardHeader>
-        <CardContent className="border-t border-border/60 px-4 py-3">
-          <div className="flex items-center gap-4 text-xs font-mono text-text-dim">
-            <span>{completedStories}/{totalStories} stories</span>
+        <CardContent className="border-border/60 border-t px-4 py-3">
+          <div className="flex items-center gap-4 font-mono text-text-dim text-xs">
+            <span>
+              {completedStories}/{totalStories} stories
+            </span>
             <span>{duration ?? "Telemetry unavailable"}</span>
           </div>
         </CardContent>

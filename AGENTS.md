@@ -1,143 +1,140 @@
 # LoopForge
 
-Desktop AI loop orchestrator. Tauri v2 (Rust + React). Plan → Atomize → Execute → Monitor.
+Desktop AI loop orchestrator. Tauri v2 with Rust and React. Workflow: Plan, Atomize, Execute, Monitor.
 
 ## Stack
 
-- Backend: Rust (Cargo workspace)
-  - `crates/ralph-core` — library crate: loop engine, PRD, prompt builder, providers, detection, verification
-  - `src-tauri/` — Tauri v2 app binary, consumes ralph-core via Cargo path dependency
+- Backend: Rust Cargo workspace
+  - `crates/ralph-core` for pure loop logic
+  - `src-tauri/` for Tauri binary and adapters
 - Frontend: React 19, TypeScript 5, Tailwind CSS 4, Zustand 5
-- Storage: rusqlite (SQLite, bundled) + filesystem artifacts
-- Desktop: Tauri v2 (system webview, tray icon, native notifications)
-- Templates: MiniJinja (.j2) for atomization pipeline
-- Package manager: Bun (frontend), Cargo (Rust)
+- Storage: `rusqlite` for metadata and filesystem artifacts for project state
+- Templates: MiniJinja `.j2`
+- Package managers: Bun and Cargo
 
 ## Commands
 
-```
-bun run tauri dev       # full app development (backend + frontend)
-bun run tauri build     # production build
-cargo test              # Rust tests (from workspace root)
-bun run dev             # frontend only (Vite dev server on :1420)
-bun run build           # frontend production build
-bun run typecheck       # TypeScript type check (tsc --noEmit)
+```bash
+bun run tauri dev
+bun run tauri build
+cargo test
+bun run dev
+bun run build
+bun run typecheck
 ```
 
 ## Architecture
 
-Three-layer hexagonal architecture:
+Three layer hexagonal architecture with explicit boundaries.
 
 | Layer | Directory | Responsibility |
-|-------|-----------|----------------|
-| Domain | `crates/ralph-core/src/` | Pure loop logic, no UI, no Tauri deps |
-| Shell | `src-tauri/src/` | Tauri commands, events, SQLite, filesystem, tray |
-| UI | `src/` | React pages, Zustand stores, Tailwind styling |
+|------|------|------|
+| Domain | `crates/ralph-core/src/` | Pure loop logic without UI or Tauri dependencies |
+| Shell | `src-tauri/src/` | Tauri commands, events, SQLite, filesystem integration |
+| UI | `src/` | React pages, components, stores, and rendering |
 
-IPC: `#[tauri::command]` for request/response, `app.emit()` for streaming events.
+IPC contract: `#[tauri::command]` for request response and `app.emit()` for streaming events.
+
+## Architecture Rationale
+
+- Keep loop logic testable and independent from desktop runtime
+- Keep persistence in Rust services through `DbState` and `rusqlite`
+- Keep project artifacts as durable handoff files between wizard and runtime
+- Keep UI stores as rendering state, never as canonical persisted state
+- Keep atomization deterministic through MiniJinja templates
 
 ## Conventions
 
-- No comments, no JSDoc in code
-- No single-character variables
-- No eslint-disable
-- Max 200 lines per file
+- No comments and no JSDoc in code
+- No single character variable names
+- No `eslint-disable`
+- Max 200 lines per Rust and TypeScript file
 - Commit format: `type(scope): description`
-- Types: feat, fix, refactor, test, chore
-- Scopes: core, tauri, frontend, tokens, docs
-- One atomic commit per logical unit of work
+- Atomic commits by logical unit
 
-## Rust
+## Rust Rules
 
-- `thiserror` for error types in ralph-core, `anyhow` for application errors in src-tauri
-- No `unwrap()` in library code (ralph-core); acceptable in tests only
-- No `println!` in library code; use `tracing` or `log`
-- All new struct fields use `#[serde(default)]` for backward compatibility
-- Async runtime: tokio (full features)
-- Child process management: `tokio::process::Command`
-- Template engine: minijinja (NOT Handlebars)
+- Use `thiserror` in `ralph-core` and `anyhow` in `src-tauri`
+- No `unwrap()` in `ralph-core` non test code
+- No `println!` in library code, use `tracing` or `log`
+- New struct fields must use `#[serde(default)]`
+- Child processes use `tokio::process::Command`
 
-## React / TypeScript
+## React and TypeScript Rules
 
 - Functional components only
-- State management: Zustand (stores for app-level state only, NOT as source of truth for artifacts)
-- Styling: Tailwind CSS 4 utility classes using design tokens from `src/tokens.css`
-- NEVER use raw hex, rgb, or arbitrary color values
-- ALWAYS use token classes: `bg-void`, `bg-surface`, `text-primary`, `border-border`, etc.
-- Routing: React Router v7
-- Terminal rendering: xterm.js (@xterm/xterm)
-- Markdown: react-markdown + remark-gfm
+- Zustand for app state only, not artifact source of truth
+- Tailwind utility classes using design tokens from `src/tokens.css`
+- Never use raw hex, rgb, or oklch color values
+- Keep bindings in `src/lib/tauri.ts` for invoke and event APIs
+
+## Testing
+
+- Run `cargo test` after backend or core updates
+- Run `bun run typecheck` after frontend TypeScript updates
+- Add integration tests for new vertical slices touching storage to UI
+- Keep Rust unit tests in file `#[cfg(test)]` modules
+- Keep integration tests in `tests/` directories where applicable
+- Validate artifact read and write behavior when changing project flow
+
+## Safety
+
+- Ask for confirmation before destructive git commands or release actions
+- Do not commit secrets or local credential files
+- Do not introduce `tauri-plugin-sql` or frontend SQL plugins
+- Keep frozen modules untouched unless a planned vertical slice requires work
 
 ## File Boundaries
 
 | Directory | Responsibility |
-|-----------|----------------|
-| `crates/ralph-core/src/` | Pure loop logic: engine, PRD, prompt, providers, detection, verification, config |
-| `src-tauri/src/` | Tauri commands, events, SQLite (rusqlite), filesystem artifacts, tray, agent registry |
-| `src-tauri/templates/` | MiniJinja (.j2) templates for atomization pipeline |
-| `src/pages/` | Page-level components: Home, wizard steps, Monitor |
-| `src/components/` | Reusable React components |
-| `src/stores/` | Zustand stores (app-level state only) |
-| `src/lib/` | Tauri IPC bindings, utility functions |
-| `docs/` | Architecture, schema, and token documentation |
+|------|------|
+| `crates/ralph-core/src/` | Loop engine, PRD, prompt, providers, detection, verification, config |
+| `src-tauri/src/` | Commands, services, storage, events, process lifecycle |
+| `src-tauri/templates/` | MiniJinja templates for atomizer |
+| `src/pages/` | Home, wizard flow, monitor pages |
+| `src/components/` | Reusable UI components |
+| `src/stores/` | Zustand stores for UI state only |
+| `src/lib/` | IPC wrappers and utilities |
+| `docs/` | Architecture and schema references |
 
-## Tauri IPC — Registered Commands
+## Tauri IPC Registered Command Groups
 
-Commands actually registered in `src-tauri/src/lib.rs`:
-
-### Agents
-- `detect_agents` — scan for installed CLI agents
-- `refresh_agents` — re-scan on demand
-
-### Planning
-- `start_plan` — spawn agent CLI in plan mode, stream via Channel
-- `write_to_plan` — forward user input to agent stdin
-- `stop_plan` — terminate plan session
-
-### Projects
-- `create_project`, `finalize_draft`, `discard_draft`
-- `save_wizard_state`, `resume_wizard`
-- `list_projects`, `pause_project`, `resume_project`, `archive_project`
-- `get_project_detail`, `get_project_stories`, `get_guardrails`, `get_project_config`
-- `get_notification_prefs`, `save_notification_prefs`
-- `load_existing_plan`, `load_existing_prd`
-
-### Atomization
-- `run_atomizer` — 4-stage MiniJinja pipeline
-
-### Execution
-- `start_loop`, `stop_loop`, `session_stats`
-
-### Events (app.emit)
-- `agent-output-stream` — raw agent stdout/stderr
-- `iteration_started`, `iteration_completed`
-- `story_blocked`, `rate_limit_detected`, `session_ended`
-
-### Channels
-- `plan-activity` — scoped to `start_plan`, carries `PlanEvent`
-- `atomization-progress` — stage progress during atomization
+- Agents: `detect_agents`, `refresh_agents`
+- Planning: `start_plan`, `write_to_plan`, `stop_plan`
+- Projects: create, finalize, discard, save and resume wizard, detail and config reads
+- Atomization: `run_atomizer`
+- Execution: `start_loop`, `stop_loop`, `session_stats`
+- Streams: `agent-output-stream`, `iteration_started`, `iteration_completed`, `story_blocked`, `rate_limit_detected`, `session_ended`
+- Channels: `plan-activity`, `atomization-progress`
 
 ## Prohibitions
 
-- NEVER create files larger than 200 lines
-- NEVER use Zustand as source of truth for filesystem artifacts (plan.md, prd.json, config.json)
-- NEVER add `unwrap()` to ralph-core non-test code
-- NEVER use `println!` in library code
-- NEVER use raw color values (hex, rgb, oklch literals) — use design token classes
-- NEVER wire frozen modules into new code (connections, plugins, scm_watcher, ephemeral_query, summary_generator)
-- NEVER skip the vertical slice workflow (storage → command → service → event → UI)
-- NEVER mark a feature as done without end-to-end testing
-- NEVER use `tauri-plugin-sql` — the app uses `rusqlite` directly via `DbState`
+- Never create files above 200 lines in Rust or TypeScript
+- Never use Zustand as source of truth for `plan.md`, `prd.json`, `config.json`, `draft.json`
+- Never wire frozen modules into new code without planned vertical slice
+- Never skip full vertical slice ordering for new features
+- Never mark work complete without end to end validation
+- Never use `tauri-plugin-sql`, the app uses `rusqlite` through `DbState`
 
 ## Artifact Contract
 
-Per-project directory at `~/.config/loopforge/projects/<project-id>/`:
+Per project directory: `~/.config/loopforge/projects/<project-id>/`
 
 | File | Purpose | Written by | Read by |
-|------|---------|-----------|---------|
-| `draft.json` | Wizard snapshot (all steps) | Wizard step transitions | Wizard resume |
-| `plan.md` | Generated research plan | Plan engine | Atomizer stage 1 |
-| `prd.json` | Atomic user stories | Atomizer stage 4 + UI edits | Loop engine |
+|------|------|------|------|
+| `draft.json` | Wizard snapshot | Wizard transitions | Wizard resume |
+| `plan.md` | Generated plan | Plan engine | Atomizer stage 1 |
+| `prd.json` | Atomic user stories | Atomizer and Atomize UI edits | Loop engine |
 | `config.json` | Execution configuration | Configure step | Loop manager |
-| `prompt.md` | Agent execution instructions | Atomizer stage 4 | Loop engine |
-| `guardrails.md` | Dynamic guardrails | Atomizer + loop engine | Loop engine |
+| `prompt.md` | Execution prompt | Atomizer stage 4 | Loop engine |
+| `guardrails.md` | Dynamic guardrails | Atomizer and loop engine | Loop engine |
+
+## Scoped Cursor Rules
+
+- `.cursor/rules/rust.mdc`
+- `.cursor/rules/react.mdc`
+- `.cursor/rules/tauri.mdc`
+- `.cursor/rules/frozen-modules.mdc`
+- `.cursor/rules/vertical-slice.mdc`
+- `.cursor/rules/antipatterns.mdc`
+- `.cursor/rules/templates.mdc`

@@ -23,19 +23,16 @@ ralph/
 ralph 2/
 
 openspec/
-.claude/prompts/
-.claude/worktrees/
+.loopforge/
+
 .claude/
 .codex/
 .gemini/
 .opencode/
-
-.cursor/agents/
 .cursor/commands/
 .cursor/skills/
+.cursor/agents/
 .cursor/mcp.json
-
-docs/
 
 plan.md
 prd.json

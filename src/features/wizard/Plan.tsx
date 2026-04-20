@@ -1,19 +1,16 @@
-import { useDeferredValue, useEffect, useMemo, useRef } from "react";
+import { useDeferredValue, useEffect, useRef } from "react";
 import { useParams } from "react-router";
+import { MarkdownPreview } from "../../components/MarkdownPreview";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { ScrollArea, ScrollViewport } from "../../components/ui/scroll-area";
 import { Separator } from "../../components/ui/separator";
 import { Textarea } from "../../components/ui/textarea";
-import { MarkdownPreview } from "../../components/MarkdownPreview";
-import { useWizardStore } from "../../stores/wizardStore";
 import { usePlanEvents } from "../../hooks/usePlanEvents";
 import { usePlanOrchestration } from "../../hooks/usePlanOrchestration";
-import { shouldRenderPlanEvent } from "../../lib/plan-stream-filters";
-import {
-  PlanStreamPanel,
-} from "./components/PlanStreamPanel";
+import { useWizardStore } from "../../stores/wizardStore";
+import { PlanStreamPanel } from "./components/PlanStreamPanel";
 import { PlanWorkspace } from "./components/PlanWorkspace";
 
 export function Plan() {
@@ -27,40 +24,42 @@ export function Plan() {
   const { planError } = usePlanEvents(id);
   const orchestration = usePlanOrchestration(id);
 
-  const deferredEvents = useDeferredValue(planEvents);
-  const visiblePlanEvents = useMemo(
-    () => deferredEvents.filter(shouldRenderPlanEvent),
-    [deferredEvents],
-  );
+  const visiblePlanEvents = useDeferredValue(planEvents);
 
   useEffect(() => {
     activityEndRef.current?.scrollIntoView({ behavior: "auto" });
-  }, [visiblePlanEvents]);
+  }, []);
 
   useEffect(() => {
     orchestration.initializePlan();
-  }, [id]);
+  }, [orchestration.initializePlan]);
 
   const displayContent = orchestration.isEditing ? orchestration.editedPlan : planContent;
   const canEditPlan = planComplete || (orchestration.showResumePrompt && planContent.length > 0);
   const showPlanPreview =
-    orchestration.isEditing || planComplete || orchestration.showResumePrompt || (planRunning && planContent.length > 0);
+    orchestration.isEditing ||
+    planComplete ||
+    orchestration.showResumePrompt ||
+    (planRunning && planContent.length > 0);
 
   const previewPanel = (
     <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-none border-0">
       <CardHeader className="flex-row items-center justify-between p-3">
         <div className="flex items-center gap-2">
-          <CardTitle className="text-xs font-sans uppercase tracking-widest text-text-muted">
+          <CardTitle className="font-sans text-text-muted text-xs uppercase tracking-widest">
             Plan Preview
           </CardTitle>
           {planComplete ? (
             <Badge variant="success">Ready</Badge>
           ) : planRunning && planContent.length > 0 ? (
-            <Badge variant="info" className="animate-pulse">Streaming</Badge>
+            <Badge variant="info" className="animate-pulse">
+              Streaming
+            </Badge>
           ) : null}
         </div>
         <Button
-          variant="ghost" size="sm"
+          variant="ghost"
+          size="sm"
           onClick={orchestration.handleEditToggle}
           disabled={!canEditPlan && !orchestration.isEditing}
         >
@@ -76,7 +75,7 @@ export function Plan() {
                 <Textarea
                   value={orchestration.editedPlan}
                   onChange={(event) => orchestration.setEditedPlan(event.target.value)}
-                  className="h-full min-h-full resize-none bg-transparent text-xs font-mono"
+                  className="h-full min-h-full resize-none bg-transparent font-mono text-xs"
                 />
               </ScrollViewport>
             </ScrollArea>
@@ -88,7 +87,7 @@ export function Plan() {
             </ScrollArea>
           )
         ) : (
-          <Card variant="elevated" className="p-4 text-xs font-mono text-text-dim">
+          <Card variant="elevated" className="p-4 font-mono text-text-dim text-xs">
             Plan preview appears when planning is complete.
           </Card>
         )}

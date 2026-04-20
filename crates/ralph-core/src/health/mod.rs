@@ -33,7 +33,10 @@ async fn ensure_service_running(svc_config: &ServiceConfig) -> bool {
         if service::check_health(health_url).await {
             return true;
         }
-        logger::log_warning(&format!("{} is DOWN, attempting auto-start...", svc_config.name));
+        logger::log_warning(&format!(
+            "{} is DOWN, attempting auto-start...",
+            svc_config.name
+        ));
         if let Some(start_cmd) = &svc_config.start_command {
             let work_dir = svc_config.working_directory.as_deref();
             if let Some(stop_cmd) = &svc_config.stop_command {

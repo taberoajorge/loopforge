@@ -1,20 +1,23 @@
-import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const progressIndicatorVariants = cva("h-full rounded-full transition-[width,background-color] duration-300", {
-  variants: {
-    tone: {
-      default: "bg-primary",
-      info: "bg-running",
-      danger: "bg-destructive",
+const progressIndicatorVariants = cva(
+  "h-full rounded-full transition-[width,background-color] duration-300",
+  {
+    variants: {
+      tone: {
+        default: "bg-primary",
+        info: "bg-running",
+        danger: "bg-destructive",
+      },
+    },
+    defaultVariants: {
+      tone: "default",
     },
   },
-  defaultVariants: {
-    tone: "default",
-  },
-});
+);
 
 export type ProgressProps = React.HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof progressIndicatorVariants> & {
@@ -57,10 +60,10 @@ function Progress({
   return (
     <div className={cn("space-y-2", className)} {...props}>
       {label || hint || showValue ? (
-        <div className="flex items-center justify-between gap-3 text-xs font-sans">
+        <div className="flex items-center justify-between gap-3 font-sans text-xs">
           <div className="min-w-0">
             {label ? (
-              <p className="truncate text-text font-medium" title={asTitle(label)}>
+              <p className="truncate font-medium text-text" title={asTitle(label)}>
                 {label}
               </p>
             ) : null}

@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router";
-import { Sheet, SheetContent } from "./ui/sheet";
+import { type AppNotification, useNotificationStore } from "../stores/notificationStore";
 import { NotificationPanelLayout } from "./notification-panel/NotificationPanelLayout";
-import { useNotificationStore, type AppNotification } from "../stores/notificationStore";
+import { Sheet, SheetContent } from "./ui/sheet";
 
 interface NotificationPanelProps {
   isOpen: boolean;

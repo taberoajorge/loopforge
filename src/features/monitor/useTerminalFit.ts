@@ -1,5 +1,5 @@
-import { useEffect, type RefObject } from "react";
 import type { FitAddon } from "@xterm/addon-fit";
+import { type RefObject, useEffect } from "react";
 
 type UseTerminalFitArgs = {
   containerRef: RefObject<HTMLElement | null>;

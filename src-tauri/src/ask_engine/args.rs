@@ -7,9 +7,9 @@ pub fn build_ask_args(
     model: Option<&str>,
 ) -> Vec<String> {
     let selected_model = model
-        .map(|value| value.trim())
+        .map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(|value| value.to_string());
+        .map(ToString::to_string);
 
     match agent {
         "claude" => {
@@ -66,8 +66,7 @@ pub fn build_ask_args(
             prompt.to_string(),
         ],
         "cursor" => {
-            let model_id =
-                selected_model.unwrap_or_else(crate::agent_runtime::cursor_model_arg);
+            let model_id = selected_model.unwrap_or_else(crate::agent_runtime::cursor_model_arg);
             vec![
                 "agent".to_string(),
                 "--print".to_string(),

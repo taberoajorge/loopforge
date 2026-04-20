@@ -1,5 +1,5 @@
-mod command_args;
 mod codex;
+mod command_args;
 mod lifecycle;
 mod runner;
 
@@ -9,7 +9,7 @@ mod tests;
 use crate::db::DbState;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 use uuid::Uuid;
 
 #[derive(Clone, Serialize)]
@@ -21,8 +21,8 @@ pub(super) struct AgentOutputLine {
     pub(super) stream: String,
 }
 
-pub(super) struct ShellProvider {
-    pub(super) app: AppHandle,
+pub(super) struct ShellProvider<R: Runtime> {
+    pub(super) app: AppHandle<R>,
     pub(super) agent_name: Arc<Mutex<String>>,
     pub(super) primary_agent: String,
     pub(super) selected_model: Option<String>,
@@ -35,19 +35,18 @@ pub(super) struct ShellProvider {
     pub(super) iteration_counter: Arc<Mutex<u32>>,
 }
 
-impl ShellProvider {
+impl<R: Runtime> ShellProvider<R> {
     pub(super) fn current_agent(&self) -> String {
         self.agent_name
             .lock()
-            .map(|guard| guard.clone())
-            .unwrap_or_else(|err| err.into_inner().clone())
+            .map_or_else(|err| err.into_inner().clone(), |guard| guard.clone())
     }
 
     pub(super) fn try_advance_fallback(&self) -> Option<String> {
         let mut index = self
             .fallback_index
             .lock()
-            .unwrap_or_else(|err| err.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         *index += 1;
         let agent = self.fallback_agents.get(*index)?.clone();
         if let Ok(mut name) = self.agent_name.lock() {

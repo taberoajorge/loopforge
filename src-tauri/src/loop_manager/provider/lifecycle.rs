@@ -1,16 +1,41 @@
 use super::ShellProvider;
+use crate::db::DbState;
+use crate::loop_manager::LoopManagerState;
+use crate::projects::notifications::{create_notification_and_emit, NotificationCreateInput};
 use ralph_core::providers::{AgentResult, Provider};
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use tauri::Emitter;
+use std::sync::Arc;
+use tauri::{Emitter, Manager, Runtime};
 
-impl Provider for ShellProvider {
-    fn name(&self) -> &str {
+async fn emit_project_state_changed<R: Runtime>(provider: &ShellProvider<R>) {
+    let snapshot = crate::commands::projects::get_project_snapshot(
+        provider.app.clone(),
+        provider.app.state::<DbState>(),
+        provider.app.state::<LoopManagerState>(),
+        provider.project_id.clone(),
+    )
+    .await
+    .ok();
+    let payload = if let Some(snapshot) = snapshot {
+        serde_json::json!({
+            "projectId": provider.project_id.clone(),
+            "snapshot": snapshot,
+        })
+    } else {
+        serde_json::json!({ "projectId": provider.project_id.clone() })
+    };
+    let _ = provider
+        .app
+        .emit(crate::events::EVENT_PROJECT_STATE_CHANGED, payload);
+}
+
+impl<R: Runtime> Provider for ShellProvider<R> {
+    fn name(&self) -> &'static str {
         "shell"
     }
 
-    fn model(&self) -> &str {
+    fn model(&self) -> &'static str {
         "default"
     }
 
@@ -27,7 +52,7 @@ impl Provider for ShellProvider {
             let mut counter = self
                 .iteration_counter
                 .lock()
-                .unwrap_or_else(|err| err.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             *counter += 1;
             *counter
         };
@@ -67,6 +92,15 @@ impl Provider for ShellProvider {
                     "agent": agent,
                     "retryAfter": result.retry_after_message,
                 }),
+            );
+            let _ = create_notification_and_emit(
+                &self.app,
+                NotificationCreateInput {
+                    project_id: self.project_id.clone(),
+                    notification_type: "rate_limited".to_string(),
+                    title: "Rate limited".to_string(),
+                    message: format!("Agent {agent} hit rate limit."),
+                },
             );
 
             match self.try_advance_fallback() {
@@ -115,6 +149,22 @@ impl Provider for ShellProvider {
                             "result": fb_outcome,
                         }),
                     );
+                    let _ = self.app.emit(
+                        crate::events::EVENT_STORIES_UPDATED,
+                        serde_json::json!({ "projectId": self.project_id }),
+                    );
+                    emit_project_state_changed(self).await;
+                    if fb_outcome == "success" {
+                        let _ = create_notification_and_emit(
+                            &self.app,
+                            NotificationCreateInput {
+                                project_id: self.project_id.clone(),
+                                notification_type: "story_completed".to_string(),
+                                title: "Story completed".to_string(),
+                                message: format!("Story {story_id} passed verification."),
+                            },
+                        );
+                    }
 
                     return Ok(fallback_result);
                 }
@@ -146,6 +196,22 @@ impl Provider for ShellProvider {
                 "result": outcome,
             }),
         );
+        let _ = self.app.emit(
+            crate::events::EVENT_STORIES_UPDATED,
+            serde_json::json!({ "projectId": self.project_id }),
+        );
+        emit_project_state_changed(self).await;
+        if outcome == "success" {
+            let _ = create_notification_and_emit(
+                &self.app,
+                NotificationCreateInput {
+                    project_id: self.project_id.clone(),
+                    notification_type: "story_completed".to_string(),
+                    title: "Story completed".to_string(),
+                    message: format!("Story {story_id} passed verification."),
+                },
+            );
+        }
 
         Ok(result)
     }

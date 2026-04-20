@@ -9,12 +9,12 @@ globs: "src-tauri/**/*.rs"
 - Define in `src-tauri/src/commands/` module
 - Use `#[tauri::command]` macro
 - Return `Result<T, String>` for IPC error serialization
-- Group by domain: project_commands.rs, agent_commands.rs, loop_commands.rs
+- Keep command handlers thin and delegate logic to services
 
 ## Events
 - Emit from backend: `app_handle.emit("event-name", payload)`
 - Listen in frontend: `listen("event-name", callback)`
-- Event names: kebab-case (plan-activity, agent-output-stream, iteration-started)
+- Event names: kebab-case (`plan-activity`, `agent-output-stream`, `iteration-started`)
 
 ## State Management
 - Use `tauri::State<Mutex<T>>` or `tauri::State<Arc<RwLock<T>>>`
@@ -28,11 +28,10 @@ globs: "src-tauri/**/*.rs"
 - Track PIDs for graceful termination (SIGTERM, then SIGKILL after timeout)
 
 ## SQLite
-- Use `tauri-plugin-sql` with migrations defined in Rust
-- Migrations registered via `tauri_plugin_sql::Builder::default().add_migrations()`
-- Database at `sqlite:loopforge.db` (resolves to AppConfig directory)
-- Frontend queries via `@tauri-apps/plugin-sql` (`Database.load()`, `db.select()`, `db.execute()`)
-- Permissions in `capabilities/default.json`: `sql:default`, `sql:allow-execute`, `sql:allow-select`
+- Use `rusqlite` directly via `DbState`
+- Do not use `tauri-plugin-sql` or `@tauri-apps/plugin-sql`
+- Keep SQLite access in backend services and expose data through Tauri commands
+- Store metadata in SQLite and keep artifact files on filesystem per project directory
 
 ## Shell (Agent CLI)
 - Use `tauri-plugin-shell` for spawning agent CLIs
@@ -40,3 +39,7 @@ globs: "src-tauri/**/*.rs"
 - Returns `(Receiver<CommandEvent>, Child)` for async streaming
 - `child.write(bytes)` for stdin piping
 - Permissions in `capabilities/default.json`: `shell:default`
+
+## Vertical Slice Reminder
+- Add features in this order: storage, model, service, command, event, IPC binding, UI, test
+- Do not ship scaffolding steps without wiring the end to end path

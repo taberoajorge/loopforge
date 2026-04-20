@@ -1,16 +1,9 @@
 import { Link } from "react-router";
-import { buttonVariants, Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useDisplayVocabularyStore } from "@/stores/displayVocabularyStore";
 import type { Project } from "@/stores/projectStore";
-
-const STEP_LABELS: Record<string, string> = {
-  describe: "Describe",
-  plan: "Plan",
-  atomize: "Atomize",
-  configure: "Configure",
-  launch: "Launch",
-};
 
 type DraftCardProps = {
   project: Project;
@@ -18,8 +11,9 @@ type DraftCardProps = {
 };
 
 export function DraftCard({ project, onDiscard }: DraftCardProps) {
+  const vocabulary = useDisplayVocabularyStore((state) => state.vocabulary);
   const wizardStep = project.wizardStep ?? "describe";
-  const stepLabel = STEP_LABELS[wizardStep] ?? wizardStep;
+  const stepLabel = vocabulary?.wizardStepLabels[wizardStep] ?? wizardStep;
   const title = project.name || "Untitled";
   const description = project.description || "No description";
 
@@ -35,12 +29,12 @@ export function DraftCard({ project, onDiscard }: DraftCardProps) {
               {description}
             </CardDescription>
           </div>
-          <span className="shrink-0 rounded bg-elevated px-1.5 py-0.5 text-xs font-mono text-text-dim">
+          <span className="shrink-0 rounded bg-elevated px-1.5 py-0.5 font-mono text-text-dim text-xs">
             {stepLabel}
           </span>
         </div>
       </CardHeader>
-      <CardContent className="flex items-center gap-2 border-t border-border/60 px-4 py-3">
+      <CardContent className="flex items-center gap-2 border-border/60 border-t px-4 py-3">
         <Link
           to={`/new/${wizardStep}/${project.id}`}
           data-testid={`draft-resume-${project.id}`}

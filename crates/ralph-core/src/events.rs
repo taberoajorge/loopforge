@@ -60,6 +60,12 @@ pub struct RecordingEventSink {
     events: std::sync::Mutex<Vec<LoopEvent>>,
 }
 
+impl Default for RecordingEventSink {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RecordingEventSink {
     pub fn new() -> Self {
         Self {

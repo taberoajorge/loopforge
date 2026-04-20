@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Switch, type SwitchProps } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -32,11 +32,9 @@ export function ThemeToggle({
   return (
     <div className={cn("flex items-center justify-between gap-3", className)} {...props}>
       <div className="min-w-0">
-        <p className="ui-type-title font-sans font-medium text-text">{label}</p>
+        <p className="ui-type-title font-medium font-sans text-text">{label}</p>
         {description ? (
-          <p className="ui-type-body font-sans text-text-muted">
-            {description}
-          </p>
+          <p className="ui-type-body font-sans text-text-muted">{description}</p>
         ) : null}
       </div>
       <div className="flex items-center gap-2">

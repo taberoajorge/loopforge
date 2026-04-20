@@ -4,13 +4,13 @@ use super::{AgentOutputLine, ShellProvider};
 use ralph_core::providers::AgentResult;
 use std::io::Write;
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::Emitter;
-use tauri_plugin_shell::ShellExt;
+use std::sync::Arc;
+use tauri::{Emitter, Runtime};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent as ShellCommandEvent};
+use tauri_plugin_shell::ShellExt;
 
-impl ShellProvider {
+impl<R: Runtime> ShellProvider<R> {
     pub(super) async fn run_with_agent(
         &self,
         agent: &str,
@@ -45,15 +45,15 @@ impl ShellProvider {
                 .await;
         }
 
-        let (mut rx, proc): (tokio::sync::mpsc::Receiver<ShellCommandEvent>, CommandChild) =
-            self.app
-                .shell()
-                .command(agent)
-                .args(&args)
-                .envs(env_vars)
-                .current_dir(work_dir)
-                .spawn()
-                .map_err(|err| anyhow::anyhow!("Spawn failed: {err}"))?;
+        let (mut rx, proc): (tokio::sync::mpsc::Receiver<ShellCommandEvent>, CommandChild) = self
+            .app
+            .shell()
+            .command(agent)
+            .args(&args)
+            .envs(env_vars)
+            .current_dir(work_dir)
+            .spawn()
+            .map_err(|err| anyhow::anyhow!("Spawn failed: {err}"))?;
 
         let mut output_lines: Vec<String> = Vec::new();
         let stall_threshold = std::time::Duration::from_secs(stall_timeout_secs);

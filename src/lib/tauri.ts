@@ -1,50 +1,202 @@
+export type { ResolvedAgentSelection } from "./ipc/agents";
+export {
+  checkSystemReadiness,
+  detectAgents,
+  getAgentCapabilities,
+  getKnownAgents,
+  refreshAgents,
+  resolveAgentSelection,
+} from "./ipc/agents";
+export {
+  askHistory,
+  askQuestion,
+  copyAskMessage,
+  onAskComplete,
+  onAskError,
+  onAskStream,
+  retryAsk,
+  stopAsk,
+  truncateAskFrom,
+} from "./ipc/ask";
+export {
+  getAtomizerActivityLog,
+  getAtomizerPipelineState,
+  loadOutputLog,
+  onAtomizationActivity,
+  onAtomizationProgress,
+  runAtomizer,
+} from "./ipc/atomizer";
+export type { DisplayVocabulary } from "./ipc/display-vocabulary";
+export { getDisplayVocabulary } from "./ipc/display-vocabulary";
 export type {
-  AgentInfo, AgentModelOption, AgentEffortOption, AgentCapabilities,
-  ProjectRecord, ProjectsByStatus, ProjectConfig,
-  SnapshotStatus, ArtifactPaths, SessionInfo, ProgressInfo,
-  ProjectSnapshot, IterationStory, WizardResumeState,
-  Prd, StartLoopArgs, AtomizeArgs, AtomizeProgress,
-  IterationRow, EphemeralAnswer,
-  PlanActivityPayload, PlanTerminalPayload, PlanActivityBatchPayload,
-  PlanSessionStatus, PlanSessionInfo,
-  AskMessage, AskStreamPayload, AskCompletePayload, AskErrorPayload,
+  AgentOutputPayload,
+  HeartbeatPayload,
+  LoopEvent,
+  ProjectStateChangedPayload,
+  PromptPayload,
+  StorySkippedPayload,
+  VerificationPayload,
+} from "./ipc/loop";
+export {
+  ephemeralQuery,
+  getActivityFeed,
+  getIterationHistory,
+  onAgentOutput,
+  onAgentSwitched,
+  onHeartbeat,
+  onIterationCompleted,
+  onIterationStarted,
+  onProjectStateChanged,
+  onPromptBuilt,
+  onRateLimitDetected,
+  onSessionEnded,
+  onSessionStarted,
+  onStoriesUpdated,
+  onStorySkipped,
+  onVerificationFailed,
+  onVerificationPassed,
+  onVerificationStarted,
+  startLoop,
+  stopLoop,
+} from "./ipc/loop";
+export type {
+  AppNotification as BackendNotification,
+  NotificationAddedPayload,
+  NotificationListResponse,
+  ProjectNotificationSummary,
+  RingColor,
+} from "./ipc/notifications";
+export {
+  addNotification,
+  clearNotificationsBackend,
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  onNotificationAdded,
+} from "./ipc/notifications";
+export type {
+  PlanStepState,
+  PlanUserActionKind,
+  PlanUserActionResult,
+  ResolvePlanActionResult,
+} from "./ipc/plan";
+export {
+  loadExistingPlan,
+  loadExistingPrd,
+  onPlanActivityBatch,
+  onPlanComplete,
+  onPlanError,
+  onPlanHeartbeat,
+  planUserAction,
+  queryPlanStatus,
+  resolvePlanAction,
+  resolvePlanState,
+  saveConfig,
+  savePlan,
+  savePrd,
+  startPlan,
+  stopPlan,
+  writeToPlan,
+} from "./ipc/plan";
+export type { GroupedProjects } from "./ipc/project";
+export {
+  archiveProject,
+  createProject,
+  discardDraft,
+  finalizeDraft,
+  getProjectConfig,
+  getProjectSnapshot,
+  getProjectStories,
+  listProjects,
+  listProjectsEnriched,
+  listProjectsGrouped,
+  loadDraft,
+  pauseProject,
+  resumeProject,
+  resumeWizard,
+  saveDraft,
+  saveWizardState,
+} from "./ipc/project";
+export type {
+  AgentCapabilities,
+  AgentEffortOption,
+  AgentInfo,
+  AgentModelOption,
+  ArtifactPaths,
+  AskCompletePayload,
+  AskErrorPayload,
+  AskMessage,
+  AskQuestionResult,
+  AskStreamPayload,
+  AtomizeActivityPayload,
+  AtomizeArgs,
+  AtomizeProgress,
+  EphemeralAnswer,
+  IterationRow,
+  IterationStory,
+  PipelineSnapshot,
+  PlanActivityBatchPayload,
+  PlanActivityPayload,
+  PlanSessionInfo,
+  PlanSessionStatus,
+  PlanTerminalPayload,
+  Prd,
+  ProgressInfo,
+  ProjectConfig,
+  ProjectRecord,
+  ProjectSnapshot,
+  ProjectsByStatus,
+  SessionInfo,
+  SnapshotStatus,
+  StageSnapshot,
+  StageStatus,
+  StartLoopArgs,
+  SystemReadiness,
+  WizardResumeState,
 } from "./ipc/types";
 
 export type {
-  HeartbeatPayload, VerificationPayload, PromptPayload,
-  StorySkippedPayload, AgentOutputPayload, LoopEvent,
-} from "./ipc/loop";
-
-export { detectAgents, refreshAgents, getAgentCapabilities } from "./ipc/agents";
-
-export {
-  listProjects, listProjectsEnriched, createProject, getProjectSnapshot,
-  pauseProject, resumeProject, getProjectStories, getProjectConfig,
-  saveWizardState, saveDraft, loadDraft, resumeWizard,
-  finalizeDraft, discardDraft, archiveProject,
-} from "./ipc/project";
-
-export {
-  startPlan, writeToPlan, stopPlan, queryPlanStatus,
-  loadExistingPlan, savePlan, loadExistingPrd, savePrd, saveConfig,
-  onPlanActivityBatch, onPlanComplete, onPlanError, onPlanHeartbeat,
-} from "./ipc/plan";
-
-export { runAtomizer, loadOutputLog, onAtomizationProgress } from "./ipc/atomizer";
+  AdvanceWizardResult,
+  CompleteConfigureResult,
+  CompleteDescribeInput,
+  ConfigDefaultsResponse,
+  ConfigLimits,
+  LaunchProjectResult,
+  LaunchReadiness,
+  MonitorTabMeta,
+  RawConfigInput,
+  StoriesResponse,
+  SubmitConfigResult,
+  ValidationErrors,
+  WizardDefaultsResponse,
+  WizardHydrationResult,
+  WizardRouteResult,
+  WizardStepMeta,
+} from "./ipc/wizard-logic";
 
 export {
-  askQuestion, askHistory, stopAsk, copyAskMessage,
-  truncateAskFrom, retryAsk, onAskStream, onAskComplete, onAskError,
-} from "./ipc/ask";
-
-export {
-  startLoop, stopLoop, getIterationHistory, ephemeralQuery,
-  onAgentOutput, onIterationStarted, onIterationCompleted,
-  onSessionStarted, onSessionEnded, onRateLimitDetected,
-  onAgentSwitched, onHeartbeat, onVerificationStarted,
-  onVerificationFailed, onVerificationPassed,
-  onPromptBuilt, onStorySkipped,
-} from "./ipc/loop";
+  addStory,
+  advanceWizardStep,
+  completeAtomizeStep,
+  completeConfigureStep,
+  completeDescribeStep,
+  exitWizard,
+  getDefaultConfig,
+  getStories,
+  getWizardDefaults,
+  hydrateWizard,
+  launchProject,
+  markWizardStale,
+  removeStoryBackend,
+  reorderStoriesBackend,
+  replan,
+  saveWizardDraft,
+  submitProjectConfig,
+  updateStoryBackend,
+  validateDescribeInput,
+  validateLaunchReadiness,
+  validateProjectConfig,
+} from "./ipc/wizard-logic";
 
 export interface ConnectionRepo {
   repoPath: string;

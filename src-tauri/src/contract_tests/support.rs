@@ -110,7 +110,7 @@ pub fn session_ended_at(harness: &TestHarness, project_id: &str) -> Option<Strin
     conn.query_row(
         "SELECT ended_at FROM sessions WHERE project_id = ?1 ORDER BY started_at DESC LIMIT 1",
         rusqlite::params![project_id],
-        |row| row.get(0),
+        |row: &rusqlite::Row| row.get(0),
     )
     .optional()
     .unwrap()
@@ -121,8 +121,8 @@ pub async fn start_ask(harness: &TestHarness, project_id: &str, question: &str) 
     let project_dir = {
         let db = harness.app.state::<DbState>();
         let conn = db.0.lock().unwrap();
-        let conversation = crate::ask_engine::storage::get_or_create_conversation(&conn, project_id)
-            .unwrap();
+        let conversation =
+            crate::ask_engine::storage::get_or_create_conversation(&conn, project_id).unwrap();
         crate::ask_engine::storage::insert_message(
             &conn,
             &conversation.id,
@@ -136,7 +136,7 @@ pub async fn start_ask(harness: &TestHarness, project_id: &str, question: &str) 
             .query_row(
                 "SELECT working_directory FROM projects WHERE id = ?1",
                 rusqlite::params![project_id],
-                |row| row.get(0),
+                |row: &rusqlite::Row| row.get(0),
             )
             .unwrap();
         std::path::PathBuf::from(dir)

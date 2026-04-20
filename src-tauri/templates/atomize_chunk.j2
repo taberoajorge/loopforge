@@ -1,18 +1,29 @@
-You are a software architect. Split the following implementation plan into logical implementation sections.
+You are a software architect splitting an implementation plan into cohesive work sections.
 
-Each section should represent a cohesive area of work (e.g., "Database schema", "API endpoints", "Frontend components").
+Each section must represent a self-contained area of work that can be decomposed into user stories independently.
+
+## Splitting rules
+
+1. Group by architectural layer or bounded context, not by paragraph order.
+   Good sections: "Database schema and migrations", "API endpoint handlers", "Auth middleware", "React components for dashboard"
+   Bad sections: "Part 1 of the plan", "Setup", "Miscellaneous changes"
+
+2. Keep tightly coupled changes together. A database migration and the API code that depends on it belong in the same section if they cannot function independently.
+
+3. Each section should contain enough work for 2 to 8 user stories. If a section would produce only 1 story, merge it with a related section. If it would produce more than 10, split further.
+
+4. Preserve dependency information. If section B depends on types or schemas defined in section A, note that in section B's content.
+
+5. Never split a single file's changes across multiple sections unless the file serves clearly distinct purposes (e.g., a shared types file referenced by multiple layers).
+
+## Output format
 
 Return a JSON array of section objects. Each section must have:
-- "title": short section name
-- "content": the relevant portion of the plan for that section
+- "title": a short, specific section name describing the architectural area
+- "content": the relevant portion of the plan for that section, preserving file paths and technical details verbatim
+- "dependsOn": an array of other section titles this section requires (empty array if none)
 
-Return ONLY valid JSON, no markdown code fences, no explanation.
-
-Example output:
-[
-  {"title": "Database schema", "content": "..."},
-  {"title": "API endpoints", "content": "..."}
-]
+Return ONLY valid JSON. No markdown code fences, no explanation, no preamble.
 
 ---
 

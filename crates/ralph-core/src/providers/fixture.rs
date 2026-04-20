@@ -76,11 +76,11 @@ impl FixtureProvider {
 }
 
 impl super::Provider for FixtureProvider {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "fixture"
     }
 
-    fn model(&self) -> &str {
+    fn model(&self) -> &'static str {
         "deterministic"
     }
 

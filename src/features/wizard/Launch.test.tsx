@@ -1,15 +1,11 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useParams } from "react-router";
-import {
-  createUserStory,
-  createWizardConfig,
-  createWizardProjectData,
-} from "../../test/fixtures";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useWizardStore } from "../../stores/wizardStore";
+import { createUserStory, createWizardConfig, createWizardProjectData } from "../../test/fixtures";
 import { mockTauriCommands, type TauriCommandArgs } from "../../test/mocks";
 import { renderRoute } from "../../test/renderRoute";
-import { useWizardStore } from "../../stores/wizardStore";
 import { Launch } from "./Launch";
 
 function resetLaunchStore() {
@@ -56,10 +52,7 @@ describe("Launch", () => {
       config: createWizardConfig({ executeAgent: "" }),
     });
 
-    renderRoute(
-      [{ path: "/new/launch/:id", element: <Launch /> }],
-      ["/new/launch/project-010"],
-    );
+    renderRoute([{ path: "/new/launch/:id", element: <Launch /> }], ["/new/launch/project-010"]);
 
     expect(screen.getByText("Readiness")).toBeInTheDocument();
     expect(screen.getByText("Needs attention")).toBeInTheDocument();
@@ -77,6 +70,7 @@ describe("Launch", () => {
     mockTauriCommands({
       finalize_draft: vi.fn((args: TauriCommandArgs<"finalize_draft">) => {
         finalizedProjectId = args.projectId;
+        return undefined;
       }),
       start_loop: vi.fn((args: TauriCommandArgs<"start_loop">) => {
         startLoopArgs = args;
@@ -123,10 +117,7 @@ describe("Launch", () => {
       }),
     });
 
-    renderRoute(
-      [{ path: "/new/launch/:id", element: <Launch /> }],
-      ["/new/launch/project-010"],
-    );
+    renderRoute([{ path: "/new/launch/:id", element: <Launch /> }], ["/new/launch/project-010"]);
 
     await user.click(screen.getByRole("button", { name: "Launch loop" }));
 

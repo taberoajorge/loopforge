@@ -1,0 +1,15 @@
+---
+description: MiniJinja template editing conventions
+globs: "src-tauri/templates/**/*.j2"
+alwaysApply: false
+---
+
+# MiniJinja Template Rules
+
+- Keep templates deterministic and data driven
+- Prefer explicit variable names that match Rust struct fields
+- Avoid hidden control flow and nested branching when simple conditional blocks work
+- Keep prompt and output sections easy to diff across iterations
+- Preserve whitespace behavior expected by downstream parsers
+
+When template fields change, update the corresponding Rust serializer or model and verify the full atomizer pipeline.

@@ -1,9 +1,8 @@
-export type DeepPartial<TValue> =
-  TValue extends readonly unknown[]
-    ? TValue
-    : TValue extends object
-      ? { [TKey in keyof TValue]?: DeepPartial<TValue[TKey]> }
-      : TValue;
+export type DeepPartial<TValue> = TValue extends readonly unknown[]
+  ? TValue
+  : TValue extends object
+    ? { [TKey in keyof TValue]?: DeepPartial<TValue[TKey]> }
+    : TValue;
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -23,10 +22,7 @@ function cloneValue<TValue>(value: TValue): TValue {
   return Object.fromEntries(clonedEntries) as TValue;
 }
 
-export function mergeFixture<TValue>(
-  defaults: TValue,
-  overrides?: DeepPartial<TValue>,
-): TValue {
+export function mergeFixture<TValue>(defaults: TValue, overrides?: DeepPartial<TValue>): TValue {
   if (overrides === undefined) {
     return cloneValue(defaults);
   }

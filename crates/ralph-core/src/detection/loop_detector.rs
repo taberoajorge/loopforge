@@ -7,6 +7,12 @@ pub struct LoopDetector {
     recent_lines: VecDeque<String>,
 }
 
+impl Default for LoopDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LoopDetector {
     pub fn new() -> Self {
         Self {
@@ -50,7 +56,13 @@ impl LoopDetector {
             }
 
             if repetitions >= REPETITION_THRESHOLD {
-                return Some(pattern.iter().map(|line| line.as_str()).collect::<Vec<_>>().join(" | "));
+                return Some(
+                    pattern
+                        .iter()
+                        .map(|line| line.as_str())
+                        .collect::<Vec<_>>()
+                        .join(" | "),
+                );
             }
         }
 
@@ -66,7 +78,9 @@ fn normalize_line(line: &str) -> String {
     let trimmed = line.trim();
     if trimmed.is_empty()
         || trimmed.starts_with("---")
-        || trimmed.chars().all(|character| character == '=' || character == '-')
+        || trimmed
+            .chars()
+            .all(|character| character == '=' || character == '-')
     {
         return String::new();
     }

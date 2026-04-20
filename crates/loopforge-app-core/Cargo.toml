@@ -5,3 +5,7 @@ edition = "2021"
 description = "Application core services for LoopForge backend orchestration"
 
 [dependencies]
+app-services = { path = "../app-services" }
+
+[lints]
+workspace = true

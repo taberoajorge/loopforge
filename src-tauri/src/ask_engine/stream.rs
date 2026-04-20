@@ -2,7 +2,7 @@ use crate::ask_engine::args::{agent_env_vars, build_ask_args, is_safe_binary_nam
 use crate::ask_engine::context::build_ask_context;
 use crate::ask_engine::session::AskSessionsState;
 use crate::ask_engine::types::{
-    AskCompletePayload, AskErrorPayload, AskStreamPayload, StartAskArgs,
+    AskCompletePayload, AskErrorPayload, AskMessage, AskStreamPayload, StartAskArgs,
 };
 use crate::ask_engine::AskEngineError;
 use crate::db::DbState;
@@ -57,10 +57,11 @@ pub async fn spawn_ask<R: Runtime>(
     let env_vars = agent_env_vars(&args.agent);
 
     let (mut event_rx, child) = if args.agent == "codex" {
-        let shell_cmd = build_null_stdin_command(&agent_binary, &agent_args);
+        let (shell_program, shell_args) =
+            crate::shell_resolve::build_null_stdin_command(&agent_binary, &agent_args);
         app.shell()
-            .command("/bin/zsh")
-            .args(["-lc", &shell_cmd])
+            .command(&shell_program)
+            .args(shell_args)
             .envs(env_vars)
             .current_dir(&project_dir)
             .spawn()
@@ -77,7 +78,7 @@ pub async fn spawn_ask<R: Runtime>(
 
     sessions
         .insert(&args.project_id, child)
-        .map_err(|err| AskEngineError::Shell(err))?;
+        .map_err(AskEngineError::Shell)?;
 
     let project_id = args.project_id.clone();
     let agent_name = args.agent.clone();
@@ -106,15 +107,24 @@ pub async fn spawn_ask<R: Runtime>(
                     );
                 }
                 CommandEvent::Terminated(status) => {
-                    let success = status.code.map(|code| code == 0).unwrap_or(false);
+                    let success = status.code.is_some_and(|code| code == 0);
                     if success && !collected.trim().is_empty() {
-                        save_assistant_message(
+                        let message = save_assistant_message(
                             &app_clone,
                             &project_id,
                             &collected,
                             &agent_name,
                             agent_model.as_deref(),
-                        );
+                        )
+                        .unwrap_or_else(|| AskMessage {
+                            id: message_id.clone(),
+                            conversation_id: String::new(),
+                            role: "assistant".to_string(),
+                            content: collected.clone(),
+                            agent: Some(agent_name.clone()),
+                            model: agent_model.clone(),
+                            created_at: chrono::Utc::now().to_rfc3339(),
+                        });
                         let _ = app_clone.emit(
                             EVENT_ASK_COMPLETE,
                             AskCompletePayload {
@@ -123,6 +133,7 @@ pub async fn spawn_ask<R: Runtime>(
                                 full_content: collected.clone(),
                                 agent: agent_name.clone(),
                                 model: agent_model.clone(),
+                                message,
                             },
                         );
                     } else {
@@ -131,12 +142,24 @@ pub async fn spawn_ask<R: Runtime>(
                         } else {
                             collected.clone()
                         };
+                        let content = format!("Error: {error_msg}");
+                        let message = save_error_message(&app_clone, &project_id, &content)
+                            .unwrap_or_else(|| AskMessage {
+                                id: message_id.clone(),
+                                conversation_id: String::new(),
+                                role: "assistant".to_string(),
+                                content,
+                                agent: None,
+                                model: None,
+                                created_at: chrono::Utc::now().to_rfc3339(),
+                            });
                         let _ = app_clone.emit(
                             EVENT_ASK_ERROR,
                             AskErrorPayload {
                                 project_id: project_id.clone(),
                                 message_id: message_id.clone(),
                                 error: error_msg,
+                                message,
                             },
                         );
                     }
@@ -169,34 +192,46 @@ fn save_assistant_message<R: Runtime>(
     content: &str,
     agent: &str,
     model: Option<&str>,
-) {
+) -> Option<AskMessage> {
     let db = app.state::<DbState>();
-    let Ok(conn) = db.0.lock() else { return };
+    let Ok(conn) = db.0.lock() else { return None };
     let Ok(conversation) =
         crate::ask_engine::storage::get_or_create_conversation(&conn, project_id)
     else {
-        return;
+        return None;
     };
-    let _ = crate::ask_engine::storage::insert_message(
+    crate::ask_engine::storage::insert_message(
         &conn,
         &conversation.id,
         "assistant",
         content,
         Some(agent),
         model,
-    );
+    )
+    .ok()
 }
 
-fn build_null_stdin_command(binary: &str, args: &[String]) -> String {
-    let escaped_args: Vec<String> = args
-        .iter()
-        .map(|arg| format!("'{}'", arg.replace('\'', "'\\''")))
-        .collect();
-    format!(
-        "{binary} {args} < /dev/null",
-        binary = binary,
-        args = escaped_args.join(" ")
+fn save_error_message<R: Runtime>(
+    app: &AppHandle<R>,
+    project_id: &str,
+    content: &str,
+) -> Option<AskMessage> {
+    let db = app.state::<DbState>();
+    let Ok(conn) = db.0.lock() else { return None };
+    let Ok(conversation) =
+        crate::ask_engine::storage::get_or_create_conversation(&conn, project_id)
+    else {
+        return None;
+    };
+    crate::ask_engine::storage::insert_message(
+        &conn,
+        &conversation.id,
+        "assistant",
+        content,
+        None,
+        None,
     )
+    .ok()
 }
 
 async fn resolve_agent_binary<R: Runtime>(
@@ -210,11 +245,11 @@ async fn resolve_agent_binary<R: Runtime>(
         )));
     }
 
-    let lookup = format!("command -v {binary}");
+    let (shell_program, shell_args) = crate::shell_resolve::resolve_binary_via_shell(binary);
     let output = app
         .shell()
-        .command("/bin/zsh")
-        .args(["-lc", &lookup])
+        .command(&shell_program)
+        .args(shell_args)
         .output()
         .await
         .map_err(|err| AskEngineError::Shell(err.to_string()))?;

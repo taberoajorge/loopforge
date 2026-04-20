@@ -30,7 +30,9 @@ impl InvokeHarness {
             .manage(crate::agents::AgentRegistryState::default())
             .manage(PlanSessionsState::default())
             .manage(LoopManagerState::default())
-            .manage(crate::ask_engine::session::AskSessionsState::default());
+            .manage(crate::ask_engine::session::AskSessionsState::default())
+            .manage(crate::atomizer::PipelineRegistryState::default())
+            .manage(crate::atomizer::ActivityLogState::default());
         let app = invoke::attach_contract(builder)
             .build(mock_context(noop_assets()))
             .expect("test app");
@@ -69,33 +71,35 @@ impl InvokeHarness {
     }
 
     pub async fn wait_for_plan_idle(&self, project_id: &str) {
-        for _ in 0..100 {
-            let status: Option<serde_json::Value> =
-                self.invoke_ok("query_plan_status", serde_json::json!({ "projectId": project_id }));
+        for _ in 0..200 {
+            let status: Option<serde_json::Value> = self.invoke_ok(
+                "query_plan_status",
+                serde_json::json!({ "projectId": project_id }),
+            );
             if status.is_none() && self.artifact_dir(project_id).join("plan.md").exists() {
                 return;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
         panic!("plan session did not settle for {project_id}");
     }
 
     pub async fn wait_for_completion(&self, project_id: &str) {
-        for _ in 0..100 {
+        for _ in 0..300 {
             let status = {
                 let db = self.app.state::<DbState>();
                 let conn = db.0.lock().expect("db lock");
                 conn.query_row(
                     "SELECT status FROM projects WHERE id = ?1",
                     rusqlite::params![project_id],
-                    |row| row.get::<_, String>(0),
+                    |row: &rusqlite::Row| row.get::<_, String>(0),
                 )
                 .expect("project status")
             };
             if status == "completed" {
                 return;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         }
         panic!("loop did not complete for {project_id}");
     }

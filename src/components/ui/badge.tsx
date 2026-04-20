@@ -1,10 +1,10 @@
-import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-sans font-semibold leading-none transition-colors",
+  "inline-flex items-center rounded-full border px-2 py-0.5 font-sans font-semibold text-[11px] leading-none transition-colors",
   {
     variants: {
       variant: {
@@ -53,16 +53,10 @@ const badgeVariants = cva(
   },
 );
 
-export type BadgeProps = React.HTMLAttributes<HTMLSpanElement> &
-  VariantProps<typeof badgeVariants>;
+export type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & VariantProps<typeof badgeVariants>;
 
 function Badge({ className, variant, emphasis, ...props }: BadgeProps) {
-  return (
-    <span
-      className={cn(badgeVariants({ variant, emphasis }), className)}
-      {...props}
-    />
-  );
+  return <span className={cn(badgeVariants({ variant, emphasis }), className)} {...props} />;
 }
 
 export { Badge, badgeVariants };

@@ -26,15 +26,17 @@ export const invokeMock = vi.fn(async (commandName: string, args?: unknown) => {
   return commandStub(args);
 });
 
-export const listenMock = vi.fn(async (eventName: string, callback: (event: { payload: unknown }) => void) => {
-  const listeners = ensureListeners(eventName as TauriEventName);
-  const payloadCallback = (payload: unknown) => callback({ payload });
-  listeners.add(payloadCallback);
-  const unlisten: UnlistenFn = () => {
-    listeners.delete(payloadCallback);
-  };
-  return unlisten;
-});
+export const listenMock = vi.fn(
+  async (eventName: string, callback: (event: { payload: unknown }) => void) => {
+    const listeners = ensureListeners(eventName as TauriEventName);
+    const payloadCallback = (payload: unknown) => callback({ payload });
+    listeners.add(payloadCallback);
+    const unlisten: UnlistenFn = () => {
+      listeners.delete(payloadCallback);
+    };
+    return unlisten;
+  },
+);
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: listenMock }));
@@ -70,7 +72,10 @@ export function mockTauriCommands(commandMap: CommandStubMap) {
     if (commandStub === undefined) {
       continue;
     }
-    commandStubs.set(commandName, toCommandHandler(commandStub as unknown as CommandStub<TauriCommandName>));
+    commandStubs.set(
+      commandName,
+      toCommandHandler(commandStub as unknown as CommandStub<TauriCommandName>),
+    );
   }
 }
 

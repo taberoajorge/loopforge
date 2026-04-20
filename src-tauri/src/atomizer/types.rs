@@ -48,6 +48,119 @@ pub struct AtomizeProgress {
     pub stage_name: String,
     pub message: String,
     pub project_id: String,
+    #[serde(default)]
+    pub elapsed_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AtomizeActivityKind {
+    PlanLoaded,
+    TemplateRender,
+    AgentStart,
+    AgentComplete,
+    ChunkDetected,
+    SectionProcess,
+    StoryExtracted,
+    Retry,
+    Validation,
+    ArtifactSaved,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtomizeActivity {
+    pub project_id: String,
+    pub kind: AtomizeActivityKind,
+    pub content: String,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum StageStatus {
+    Pending,
+    Running,
+    Done,
+    Error,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StageSnapshot {
+    pub number: u8,
+    pub label: String,
+    pub status: StageStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PipelineSnapshot {
+    pub stages: Vec<StageSnapshot>,
+    pub error: Option<String>,
+    pub started_at: Option<String>,
+    pub elapsed_ms: u64,
+    pub done: bool,
+    #[serde(default)]
+    pub percent: u8,
+    #[serde(default)]
+    pub is_done: bool,
+    #[serde(default)]
+    pub is_running: bool,
+}
+
+impl PipelineSnapshot {
+    pub fn initial() -> Self {
+        let labels = ["Summarize", "Chunk", "Atomize", "Merge"];
+        Self {
+            stages: labels
+                .iter()
+                .enumerate()
+                .map(|(idx, label)| StageSnapshot {
+                    number: (idx + 1) as u8,
+                    label: (*label).to_string(),
+                    status: StageStatus::Pending,
+                })
+                .collect(),
+            error: None,
+            started_at: None,
+            elapsed_ms: 0,
+            done: false,
+            percent: 0,
+            is_done: false,
+            is_running: false,
+        }
+    }
+
+    pub fn recompute_derived(&mut self) {
+        let total = self.stages.len() as f64;
+        if total == 0.0 {
+            self.percent = 0;
+            self.is_done = false;
+            self.is_running = false;
+            return;
+        }
+        let progress: f64 = self
+            .stages
+            .iter()
+            .map(|stage| match stage.status {
+                StageStatus::Done => 1.0,
+                StageStatus::Running => 0.5,
+                _ => 0.0,
+            })
+            .sum();
+        self.percent = ((progress / total) * 100.0).round() as u8;
+        self.is_done = self
+            .stages
+            .iter()
+            .all(|stage| stage.status == StageStatus::Done);
+        self.is_running = !self.is_done
+            && self.error.is_none()
+            && self
+                .stages
+                .iter()
+                .any(|stage| stage.status == StageStatus::Running);
+    }
 }
 
 #[derive(Debug, Deserialize)]

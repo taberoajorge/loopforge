@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { createProject, detectAgents, discardDraft, getAgentCapabilities, listConnections, saveDraft } from "../../lib/tauri";
+import { reportError } from "../../lib/reportError";
 import type { AgentCapabilities, Connection } from "../../lib/tauri";
+import {
+  completeDescribeStep,
+  detectAgents,
+  discardDraft,
+  getKnownAgents,
+  listConnections,
+  markWizardStale,
+  resolveAgentSelection,
+  validateDescribeInput,
+} from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agentStore";
 import { useWizardStore } from "../../stores/wizardStore";
 import { DescribeForm } from "./components/DescribeForm";
@@ -12,7 +22,14 @@ export function Describe() {
   const agents = useAgentStore((state) => state.agents);
   const setAgents = useAgentStore((state) => state.setAgents);
   const setDetecting = useAgentStore((state) => state.setDetecting);
-  const { projectData, projectId: existingProjectId, setProjectData, setProjectId, advanceStep, markStale, planContent, reset } = useWizardStore();
+  const {
+    projectData,
+    projectId: existingProjectId,
+    setProjectData,
+    setProjectId,
+    planContent,
+    reset,
+  } = useWizardStore();
   const [name, setName] = useState(projectData.name);
   const [description, setDescription] = useState(projectData.description);
   const [workingDirectory, setWorkingDirectory] = useState(projectData.workingDirectory);
@@ -23,11 +40,31 @@ export function Describe() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [workspaceMode, setWorkspaceMode] = useState<"single" | "connection">("single");
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [knownAgents, setKnownAgents] = useState<string[]>([]);
   const [selectedConnectionId, setSelectedConnectionId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const draftProjectId = existingProjectId ?? params.id ?? null;
   const availableAgents = agents.filter((agent) => agent.installed);
-  const allAgents = agents.length ? agents : [{ name: "claude", version: null, installed: false }, { name: "codex", version: null, installed: false }, { name: "cursor", version: null, installed: false }, { name: "gemini", version: null, installed: false }, { name: "opencode", version: null, installed: false }];
+  const fallbackAgents = knownAgents.length > 0 ? knownAgents : [planAgent];
+  const allAgents = agents.length
+    ? agents
+    : fallbackAgents.map((name) => ({ name, version: null, installed: false }));
+
+  useEffect(() => {
+    let cancelled = false;
+    getKnownAgents()
+      .then((agentNames) => {
+        if (cancelled) return;
+        setKnownAgents(agentNames);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setKnownAgents([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     listConnections()
@@ -56,48 +93,51 @@ export function Describe() {
       .finally(() => {
         if (!cancelled) setDetecting(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [setAgents, setDetecting]);
 
   useEffect(() => {
     let cancelled = false;
-    getAgentCapabilities(planAgent)
-      .then((nextCapabilities) => {
+    resolveAgentSelection(planAgent, planModel, planEffort)
+      .then((result) => {
         if (cancelled) return;
-        setCapabilities(nextCapabilities);
-        if (nextCapabilities.supportsModel) {
-          const keepModel = nextCapabilities.models.some((entry) => entry.id === planModel);
-          if (!keepModel) setPlanModel(nextCapabilities.defaultModel ?? nextCapabilities.models[0]?.id ?? null);
-        } else setPlanModel(null);
-        if (nextCapabilities.supportsEffort) {
-          const keepEffort = nextCapabilities.efforts.some((entry) => entry.id === planEffort);
-          if (!keepEffort) setPlanEffort(nextCapabilities.defaultEffort ?? nextCapabilities.efforts[0]?.id ?? null);
-        } else setPlanEffort(null);
+        setCapabilities(result.capabilities);
+        setPlanModel(result.resolvedModel);
+        setPlanEffort(result.resolvedEffort);
       })
       .catch(() => setCapabilities(null));
-    return () => { cancelled = true; };
-  }, [planAgent]);
+    return () => {
+      cancelled = true;
+    };
+  }, [planAgent, planModel, planEffort]);
 
-  function validate() {
+  async function validate(): Promise<Record<string, string>> {
     const nextErrors: Record<string, string> = {};
-    if (!name.trim()) nextErrors.name = "Project name is required";
-    if (!description.trim()) nextErrors.description = "Feature description is required";
-    if (workspaceMode === "single" && !workingDirectory.trim()) {
-      nextErrors.workingDirectory = "Working directory is required";
-    }
     if (workspaceMode === "connection" && !selectedConnectionId) {
       nextErrors.workingDirectory = "Select a connection";
+      return nextErrors;
     }
-    if (availableAgents.length === 0) {
-      nextErrors.submit = "No supported agent was detected. Install Claude, Codex, Gemini, or OpenCode.";
-    } else if (!availableAgents.some((agent) => agent.name === planAgent)) {
-      nextErrors.submit = "Selected plan agent is not available in this environment.";
+    try {
+      const result = await validateDescribeInput({
+        name: name.trim(),
+        description: description.trim(),
+        workingDirectory: workspaceMode === "single" ? workingDirectory.trim() : "placeholder",
+        planAgent,
+      });
+      return result.errors;
+    } catch {
+      return nextErrors;
     }
-    return nextErrors;
   }
 
   async function handleCancelProcess() {
-    if (draftProjectId) await discardDraft(draftProjectId).catch(() => {});
+    if (draftProjectId) {
+      await discardDraft(draftProjectId).catch((caughtError: unknown) => {
+        reportError("Describe.discardDraft", caughtError);
+      });
+    }
     reset();
     navigate("/");
   }
@@ -107,38 +147,43 @@ export function Describe() {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const selectedDirectory = await open({ directory: true, multiple: false });
       if (selectedDirectory) setWorkingDirectory(selectedDirectory as string);
-    } catch {}
+    } catch (caughtError: unknown) {
+      reportError("Describe.browseDirectory", caughtError);
+    }
   }
 
   async function handleNext() {
-    const validationErrors = validate();
+    const validationErrors = await validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
     setSubmitting(true);
     try {
-      let effectiveDirectory = workingDirectory.trim();
-      if (workspaceMode === "connection" && selectedConnectionId) {
-        const { buildConnectionWorkspace } = await import("../../lib/tauri");
-        effectiveDirectory = await buildConnectionWorkspace(selectedConnectionId);
-      }
-      const updatedData = { name: name.trim(), description: description.trim(), workingDirectory: effectiveDirectory, planAgent, planModel, planEffort };
+      const updatedData = {
+        name: name.trim(),
+        description: description.trim(),
+        workingDirectory: workingDirectory.trim(),
+        planAgent,
+        planModel,
+        planEffort,
+      };
       setProjectData(updatedData);
-      const store = useWizardStore.getState();
-      if (existingProjectId) {
-        const draft = { version: 1, projectId: existingProjectId, currentStep: "plan", describe: updatedData, plan: { completed: store.planComplete }, atomize: { storiesCount: store.stories.length }, configure: store.config };
-        await saveDraft(existingProjectId, JSON.stringify(draft, null, 2)).catch(() => {});
-        advanceStep(2);
-        navigate(`/new/plan/${existingProjectId}`);
-        return;
+      const result = await completeDescribeStep({
+        projectId: existingProjectId,
+        name: updatedData.name,
+        description: updatedData.description,
+        workingDirectory: updatedData.workingDirectory,
+        connectionId: workspaceMode === "connection" ? selectedConnectionId : null,
+        planAgent,
+        planModel,
+        planEffort,
+      });
+      setProjectId(result.projectId);
+      if (result.workingDirectory) {
+        setProjectData({ workingDirectory: result.workingDirectory });
       }
-      const project = await createProject(updatedData.name, updatedData.description, effectiveDirectory, "describe");
-      setProjectId(project.id);
-      const draft = { version: 1, projectId: project.id, currentStep: "plan", describe: updatedData, plan: { completed: store.planComplete }, atomize: { storiesCount: store.stories.length }, configure: store.config };
-      await saveDraft(project.id, JSON.stringify(draft, null, 2)).catch(() => {});
-      advanceStep(2);
-      navigate(`/new/plan/${project.id}`);
+      navigate(result.nextRoute);
     } catch (caughtError: unknown) {
       const errorMessage = caughtError instanceof Error ? caughtError.message : String(caughtError);
       setErrors({ submit: errorMessage });
@@ -163,17 +208,38 @@ export function Describe() {
         allAgents={allAgents}
         availableAgentsCount={availableAgents.length}
         submitting={submitting}
-        onNameChange={(value) => { setName(value); setErrors((previousErrors) => ({ ...previousErrors, name: "" })); }}
-        onDescriptionChange={(value) => { setDescription(value); setErrors((previousErrors) => ({ ...previousErrors, description: "" })); if (planContent) markStale(2); }}
-        onWorkingDirectoryChange={(value) => { setWorkingDirectory(value); setErrors((previousErrors) => ({ ...previousErrors, workingDirectory: "" })); }}
+        onNameChange={(value) => {
+          setName(value);
+          setErrors((previousErrors) => ({ ...previousErrors, name: "" }));
+        }}
+        onDescriptionChange={(value) => {
+          setDescription(value);
+          setErrors((previousErrors) => ({ ...previousErrors, description: "" }));
+          if (planContent && existingProjectId) {
+            void markWizardStale(existingProjectId, 2);
+          }
+        }}
+        onWorkingDirectoryChange={(value) => {
+          setWorkingDirectory(value);
+          setErrors((previousErrors) => ({ ...previousErrors, workingDirectory: "" }));
+        }}
         onWorkspaceModeChange={setWorkspaceMode}
-        onConnectionChange={(value) => { setSelectedConnectionId(value); setErrors((previousErrors) => ({ ...previousErrors, workingDirectory: "" })); }}
-        onBrowseDirectory={() => { void handleBrowseDirectory(); }}
+        onConnectionChange={(value) => {
+          setSelectedConnectionId(value);
+          setErrors((previousErrors) => ({ ...previousErrors, workingDirectory: "" }));
+        }}
+        onBrowseDirectory={() => {
+          void handleBrowseDirectory();
+        }}
         onPlanAgentChange={setPlanAgent}
         onPlanModelChange={setPlanModel}
         onPlanEffortChange={setPlanEffort}
-        onCancel={() => { void handleCancelProcess(); }}
-        onNext={() => { void handleNext(); }}
+        onCancel={() => {
+          void handleCancelProcess();
+        }}
+        onNext={() => {
+          void handleNext();
+        }}
       />
     </section>
   );

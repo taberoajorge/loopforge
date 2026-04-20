@@ -36,8 +36,14 @@ uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
 
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }
+
 [features]
 frozen = []
 
 [target.'cfg(windows)'.dependencies]
 junction = "1"
+
+[lints]
+workspace = true

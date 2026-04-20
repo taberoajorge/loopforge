@@ -1,11 +1,11 @@
-import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { getFieldControlProps } from "./field";
 
 const switchVariants = cva(
-  "group inline-flex shrink-0 items-center rounded-full border border-border bg-elevated transition-[background-color,border-color,box-shadow] outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-destructive data-[state=checked]:bg-primary data-[state=checked]:border-primary",
+  "group inline-flex shrink-0 items-center rounded-full border border-border bg-elevated outline-none transition-[background-color,border-color,box-shadow] focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-destructive data-[state=checked]:border-primary data-[state=checked]:bg-primary",
   {
     variants: {
       size: {

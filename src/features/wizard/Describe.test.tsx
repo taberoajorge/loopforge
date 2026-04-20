@@ -1,7 +1,9 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useParams } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useAgentStore } from "../../stores/agentStore";
+import { useWizardStore } from "../../stores/wizardStore";
 import {
   createAgentCapabilities,
   createAgentInfo,
@@ -16,8 +18,6 @@ import {
   type TauriCommandArgs,
 } from "../../test/mocks";
 import { renderRoute } from "../../test/renderRoute";
-import { useAgentStore } from "../../stores/agentStore";
-import { useWizardStore } from "../../stores/wizardStore";
 import { Describe } from "./Describe";
 
 function resetDescribeStores() {
@@ -74,7 +74,10 @@ describe("Describe", () => {
     expect(screen.getByText("Feature description is required")).toBeInTheDocument();
     expect(screen.getByText("Working directory is required")).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Functional Specification"), "Protect the first wizard step.");
+    await user.type(
+      screen.getByLabelText("Functional Specification"),
+      "Protect the first wizard step.",
+    );
 
     await waitFor(() => {
       expect(useWizardStore.getState().staleFromStep).toBe(2);
@@ -94,6 +97,7 @@ describe("Describe", () => {
     let savedDraftArgs: TauriCommandArgs<"save_draft"> | undefined;
     const saveDraftCommand = vi.fn((args: TauriCommandArgs<"save_draft">) => {
       savedDraftArgs = args;
+      return undefined;
     });
     mockTauriCommands({
       list_connections: [],

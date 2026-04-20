@@ -1,27 +1,17 @@
-import { memo, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { memo, type RefObject, useMemo } from "react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
 import { ScrollArea, ScrollContent, ScrollViewport } from "../../../components/ui/scroll-area";
 import { Separator } from "../../../components/ui/separator";
-import type { PlanEvent, PlanEventKind } from "../../../types/wizard";
-export { shouldRenderPlanEvent } from "../../../lib/plan-stream-filters";
-
-const MAX_VISIBLE_EVENTS = 200;
-
-const KIND_CONFIG: Record<
-  PlanEventKind,
-  { label: string; variant: "neutral" | "info" | "warning" | "danger" | "success" }
-> = {
-  search: { label: "SRCH", variant: "info" },
-  docsLookup: { label: "DOCS", variant: "warning" },
-  mcpCall: { label: "TOOL", variant: "neutral" },
-  thinking: { label: "WAIT", variant: "neutral" },
-  error: { label: "ERR", variant: "danger" },
-  planContent: { label: "PLAN", variant: "success" },
-};
+import { useDisplayVocabularyStore } from "../../../stores/displayVocabularyStore";
+import type { PlanEvent } from "../../../types/wizard";
+import { usePlanStreamTimers } from "../hooks/usePlanStreamTimers";
+import { PlanErrorCard } from "./PlanErrorCard";
+import { PlanResumePrompt } from "./PlanResumePrompt";
+import { PlanRunningIndicator } from "./PlanRunningIndicator";
 
 type PlanStreamPanelProps = {
   activityEvents: PlanEvent[];
@@ -38,98 +28,71 @@ type PlanStreamPanelProps = {
   activityEndRef: RefObject<HTMLDivElement | null>;
 };
 
-const PlanEventRow = memo(function PlanEventRow({ event }: { event: PlanEvent }) {
-  const config = KIND_CONFIG[event.kind];
+const PlanEventRow = memo(function PlanEventRow({
+  event,
+  kindMeta,
+}: {
+  event: PlanEvent;
+  kindMeta: Record<string, { label: string; variant: string }>;
+}) {
+  const config = kindMeta[event.kind] ?? { label: "WAIT", variant: "neutral" };
   return (
     <div
-      className="flex gap-2 border-b border-border/30 py-1 last:border-0"
+      className="flex gap-2 border-border/30 border-b py-1 last:border-0"
       style={{ contentVisibility: "auto", containIntrinsicSize: "auto 28px" }}
     >
-      <span className="mt-0.5 shrink-0 text-xs font-mono text-text-dim">
-        {event.timestamp}
-      </span>
+      <span className="mt-0.5 shrink-0 font-mono text-text-dim text-xs">{event.timestamp}</span>
       <Badge
-        variant={config.variant}
+        variant={config.variant as "neutral" | "info" | "warning" | "danger" | "success"}
         className="mt-0.5 h-fit rounded-sm px-1 font-mono text-[10px]"
       >
         {config.label}
       </Badge>
-      <span className="break-all text-xs font-mono leading-5 text-text">
-        {event.content}
-      </span>
+      <span className="break-all font-mono text-text text-xs leading-5">{event.content}</span>
     </div>
   );
 });
 
-function useElapsedSeconds(active: boolean) {
-  const [elapsed, setElapsed] = useState(0);
-  const startRef = useRef(Date.now());
-  useEffect(() => {
-    if (!active) {
-      setElapsed(0);
-      startRef.current = Date.now();
-      return;
-    }
-    startRef.current = Date.now();
-    const timer = setInterval(
-      () => setElapsed(Math.floor((Date.now() - startRef.current) / 1000)),
-      1000,
-    );
-    return () => clearInterval(timer);
-  }, [active]);
-  return elapsed;
-}
-
 export function PlanStreamPanel(props: PlanStreamPanelProps) {
   const {
-    activityEvents, allEvents, planStarted, planComplete,
-    showResumePrompt, planError, userInput, onUserInputChange,
-    onSendInput, onAcceptExisting, onRestartPlan, activityEndRef,
+    activityEvents,
+    allEvents,
+    planStarted,
+    planComplete,
+    showResumePrompt,
+    planError,
+    userInput,
+    onUserInputChange,
+    onSendInput,
+    onAcceptExisting,
+    onRestartPlan,
+    activityEndRef,
   } = props;
+  const vocabulary = useDisplayVocabularyStore((state) => state.vocabulary);
+  const maxVisibleEvents = vocabulary?.maxVisibleActivityEvents ?? 200;
 
-  const elapsed = useElapsedSeconds(planStarted && !planComplete);
   const isRunning = planStarted && !planComplete;
-
-  const { hasSearch, hasDocsLookup, hasPlanContent } = useMemo(() => {
-    let search = false;
-    let docs = false;
-    let plan = false;
-    for (const evt of allEvents) {
-      if (evt.kind === "search") search = true;
-      else if (evt.kind === "docsLookup") docs = true;
-      else if (evt.kind === "planContent") plan = true;
-      if (search && docs && plan) break;
-    }
-    return { hasSearch: search, hasDocsLookup: docs, hasPlanContent: plan };
-  }, [allEvents]);
+  const hasSearch = useMemo(() => allEvents.some((event) => event.kind === "search"), [allEvents]);
+  const hasDocsLookup = useMemo(
+    () => allEvents.some((event) => event.kind === "docsLookup"),
+    [allEvents],
+  );
+  const hasPlanContent = useMemo(
+    () => allEvents.some((event) => event.kind === "planContent"),
+    [allEvents],
+  );
 
   const cappedEvents = useMemo(() => {
-    if (activityEvents.length <= MAX_VISIBLE_EVENTS) return activityEvents;
-    return activityEvents.slice(-MAX_VISIBLE_EVENTS);
-  }, [activityEvents]);
-  const lastEventTimeRef = useRef(Date.now());
-  const [secondsSinceLastEvent, setSecondsSinceLastEvent] = useState(0);
+    if (activityEvents.length <= maxVisibleEvents) return activityEvents;
+    return activityEvents.slice(-maxVisibleEvents);
+  }, [activityEvents, maxVisibleEvents]);
+  const { elapsedSeconds, secondsSinceLastEvent } = usePlanStreamTimers({
+    isRunning,
+    eventCount: allEvents.length,
+  });
 
-  useEffect(() => {
-    lastEventTimeRef.current = Date.now();
-  }, [allEvents.length]);
-
-  useEffect(() => {
-    if (!isRunning) {
-      setSecondsSinceLastEvent(0);
-      return;
-    }
-    const timer = setInterval(
-      () => setSecondsSinceLastEvent(
-        Math.floor((Date.now() - lastEventTimeRef.current) / 1000),
-      ),
-      1000,
-    );
-    return () => clearInterval(timer);
-  }, [isRunning]);
-
-  const STALL_THRESHOLD = 120;
-  const isStalled = isRunning && secondsSinceLastEvent > STALL_THRESHOLD;
+  const stallThreshold = vocabulary?.stallThresholdSecs ?? 120;
+  const isStalled = isRunning && secondsSinceLastEvent > stallThreshold;
 
   function resolvePhaseLabel(): string {
     if (isStalled) return `No output for ${secondsSinceLastEvent}s — agent may be stalled`;
@@ -138,24 +101,33 @@ export function PlanStreamPanel(props: PlanStreamPanelProps) {
     if (hasDocsLookup) return "Analyzing documentation...";
     if (hasSearch) return "Researching codebase...";
     if (activityEvents.length > 0) return "Agent working...";
-    if (elapsed < 20) return "Connecting to agent...";
+    if (elapsedSeconds < 20) return "Connecting to agent...";
     return "Waiting for agent response...";
   }
 
   function resolveStatusBadge() {
     if (planError) return <Badge variant="danger">Error</Badge>;
     if (planStarted && !planComplete) {
-      return <Badge variant="warning" className="animate-pulse">Running</Badge>;
+      return (
+        <Badge variant="warning" className="animate-pulse">
+          Running
+        </Badge>
+      );
     }
     if (planComplete) return <Badge variant="success">Complete</Badge>;
     return null;
   }
 
   return (
-    <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-none border-0 border-r" role="region" aria-label="Plan activity stream" data-testid="plan-stream-panel">
+    <Card
+      className="flex h-full min-h-0 flex-col overflow-hidden rounded-none border-0 border-r"
+      role="region"
+      aria-label="Plan activity stream"
+      data-testid="plan-stream-panel"
+    >
       <CardHeader className="gap-3 p-3">
         <div className="flex items-center gap-2">
-          <CardTitle className="text-xs font-mono uppercase tracking-widest text-text-muted">
+          <CardTitle className="font-mono text-text-muted text-xs uppercase tracking-widest">
             Activity Stream
           </CardTitle>
           {resolveStatusBadge()}
@@ -171,62 +143,43 @@ export function PlanStreamPanel(props: PlanStreamPanelProps) {
           <ScrollViewport padding="md" className="h-full">
             <ScrollContent className="space-y-2">
               {showResumePrompt ? (
-                <Card variant="elevated">
-                  <CardContent className="space-y-3 p-4">
-                    <p className="text-sm text-text">
-                      An existing plan was found. Continue with it or start fresh?
-                    </p>
-                    <div className="flex gap-2">
-                      <Button size="sm" data-testid="plan-stream-use-existing-button" onClick={onAcceptExisting}>
-                        Use Existing Plan
-                      </Button>
-                      <Button size="sm" variant="secondary" data-testid="plan-stream-start-fresh-button" onClick={onRestartPlan}>
-                        Start Fresh
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <PlanResumePrompt
+                  onAcceptExisting={onAcceptExisting}
+                  onRestartPlan={onRestartPlan}
+                />
               ) : null}
-              {planError ? (
-                <Card variant="elevated">
-                  <CardContent className="flex items-start gap-2 p-3">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-blocked" />
-                    <span className="text-xs font-mono text-blocked">
-                      {planError}
-                    </span>
-                  </CardContent>
-                </Card>
-              ) : null}
+              {planError ? <PlanErrorCard planError={planError} /> : null}
               {isRunning && !showResumePrompt && !planError ? (
-                <div className="flex items-center gap-2 rounded-md border border-border/40 bg-surface/60 px-3 py-2">
-                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
-                  <span className="text-xs font-mono text-text-muted">
-                    {resolvePhaseLabel()}
-                  </span>
-                  <span className="ml-auto text-[10px] font-mono text-text-dim tabular-nums">
-                    {elapsed}s
-                  </span>
-                </div>
+                <PlanRunningIndicator
+                  phaseLabel={resolvePhaseLabel()}
+                  elapsedSeconds={elapsedSeconds}
+                />
               ) : null}
-              {!isRunning && !planComplete && !planError && !showResumePrompt && activityEvents.length === 0 ? (
+              {!isRunning &&
+              !planComplete &&
+              !planError &&
+              !showResumePrompt &&
+              activityEvents.length === 0 ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-text-dim" />
-                  <span className="text-xs font-mono text-text-dim">
-                    Initializing agent...
-                  </span>
+                  <span className="font-mono text-text-dim text-xs">Initializing agent...</span>
                 </div>
               ) : null}
-              {cappedEvents.map((event, index) => (
-                <PlanEventRow key={`${event.timestamp}-${index}`} event={event} />
+              {cappedEvents.map((event) => (
+                <PlanEventRow
+                  key={`${event.timestamp}-${event.kind}-${event.content}`}
+                  event={event}
+                  kindMeta={vocabulary?.planKindMeta ?? {}}
+                />
               ))}
               <div ref={activityEndRef} />
             </ScrollContent>
           </ScrollViewport>
         </ScrollArea>
       </CardContent>
-      <CardFooter className="border-t border-border p-3">
+      <CardFooter className="border-border border-t p-3">
         {isRunning ? (
-          <div className="flex w-full items-center gap-2 text-xs font-mono text-text-dim">
+          <div className="flex w-full items-center gap-2 font-mono text-text-dim text-xs">
             <Loader2 className="h-3 w-3 animate-spin" />
             <span>Agent is generating plan — input disabled during generation</span>
           </div>
@@ -236,7 +189,9 @@ export function PlanStreamPanel(props: PlanStreamPanelProps) {
               aria-label="Plan stream input"
               data-testid="plan-stream-input"
               value={userInput}
-              placeholder={planComplete ? "Describe changes to re-plan..." : "Send message to agent..."}
+              placeholder={
+                planComplete ? "Describe changes to re-plan..." : "Send message to agent..."
+              }
               onChange={(event) => onUserInputChange(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
@@ -244,11 +199,12 @@ export function PlanStreamPanel(props: PlanStreamPanelProps) {
                   onSendInput();
                 }
               }}
-              className="h-9 text-sm font-mono"
+              className="h-9 font-mono text-sm"
               disabled={!planComplete && activityEvents.length === 0}
             />
             <Button
-              size="sm" variant="secondary"
+              size="sm"
+              variant="secondary"
               data-testid="plan-stream-send-button"
               onClick={onSendInput}
               disabled={!planComplete && activityEvents.length === 0}

@@ -11,6 +11,9 @@ pub const EVENT_VERIFICATION_FAILED: &str = "loop:verification-failed";
 pub const EVENT_VERIFICATION_PASSED: &str = "loop:verification-passed";
 pub const EVENT_PROMPT_BUILT: &str = "loop:prompt-built";
 pub const EVENT_STORY_SKIPPED: &str = "loop:story-skipped";
+pub const EVENT_STORIES_UPDATED: &str = "loop:stories-updated";
+pub const EVENT_PROJECT_STATE_CHANGED: &str = "project:state-changed";
+pub const EVENT_NOTIFICATION_ADDED: &str = "notification:added";
 
 pub const EVENT_ASK_STREAM: &str = "ask:stream";
 pub const EVENT_ASK_COMPLETE: &str = "ask:complete";
@@ -20,6 +23,8 @@ pub const EVENT_PLAN_ACTIVITY_BATCH: &str = "plan:activity-batch";
 pub const EVENT_PLAN_COMPLETE: &str = "plan:complete";
 pub const EVENT_PLAN_ERROR: &str = "plan:error";
 pub const EVENT_PLAN_HEARTBEAT: &str = "plan:heartbeat";
+
+pub const EVENT_ATOMIZATION_ACTIVITY: &str = "atomization:activity";
 
 #[allow(dead_code)]
 pub const LOOP_EVENT_CATALOG: [&str; 13] = [
