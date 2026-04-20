@@ -1,9 +1,12 @@
 use crate::db::DbState;
 use crate::projects::ProjectError;
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Runtime, State};
 
-pub fn artifact_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, ProjectError> {
+pub fn artifact_dir<R: Runtime>(
+    app: &AppHandle<R>,
+    project_id: &str,
+) -> Result<PathBuf, ProjectError> {
     crate::storage::artifacts::project_artifact_dir(app, project_id).map_err(ProjectError::Path)
 }
 

@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "cocoindex-code": {
+      "command": "/Users/nyctibius/.local/bin/cocoindex-code",
+      "args": [],
+      "env": {
+        "COCOINDEX_CODE_ROOT_PATH": "/Users/nyctibius/personal/loopforge"
+      }
+    },
+    "openspec": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "openspec-mcp",
+        "/Users/nyctibius/personal/loopforge"
+      ]
+    },
+    "exa": {
+      "url": "https://mcp.exa.ai/mcp?tools=web_search_exa,get_code_context_exa,company_research_exa",
+      "headers": {
+        "Authorization": "Bearer ${env:EXA_API_KEY}"
+      }
+    }
+  }
+}
