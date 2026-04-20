@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/app-services",
+    "crates/loopforge-adapters",
     "crates/loopforge-app",
     "crates/loopforge-app-core",
     "crates/ralph-core",
