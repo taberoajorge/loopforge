@@ -1,4 +1,5 @@
 mod activity;
+mod adapters;
 mod agent_profiles;
 mod agent_runtime;
 mod agent_runtime_env;

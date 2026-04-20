@@ -84,8 +84,6 @@ pub(super) fn build_plan_args(
             vec![
                 "agent".to_string(),
                 "--print".to_string(),
-                "--mode".to_string(),
-                "plan".to_string(),
                 "--force".to_string(),
                 "--output-format".to_string(),
                 "text".to_string(),

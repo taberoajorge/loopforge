@@ -88,6 +88,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
+name = "app-services"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2450,6 +2459,7 @@ name = "loopforge"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "app-services",
  "chrono",
  "junction",
  "log",
@@ -2471,6 +2481,41 @@ dependencies = [
  "tokio",
  "uuid",
 ]
+
+[[package]]
+name = "loopforge-adapters"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "serde",
+ "thiserror 1.0.69",
+ "tokio",
+]
+
+[[package]]
+name = "loopforge-api"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "loopforge-app"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "ralph-core",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "loopforge-app-core"
+version = "0.1.0"
 
 [[package]]
 name = "mac"
