@@ -2,6 +2,7 @@
 members = [
     "crates/app-services",
     "crates/loopforge-adapters",
+    "crates/loopforge-api",
     "crates/loopforge-app",
     "crates/loopforge-app-core",
     "crates/ralph-core",
